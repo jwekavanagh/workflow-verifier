@@ -1,0 +1,16 @@
+{
+  "$id": "https://execution-truth-layer/schemas/event.schema.json",
+  "title": "ToolObservedEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "workflowId", "seq", "type", "toolId", "params"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "workflowId": { "type": "string", "minLength": 1 },
+    "seq": { "type": "integer", "minimum": 0 },
+    "type": { "const": "tool_observed" },
+    "toolId": { "type": "string", "minLength": 1 },
+    "params": { "type": "object" },
+    "timestamp": { "type": "string" }
+  }
+}

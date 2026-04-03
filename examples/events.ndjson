@@ -1,0 +1,8 @@
+{"schemaVersion":1,"workflowId":"wf_complete","seq":0,"type":"tool_observed","toolId":"crm.upsert_contact","params":{"recordId":"c_ok","fields":{"name":"Alice","status":"active"}}}
+{"schemaVersion":1,"workflowId":"wf_missing","seq":0,"type":"tool_observed","toolId":"crm.upsert_contact","params":{"recordId":"missing_id","fields":{"name":"X","status":"Y"}}}
+{"schemaVersion":1,"workflowId":"wf_partial","seq":0,"type":"tool_observed","toolId":"crm.upsert_contact","params":{"recordId":"c_partial","fields":{"name":"N","status":"pending"}}}
+{"schemaVersion":1,"workflowId":"wf_inconsistent","seq":0,"type":"tool_observed","toolId":"crm.upsert_contact","params":{"recordId":"c_bad","fields":{"name":"Bob","status":"active"}}}
+{"schemaVersion":1,"workflowId":"wf_duplicate_rows","seq":0,"type":"tool_observed","toolId":"test.dup_row","params":{"key":"dupkey","fields":{"v":"a"}}}
+{"schemaVersion":1,"workflowId":"wf_unknown_tool","seq":0,"type":"tool_observed","toolId":"nope.tool","params":{}}
+{"schemaVersion":1,"workflowId":"wf_dup_seq","seq":0,"type":"tool_observed","toolId":"crm.upsert_contact","params":{"recordId":"c_ok","fields":{"name":"Alice","status":"active"}}}
+{"schemaVersion":1,"workflowId":"wf_dup_seq","seq":0,"type":"tool_observed","toolId":"crm.upsert_contact","params":{"recordId":"c_ok","fields":{"name":"Alice","status":"active"}}}

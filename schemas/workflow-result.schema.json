@@ -1,0 +1,65 @@
+{
+  "$id": "https://execution-truth-layer/schemas/workflow-result.schema.json",
+  "title": "WorkflowResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "workflowId", "status", "steps", "runLevelCodes"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "workflowId": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["complete", "incomplete", "inconsistent"]
+    },
+    "runLevelCodes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "seq",
+          "toolId",
+          "intendedEffect",
+          "verificationRequest",
+          "status",
+          "reasons",
+          "evidenceSummary"
+        ],
+        "properties": {
+          "seq": { "type": "integer", "minimum": 0 },
+          "toolId": { "type": "string" },
+          "intendedEffect": { "type": "string" },
+          "verificationRequest": {
+            "type": ["object", "null"],
+            "additionalProperties": true
+          },
+          "status": {
+            "type": "string",
+            "enum": ["verified", "missing", "partial", "inconsistent", "incomplete_verification"]
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["code", "message"],
+              "properties": {
+                "code": { "type": "string" },
+                "message": { "type": "string" },
+                "field": { "type": "string" }
+              }
+            }
+          },
+          "evidenceSummary": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  }
+}

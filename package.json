@@ -1,0 +1,25 @@
+{
+  "name": "execution-truth-layer",
+  "version": "0.1.0",
+  "description": "Verify agent workflow outcomes against external SQL ground truth",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "verify-workflow": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && vitest run && node --test test/reconciler.sqlite.test.mjs test/pipeline.sqlite.test.mjs",
+    "verify-workflow": "node dist/cli.js"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
