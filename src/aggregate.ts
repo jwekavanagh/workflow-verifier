@@ -15,7 +15,9 @@ export function aggregateWorkflow(
   let status: WorkflowStatus;
 
   const hasIncompleteStep = steps.some((s) => s.status === "incomplete_verification");
-  const hasBadRealWorld = steps.some((s) => s.status === "missing" || s.status === "inconsistent");
+  const hasBadRealWorld = steps.some(
+    (s) => s.status === "missing" || s.status === "inconsistent" || s.status === "partially_verified",
+  );
 
   if (runLevelCodes.length > 0 || steps.length === 0 || hasIncompleteStep) {
     status = "incomplete";

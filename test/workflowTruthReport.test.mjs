@@ -1,9 +1,19 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   formatWorkflowTruthReport,
   STEP_STATUS_TRUTH_LABELS,
 } from "../dist/workflowTruthReport.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const root = join(__dirname, "..");
+
+function normTruthText(s) {
+  return s.replace(/\r\n/g, "\n").trimEnd();
+}
 
 const GOLDEN_COMPLETE = `workflow_id: wf_complete
 workflow_status: complete
@@ -235,8 +245,22 @@ describe("formatWorkflowTruthReport", () => {
     }
   });
 
-  it("all four StepStatus values appear with correct status= token", () => {
-    const statuses = ["verified", "missing", "inconsistent", "incomplete_verification"];
+  it("golden wf_multi_partial stderr matches formatWorkflowTruthReport(stdout artifact)", () => {
+    const stdoutPath = join(root, "test/golden/wf_multi_partial.stdout.json");
+    const stderrPath = join(root, "test/golden/wf_multi_partial.stderr.txt");
+    const result = JSON.parse(readFileSync(stdoutPath, "utf8"));
+    const expected = normTruthText(readFileSync(stderrPath, "utf8"));
+    assert.equal(normTruthText(formatWorkflowTruthReport(result)), expected);
+  });
+
+  it("all StepStatus values appear with correct status= token", () => {
+    const statuses = [
+      "verified",
+      "missing",
+      "inconsistent",
+      "incomplete_verification",
+      "partially_verified",
+    ];
     let seq = 0;
     const steps = statuses.map((status) => ({
       seq: seq++,

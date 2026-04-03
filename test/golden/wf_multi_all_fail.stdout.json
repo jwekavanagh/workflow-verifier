@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 2,
+  "workflowId": "wf_multi_all_fail",
+  "status": "inconsistent",
+  "runLevelCodes": [],
+  "runLevelReasons": [],
+  "steps": [
+    {
+      "seq": 0,
+      "toolId": "demo.multi_contact",
+      "intendedEffect": "Multi \"missing_one\" \"missing_two\"",
+      "verificationRequest": {
+        "kind": "sql_effects",
+        "effects": [
+          {
+            "id": "primary",
+            "kind": "sql_row",
+            "table": "contacts",
+            "keyColumn": "id",
+            "keyValue": "missing_one",
+            "requiredFields": {
+              "name": "X",
+              "status": "y"
+            }
+          },
+          {
+            "id": "secondary",
+            "kind": "sql_row",
+            "table": "contacts",
+            "keyColumn": "id",
+            "keyValue": "missing_two",
+            "requiredFields": {
+              "name": "X",
+              "status": "y"
+            }
+          }
+        ]
+      },
+      "status": "inconsistent",
+      "reasons": [
+        {
+          "code": "MULTI_EFFECT_ALL_FAILED",
+          "message": "All 2 effects failed: primary, secondary"
+        }
+      ],
+      "evidenceSummary": {
+        "effectCount": 2,
+        "effects": [
+          {
+            "id": "primary",
+            "status": "missing",
+            "reasons": [
+              {
+                "code": "ROW_ABSENT",
+                "message": "No row matched key"
+              }
+            ],
+            "evidenceSummary": {
+              "rowCount": 0
+            }
+          },
+          {
+            "id": "secondary",
+            "status": "missing",
+            "reasons": [
+              {
+                "code": "ROW_ABSENT",
+                "message": "No row matched key"
+              }
+            ],
+            "evidenceSummary": {
+              "rowCount": 0
+            }
+          }
+        ]
+      },
+      "repeatObservationCount": 1,
+      "evaluatedObservationOrdinal": 1
+    }
+  ]
+}

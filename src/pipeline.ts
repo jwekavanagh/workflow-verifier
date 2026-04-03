@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { aggregateWorkflow } from "./aggregate.js";
 import { loadEventsForWorkflow } from "./loadEvents.js";
 import { planLogicalSteps, type LogicalStepPlan } from "./planLogicalSteps.js";
+import { rollupMultiEffectsAsync, rollupMultiEffectsSync } from "./multiEffectRollup.js";
 import { reconcileSqlRow, reconcileSqlRowAsync } from "./reconciler.js";
 import { loadSchemaValidator } from "./schemaLoad.js";
 import {
@@ -155,6 +156,34 @@ export function verifyToolObservedStep(options: {
     return outcome;
   }
 
+  if (resolved.verificationKind === "sql_effects") {
+    const rolled = rollupMultiEffectsSync(db, resolved.effects);
+    const outcome: StepOutcome = {
+      seq: ev.seq,
+      toolId: ev.toolId,
+      intendedEffect,
+      verificationRequest: rolled.verificationRequest,
+      status: rolled.status,
+      reasons: rolled.reasons,
+      evidenceSummary: rolled.evidenceSummary,
+      repeatObservationCount,
+      evaluatedObservationOrdinal,
+    };
+    logStep({
+      workflowId,
+      seq: ev.seq,
+      toolId: ev.toolId,
+      intendedEffect,
+      verificationRequest: rolled.verificationRequest,
+      status: outcome.status,
+      reasons: outcome.reasons,
+      evidenceSummary: outcome.evidenceSummary,
+      repeatObservationCount,
+      evaluatedObservationOrdinal,
+    });
+    return outcome;
+  }
+
   const rec = reconcileSqlRow(db, resolved.request);
   const outcome: StepOutcome = {
     seq: ev.seq,
@@ -241,6 +270,34 @@ async function verifyToolObservedStepAsync(options: {
       toolId: ev.toolId,
       intendedEffect,
       verificationRequest: null,
+      status: outcome.status,
+      reasons: outcome.reasons,
+      evidenceSummary: outcome.evidenceSummary,
+      repeatObservationCount,
+      evaluatedObservationOrdinal,
+    });
+    return outcome;
+  }
+
+  if (resolved.verificationKind === "sql_effects") {
+    const rolled = await rollupMultiEffectsAsync(backend, resolved.effects);
+    const outcome: StepOutcome = {
+      seq: ev.seq,
+      toolId: ev.toolId,
+      intendedEffect,
+      verificationRequest: rolled.verificationRequest,
+      status: rolled.status,
+      reasons: rolled.reasons,
+      evidenceSummary: rolled.evidenceSummary,
+      repeatObservationCount,
+      evaluatedObservationOrdinal,
+    };
+    logStep({
+      workflowId,
+      seq: ev.seq,
+      toolId: ev.toolId,
+      intendedEffect,
+      verificationRequest: rolled.verificationRequest,
       status: outcome.status,
       reasons: outcome.reasons,
       evidenceSummary: outcome.evidenceSummary,

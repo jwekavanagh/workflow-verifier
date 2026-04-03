@@ -17,66 +17,173 @@
     },
     "runLevelReasons": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["code", "message"],
-        "properties": {
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "field": { "type": "string" }
-        }
-      }
+      "items": { "$ref": "#/$defs/reason" }
     },
     "steps": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "seq",
-          "toolId",
-          "intendedEffect",
-          "verificationRequest",
-          "status",
-          "reasons",
-          "evidenceSummary",
-          "repeatObservationCount",
-          "evaluatedObservationOrdinal"
-        ],
-        "properties": {
-          "seq": { "type": "integer", "minimum": 0 },
-          "toolId": { "type": "string" },
-          "intendedEffect": { "type": "string" },
-          "verificationRequest": {
-            "type": ["object", "null"],
-            "additionalProperties": true
-          },
-          "status": {
-            "type": "string",
-            "enum": ["verified", "missing", "inconsistent", "incomplete_verification"]
-          },
-          "reasons": {
-            "type": "array",
-            "items": {
+      "items": { "$ref": "#/$defs/step" }
+    }
+  },
+  "$defs": {
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "field": { "type": "string" }
+      }
+    },
+    "requiredFieldsMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "null"]
+      }
+    },
+    "verificationRequestSqlRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "table", "keyColumn", "keyValue", "requiredFields"],
+      "properties": {
+        "kind": { "const": "sql_row" },
+        "table": { "type": "string" },
+        "keyColumn": { "type": "string" },
+        "keyValue": { "type": "string" },
+        "requiredFields": { "$ref": "#/$defs/requiredFieldsMap" }
+      }
+    },
+    "verificationRequestSqlEffects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "effects"],
+      "properties": {
+        "kind": { "const": "sql_effects" },
+        "effects": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "table", "keyColumn", "keyValue", "requiredFields"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "kind": { "const": "sql_row" },
+              "table": { "type": "string" },
+              "keyColumn": { "type": "string" },
+              "keyValue": { "type": "string" },
+              "requiredFields": { "$ref": "#/$defs/requiredFieldsMap" }
+            }
+          }
+        }
+      }
+    },
+    "effectOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "reasons", "evidenceSummary"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "status": {
+          "type": "string",
+          "enum": ["verified", "missing", "inconsistent", "incomplete_verification"]
+        },
+        "reasons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reason" }
+        },
+        "evidenceSummary": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "step": {
+      "allOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "seq",
+            "toolId",
+            "intendedEffect",
+            "verificationRequest",
+            "status",
+            "reasons",
+            "evidenceSummary",
+            "repeatObservationCount",
+            "evaluatedObservationOrdinal"
+          ],
+          "properties": {
+            "seq": { "type": "integer", "minimum": 0 },
+            "toolId": { "type": "string" },
+            "intendedEffect": { "type": "string" },
+            "verificationRequest": {
+              "oneOf": [
+                { "type": "null" },
+                { "$ref": "#/$defs/verificationRequestSqlRow" },
+                { "$ref": "#/$defs/verificationRequestSqlEffects" }
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": ["verified", "missing", "inconsistent", "incomplete_verification", "partially_verified"]
+            },
+            "reasons": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/reason" }
+            },
+            "evidenceSummary": {
               "type": "object",
-              "additionalProperties": false,
-              "required": ["code", "message"],
-              "properties": {
-                "code": { "type": "string" },
-                "message": { "type": "string" },
-                "field": { "type": "string" }
+              "additionalProperties": true
+            },
+            "repeatObservationCount": { "type": "integer", "minimum": 1 },
+            "evaluatedObservationOrdinal": { "type": "integer", "minimum": 1 }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "required": ["verificationRequest"],
+            "properties": {
+              "verificationRequest": {
+                "type": "object",
+                "required": ["kind"],
+                "properties": { "kind": { "const": "sql_effects" } }
               }
             }
           },
-          "evidenceSummary": {
+          "then": {
             "type": "object",
-            "additionalProperties": true
+            "properties": {
+              "evidenceSummary": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["effectCount", "effects"],
+                "properties": {
+                  "effectCount": { "type": "integer", "minimum": 2 },
+                  "effects": {
+                    "type": "array",
+                    "minItems": 2,
+                    "items": { "$ref": "#/$defs/effectOutcome" }
+                  }
+                }
+              }
+            }
           },
-          "repeatObservationCount": { "type": "integer", "minimum": 1 },
-          "evaluatedObservationOrdinal": { "type": "integer", "minimum": 1 }
+          "else": {
+            "type": "object",
+            "properties": {
+              "evidenceSummary": {
+                "type": "object",
+                "propertyNames": {
+                  "not": { "enum": ["effectCount", "effects"] }
+                }
+              }
+            }
+          }
         }
-      }
+      ]
     }
   }
 }

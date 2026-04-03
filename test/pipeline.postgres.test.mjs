@@ -16,6 +16,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const eventsPath = join(root, "examples", "events.ndjson");
 const registryPath = join(root, "examples", "tools.json");
+const eventsMulti = join(root, "test/fixtures/multi-effect/events.ndjson");
+const registryMulti = join(root, "test/fixtures/multi-effect/tools.json");
+const goldenMultiOk = JSON.parse(
+  readFileSync(join(root, "test/golden/wf_multi_ok.stdout.json"), "utf8"),
+);
 const cliJs = join(root, "dist", "cli.js");
 
 const verifyUrl = process.env.POSTGRES_VERIFICATION_URL;
@@ -53,6 +58,22 @@ describe("verifyWorkflow Postgres integration", () => {
     assert.equal(r.status, "inconsistent");
     assert.equal(r.steps[0]?.status, "missing");
     assert.equal(r.steps[0]?.reasons[0]?.code, "ROW_ABSENT");
+  });
+
+  it("wf_multi_ok matches SQLite golden (multi-effect)", async () => {
+    const r = await verifyWorkflow({
+      workflowId: "wf_multi_ok",
+      eventsPath: eventsMulti,
+      registryPath: registryMulti,
+      database: pgDb(),
+      logStep: noopLog,
+      truthReport: () => {},
+    });
+    assert.deepStrictEqual(r, goldenMultiOk);
+    const v = loadSchemaValidator("workflow-result");
+    if (!v(r)) {
+      assert.fail(JSON.stringify(v.errors ?? []));
+    }
   });
 
   it("nonexistent table → CONNECTOR_ERROR / incomplete", async () => {

@@ -16,3 +16,4 @@ CREATE TABLE contacts (
 INSERT INTO contacts (id, name, status) VALUES ('c_ok', 'Alice', 'active');
 INSERT INTO contacts (id, name, status) VALUES ('c_partial', NULL, 'pending');
 INSERT INTO contacts (id, name, status) VALUES ('c_bad', 'Bob', 'wrong');
+INSERT INTO contacts (id, name, status) VALUES ('c_side', 'Side', 'active');

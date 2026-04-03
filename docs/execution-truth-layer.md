@@ -25,6 +25,7 @@ This document is the authoritative specification for the MVP. The product verifi
 | `sqlConnector.ts` | SQLite parameterized read; lowercase column keys |
 | `sqlReadBackend.ts` | `buildSelectByKeySql`, Postgres `SqlReadBackend`, `connectPostgresVerificationClient`, `applyPostgresVerificationSessionGuards` |
 | `reconciler.ts` | `reconcileFromRows` (pure rule table), `reconcileSqlRow` (SQLite sync), `reconcileSqlRowAsync` (Postgres) |
+| `multiEffectRollup.ts` | `rollupMultiEffectsSync` / `rollupMultiEffectsAsync`: per-effect reconcile, UTF-16 sort by effect `id`, step rollup (`verified` / `partially_verified` / `inconsistent` / `incomplete_verification`) |
 | `aggregate.ts` | Workflow status precedence |
 | `workflowTruthReport.ts` | `formatWorkflowTruthReport`, `STEP_STATUS_TRUTH_LABELS`; fixed human report grammar |
 | `pipeline.ts` | Orchestration: `runLogicalStepsVerification` (internal), async `verifyWorkflow`, sync `verifyToolObservedStep`, `withWorkflowVerification` (SQLite `dbPath` only); default `truthReport` / `logStep` |
@@ -144,10 +145,12 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 | `missing` | `FAILED_ROW_MISSING` |
 | `inconsistent` | `FAILED_VALUE_MISMATCH` |
 | `incomplete_verification` | `INCOMPLETE_CANNOT_VERIFY` |
+| `partially_verified` | `PARTIALLY_VERIFIED` |
 
    - Immediately after that header line: exactly one line `    observations: evaluated=` + decimal `evaluatedObservationOrdinal` + ` of ` + decimal `repeatObservationCount` + ` in_capture_order` (four spaces before `observations:`; no trailing spaces; no period).
    - For each reason: `    reason: [` + code + `] ` + trimmed message, or `(no message)` if the message is empty after trim; if `field` is set and non-empty, append ` field=` + field value.
    - If `intendedEffect` is non-empty after trim: `    intended: ` + single-line text (each `\r`/`\n` replaced by ASCII space, runs of spaces collapsed, trimmed).
+   - **Multi-effect steps:** when `evidenceSummary.effects` is present (see [Workflow result: multi-effect shape](#workflow-result-multi-effect-shape)), after `intended:` (if any), emit one line per effect in **UTF-16 lexicographic order of effect `id`** (same comparator as `canonicalJsonForParams` object keys): `    effect: id=` + id + ` status=` + per-effect label, where per-effect labels use the same mapping as the table above **except** `partially_verified` does not appear at the effect level. For each effect with non-empty `reasons`, emit `      reason: [` + code + `] ` + message (six spaces before `reason:`), with optional ` field=` as for step-level reasons.
 
 **Engineer note:** Any change to fixed sentences or labels requires updating golden tests and `test/docs-contract.test.mjs` pins.
 
@@ -195,9 +198,11 @@ Each entry:
 
 - `toolId` (unique)
 - `effectDescriptionTemplate`: string with `{/json/pointer}` tokens → replaced with `JSON.stringify(value)` or `MISSING` (audit string only; **not** used for reconciliation).
-- `verification`: `{ "kind": "sql_row", "table", "key", "requiredFields" }` where `table` / `key.column` / `key.value` / `requiredFields` use `{ "const": … }` or `{ "pointer": "/path" }`.
+- `verification`: either
+  - `{ "kind": "sql_row", "table", "key", "requiredFields" }` (same pointer/const rules as before), or
+  - `{ "kind": "sql_effects", "effects": [ … ] }` with **at least two** items. Each item has **`id`** (non-empty string, unique within the array) plus the same `table` / `key` / `requiredFields` shape as a `sql_row` entry (no nested `kind` on the item).
 
-Resolved internal shape:
+**Resolved internal row shape** (one keyed `SELECT` per effect):
 
 ```json
 {
@@ -210,6 +215,8 @@ Resolved internal shape:
 ```
 
 `requiredFields` values must be **string, number, boolean, or null** (JSON scalars at the pointer). Empty object = **presence-only** (row must exist).
+
+**Multi-effect resolution:** each effect is resolved independently; effect **`id`** values are sorted by UTF-16 code unit order before reconciliation output is built. Duplicate **`id`** in the registry → resolver error `DUPLICATE_EFFECT_ID`.
 
 ### Resolver error codes → step `incomplete_verification`
 
@@ -231,6 +238,49 @@ Resolved internal shape:
 | `REQUIRED_FIELDS_VALUE_UNDEFINED` | Field value is `undefined` |
 | `REQUIRED_FIELDS_VALUE_NOT_SCALAR` | Field value is object/array or unsupported type |
 | `INVALID_IDENTIFIER` | Table / column / `requiredFields` key not matching `^[a-zA-Z_][a-zA-Z0-9_]*$` |
+| `DUPLICATE_EFFECT_ID` | Same `id` twice in `sql_effects.effects` |
+
+Resolver messages for `sql_effects` prefix per-effect failures with `effects[<id>].` (e.g. `effects[primary].requiredFields …`).
+
+## Workflow result: multi-effect shape
+
+When the registry used `sql_effects`, the step’s **`verificationRequest`** on `WorkflowResult` is:
+
+```json
+{
+  "kind": "sql_effects",
+  "effects": [
+    {
+      "id": "string",
+      "kind": "sql_row",
+      "table": "string",
+      "keyColumn": "string",
+      "keyValue": "string",
+      "requiredFields": {}
+    }
+  ]
+}
+```
+
+The step’s **`evidenceSummary`** **must** be exactly:
+
+```json
+{
+  "effectCount": <N>,
+  "effects": [
+    {
+      "id": "<same as in verificationRequest>",
+      "status": "verified" | "missing" | "inconsistent" | "incomplete_verification",
+      "reasons": [],
+      "evidenceSummary": {}
+    }
+  ]
+}
+```
+
+with **`effects`** sorted by **`id`** (UTF-16 lexicographic). Single-`sql_row` steps **must not** use top-level keys `effectCount` or `effects` on `evidenceSummary` (schema-enforced).
+
+**Step rollup (multi-effect only):** all effects `verified` → step `verified`. Any effect `incomplete_verification` → step `incomplete_verification`. Else if every effect is `missing` or `inconsistent` → step `inconsistent` with one summary reason `MULTI_EFFECT_ALL_FAILED`. Else if at least one `verified` and at least one `missing`/`inconsistent` → step `partially_verified` with one summary reason `MULTI_EFFECT_PARTIAL`.
 
 ## SQL connector contract
 
@@ -294,15 +344,17 @@ Coercion is **only** what this section defines; there is no separate `String(row
 
 ## Workflow status (PRD-aligned)
 
-Step statuses: `verified` | `missing` | `inconsistent` | `incomplete_verification`.
+Step statuses: `verified` | `missing` | `inconsistent` | `incomplete_verification` | `partially_verified`.
 
 | Workflow status | Condition |
 |-----------------|-----------|
 | `incomplete` | Any run-level code (`MALFORMED_EVENT_LINE`, …), **or** zero steps, **or** any step `incomplete_verification`. |
-| `inconsistent` | Not incomplete as above, and any step in `{ missing, inconsistent }`. |
+| `inconsistent` | Not incomplete as above, and any step in `{ missing, inconsistent, partially_verified }`. |
 | `complete` | Not incomplete, every step `verified`. |
 
-**PRD mapping:** PRD §4 “Failed” (determinate bad outcome) ↔ `inconsistent`. §4 “Incomplete” (cannot confirm) ↔ `incomplete`. §6 three bullets ↔ these three strings.
+**PRD mapping:** PRD §4 “Failed” (determinate bad outcome) ↔ `inconsistent`. §4 “Incomplete” (cannot confirm) ↔ `incomplete`. §6 three bullets ↔ these three strings. **Multi-effect:** step-level “partial success” is `partially_verified`; the workflow is still **`inconsistent`** until every step is `verified`.
+
+**Compatibility:** `WorkflowResult.schemaVersion` remains **2**; consumers must allow the new step `status` literal `partially_verified` and `verificationRequest.kind` `sql_effects` (see [`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json)).
 
 ## Validation matrix (what CI proves vs operations)
 

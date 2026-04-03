@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 2,
+  "workflowId": "wf_multi_partial",
+  "status": "inconsistent",
+  "runLevelCodes": [],
+  "runLevelReasons": [],
+  "steps": [
+    {
+      "seq": 0,
+      "toolId": "demo.multi_contact",
+      "intendedEffect": "Multi \"c_ok\" \"c_partial\"",
+      "verificationRequest": {
+        "kind": "sql_effects",
+        "effects": [
+          {
+            "id": "primary",
+            "kind": "sql_row",
+            "table": "contacts",
+            "keyColumn": "id",
+            "keyValue": "c_ok",
+            "requiredFields": {
+              "name": "Alice",
+              "status": "active"
+            }
+          },
+          {
+            "id": "secondary",
+            "kind": "sql_row",
+            "table": "contacts",
+            "keyColumn": "id",
+            "keyValue": "c_partial",
+            "requiredFields": {
+              "name": "Alice",
+              "status": "active"
+            }
+          }
+        ]
+      },
+      "status": "partially_verified",
+      "reasons": [
+        {
+          "code": "MULTI_EFFECT_PARTIAL",
+          "message": "Verified 1 of 2 effects; not verified: secondary"
+        }
+      ],
+      "evidenceSummary": {
+        "effectCount": 2,
+        "effects": [
+          {
+            "id": "primary",
+            "status": "verified",
+            "reasons": [],
+            "evidenceSummary": {
+              "rowCount": 1
+            }
+          },
+          {
+            "id": "secondary",
+            "status": "inconsistent",
+            "reasons": [
+              {
+                "code": "VALUE_MISMATCH",
+                "message": "Expected \"Alice\" but found null for field name",
+                "field": "name"
+              }
+            ],
+            "evidenceSummary": {
+              "rowCount": 1,
+              "field": "name",
+              "expected": "\"Alice\"",
+              "actual": "null"
+            }
+          }
+        ]
+      },
+      "repeatObservationCount": 1,
+      "evaluatedObservationOrdinal": 1
+    }
+  ]
+}

@@ -1,12 +1,24 @@
 import { getPointer } from "./jsonPointer.js";
-import type { ToolRegistryEntry, VerificationRequest, VerificationScalar } from "./types.js";
+import type {
+  ResolvedEffect,
+  SqlRowVerificationSpec,
+  ToolRegistryEntry,
+  VerificationRequest,
+  VerificationScalar,
+} from "./types.js";
 import { CLI_OPERATIONAL_CODES } from "./failureCatalog.js";
 import { TruthLayerError } from "./truthLayerError.js";
 
 const IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
+/** UTF-16 code unit lexicographic order (same as `canonicalJsonForParams` object key sort). */
+export function compareUtf16Id(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 export type ResolveResult =
-  | { ok: true; request: VerificationRequest }
+  | { ok: true; verificationKind: "sql_row"; request: VerificationRequest }
+  | { ok: true; verificationKind: "sql_effects"; effects: ResolvedEffect[] }
   | { ok: false; code: string; message: string };
 
 function resolveStringSpec(
@@ -55,89 +67,79 @@ function resolveKeyValue(
   return { ok: false, code: "KEY_VALUE_SPEC_INVALID", message: "key.value: invalid spec" };
 }
 
-export function renderIntendedEffect(template: string, params: Record<string, unknown>): string {
-  return template.replace(/\{(\/[^{}]+)\}/g, (_, ptr: string) => {
-    const v = getPointer(params, ptr);
-    if (v === undefined) return "MISSING";
-    return JSON.stringify(v);
-  });
-}
-
-export function resolveVerificationRequest(
-  entry: ToolRegistryEntry,
+function resolveSqlRowSpec(
   params: Record<string, unknown>,
-): ResolveResult {
-  const v = entry.verification;
-  if (v.kind !== "sql_row") {
-    return { ok: false, code: "UNSUPPORTED_VERIFICATION_KIND", message: "unsupported verification kind" };
-  }
-
+  spec: SqlRowVerificationSpec,
+  labelPrefix: string,
+): { ok: true; request: VerificationRequest } | { ok: false; code: string; message: string } {
   const tableRes =
-    "const" in v.table && !("pointer" in v.table)
-      ? { ok: true as const, value: v.table.const }
-      : "pointer" in v.table
+    "const" in spec.table && !("pointer" in spec.table)
+      ? { ok: true as const, value: spec.table.const }
+      : "pointer" in spec.table
         ? (() => {
-            const tptr = (v.table as { pointer: string }).pointer;
+            const tptr = (spec.table as { pointer: string }).pointer;
             const got = getPointer(params, tptr);
             if (got === undefined || got === null || typeof got !== "string" || got.length === 0) {
               return {
                 ok: false as const,
                 code: "TABLE_POINTER_INVALID",
-                message: `table: expected non-empty string at ${tptr}`,
+                message: `${labelPrefix}table: expected non-empty string at ${tptr}`,
               };
             }
             return { ok: true as const, value: got };
           })()
-        : { ok: false as const, code: "TABLE_SPEC_INVALID", message: "table: invalid spec" };
+        : { ok: false as const, code: "TABLE_SPEC_INVALID", message: `${labelPrefix}table: invalid spec` };
 
   if (!tableRes.ok) return tableRes;
 
-  const colRes = resolveStringSpec(v.key.column, params, "key.column");
+  const colRes = resolveStringSpec(spec.key.column, params, `${labelPrefix}key.column`);
   if (!colRes.ok) return colRes;
-  const valRes = resolveKeyValue(v.key.value, params);
-  if (!valRes.ok) return valRes;
+  const valRes = resolveKeyValue(spec.key.value, params);
+  if (!valRes.ok) {
+    return { ok: false, code: valRes.code, message: `${labelPrefix}${valRes.message}` };
+  }
 
   if (!IDENT.test(tableRes.value)) {
-    return { ok: false, code: "INVALID_IDENTIFIER", message: `table: ${tableRes.value}` };
+    return { ok: false, code: "INVALID_IDENTIFIER", message: `${labelPrefix}table: ${tableRes.value}` };
   }
   if (!IDENT.test(colRes.value)) {
-    return { ok: false, code: "INVALID_IDENTIFIER", message: `key.column: ${colRes.value}` };
+    return { ok: false, code: "INVALID_IDENTIFIER", message: `${labelPrefix}key.column: ${colRes.value}` };
   }
 
-  const fieldsRaw = getPointer(params, v.requiredFields.pointer);
+  const fieldsRaw = getPointer(params, spec.requiredFields.pointer);
   if (fieldsRaw === undefined || fieldsRaw === null) {
     return {
       ok: false,
       code: "REQUIRED_FIELDS_POINTER_MISSING",
-      message: `requiredFields missing at ${v.requiredFields.pointer}`,
+      message: `${labelPrefix}requiredFields missing at ${spec.requiredFields.pointer}`,
     };
   }
   if (typeof fieldsRaw !== "object" || Array.isArray(fieldsRaw)) {
     return {
       ok: false,
       code: "REQUIRED_FIELDS_NOT_OBJECT",
-      message: `requiredFields must be object at ${v.requiredFields.pointer}`,
+      message: `${labelPrefix}requiredFields must be object at ${spec.requiredFields.pointer}`,
     };
   }
 
   const requiredFields: Record<string, VerificationScalar> = {};
   for (const k of Object.keys(fieldsRaw as Record<string, unknown>)) {
     if (!IDENT.test(k)) {
-      return { ok: false, code: "INVALID_IDENTIFIER", message: `requiredFields key: ${k}` };
+      return { ok: false, code: "INVALID_IDENTIFIER", message: `${labelPrefix}requiredFields key: ${k}` };
     }
     const val = (fieldsRaw as Record<string, unknown>)[k];
     if (val === undefined) {
       return {
         ok: false,
         code: "REQUIRED_FIELDS_VALUE_UNDEFINED",
-        message: `requiredFields.${k} must not be undefined`,
+        message: `${labelPrefix}requiredFields.${k} must not be undefined`,
       };
     }
     if (typeof val === "object" && val !== null) {
       return {
         ok: false,
         code: "REQUIRED_FIELDS_VALUE_NOT_SCALAR",
-        message: `requiredFields.${k} must be string, number, boolean, or null`,
+        message: `${labelPrefix}requiredFields.${k} must be string, number, boolean, or null`,
       };
     }
     if (typeof val === "string" || typeof val === "number" || typeof val === "boolean" || val === null) {
@@ -146,7 +148,7 @@ export function resolveVerificationRequest(
       return {
         ok: false,
         code: "REQUIRED_FIELDS_VALUE_NOT_SCALAR",
-        message: `requiredFields.${k} must be string, number, boolean, or null`,
+        message: `${labelPrefix}requiredFields.${k} must be string, number, boolean, or null`,
       };
     }
   }
@@ -161,6 +163,46 @@ export function resolveVerificationRequest(
       requiredFields,
     },
   };
+}
+
+export function renderIntendedEffect(template: string, params: Record<string, unknown>): string {
+  return template.replace(/\{(\/[^{}]+)\}/g, (_, ptr: string) => {
+    const v = getPointer(params, ptr);
+    if (v === undefined) return "MISSING";
+    return JSON.stringify(v);
+  });
+}
+
+export function resolveVerificationRequest(entry: ToolRegistryEntry, params: Record<string, unknown>): ResolveResult {
+  const v = entry.verification;
+  if (v.kind === "sql_row") {
+    const row = resolveSqlRowSpec(params, v, "");
+    if (!row.ok) return row;
+    return { ok: true, verificationKind: "sql_row", request: row.request };
+  }
+  if (v.kind !== "sql_effects") {
+    return { ok: false, code: "UNSUPPORTED_VERIFICATION_KIND", message: "unsupported verification kind" };
+  }
+
+  const seen = new Set<string>();
+  const effects: ResolvedEffect[] = [];
+  for (const item of v.effects) {
+    if (seen.has(item.id)) {
+      return {
+        ok: false,
+        code: "DUPLICATE_EFFECT_ID",
+        message: `Duplicate effect id in registry: ${item.id}`,
+      };
+    }
+    seen.add(item.id);
+    const { id, ...spec } = item;
+    const row = resolveSqlRowSpec(params, spec as SqlRowVerificationSpec, `effects[${id}].`);
+    if (!row.ok) return row;
+    effects.push({ id, request: row.request });
+  }
+
+  effects.sort((a, b) => compareUtf16Id(a.id, b.id));
+  return { ok: true, verificationKind: "sql_effects", effects };
 }
 
 export function buildRegistryMap(entries: ToolRegistryEntry[]): Map<string, ToolRegistryEntry> {

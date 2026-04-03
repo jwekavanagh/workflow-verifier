@@ -1,0 +1,3 @@
+{"schemaVersion":1,"workflowId":"wf_multi_ok","seq":0,"type":"tool_observed","toolId":"demo.multi_contact","params":{"recordIdA":"c_ok","recordIdB":"c_side","fieldsA":{"name":"Alice","status":"active"},"fieldsB":{"name":"Side","status":"active"}}}
+{"schemaVersion":1,"workflowId":"wf_multi_partial","seq":0,"type":"tool_observed","toolId":"demo.multi_contact","params":{"recordIdA":"c_ok","recordIdB":"c_partial","fieldsA":{"name":"Alice","status":"active"},"fieldsB":{"name":"Alice","status":"active"}}}
+{"schemaVersion":1,"workflowId":"wf_multi_all_fail","seq":0,"type":"tool_observed","toolId":"demo.multi_contact","params":{"recordIdA":"missing_one","recordIdB":"missing_two","fieldsA":{"name":"X","status":"y"},"fieldsB":{"name":"X","status":"y"}}}

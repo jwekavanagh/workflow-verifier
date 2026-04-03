@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 2,
+  "workflowId": "wf_multi_ok",
+  "status": "complete",
+  "runLevelCodes": [],
+  "runLevelReasons": [],
+  "steps": [
+    {
+      "seq": 0,
+      "toolId": "demo.multi_contact",
+      "intendedEffect": "Multi \"c_ok\" \"c_side\"",
+      "verificationRequest": {
+        "kind": "sql_effects",
+        "effects": [
+          {
+            "id": "primary",
+            "kind": "sql_row",
+            "table": "contacts",
+            "keyColumn": "id",
+            "keyValue": "c_ok",
+            "requiredFields": {
+              "name": "Alice",
+              "status": "active"
+            }
+          },
+          {
+            "id": "secondary",
+            "kind": "sql_row",
+            "table": "contacts",
+            "keyColumn": "id",
+            "keyValue": "c_side",
+            "requiredFields": {
+              "name": "Side",
+              "status": "active"
+            }
+          }
+        ]
+      },
+      "status": "verified",
+      "reasons": [],
+      "evidenceSummary": {
+        "effectCount": 2,
+        "effects": [
+          {
+            "id": "primary",
+            "status": "verified",
+            "reasons": [],
+            "evidenceSummary": {
+              "rowCount": 1
+            }
+          },
+          {
+            "id": "secondary",
+            "status": "verified",
+            "reasons": [],
+            "evidenceSummary": {
+              "rowCount": 1
+            }
+          }
+        ]
+      },
+      "repeatObservationCount": 1,
+      "evaluatedObservationOrdinal": 1
+    }
+  ]
+}

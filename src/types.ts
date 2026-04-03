@@ -8,18 +8,27 @@ export type ToolObservedEvent = {
   timestamp?: string;
 };
 
+/** Registry row verification (table, key, requiredFields pointers) without discriminant. */
+export type SqlRowVerificationSpec = {
+  table: { const: string } | { pointer: string };
+  key: {
+    column: { const: string } | { pointer: string };
+    value: { const: string | number | boolean | null } | { pointer: string };
+  };
+  requiredFields: { pointer: string };
+};
+
+export type ToolRegistryVerification =
+  | ({ kind: "sql_row" } & SqlRowVerificationSpec)
+  | {
+      kind: "sql_effects";
+      effects: Array<{ id: string } & SqlRowVerificationSpec>;
+    };
+
 export type ToolRegistryEntry = {
   toolId: string;
   effectDescriptionTemplate: string;
-  verification: {
-    kind: "sql_row";
-    table: { const: string } | { pointer: string };
-    key: {
-      column: { const: string } | { pointer: string };
-      value: { const: string | number | boolean | null } | { pointer: string };
-    };
-    requiredFields: { pointer: string };
-  };
+  verification: ToolRegistryVerification;
 };
 
 export type VerificationScalar = string | number | boolean | null;
@@ -32,11 +41,32 @@ export type VerificationRequest = {
   requiredFields: Record<string, VerificationScalar>;
 };
 
+/** One resolved row check with stable id (registry `sql_effects` only). */
+export type ResolvedEffect = { id: string; request: VerificationRequest };
+
+/** Emitted on the step when registry used `sql_effects`. */
+export type SqlEffectsVerificationPayload = {
+  kind: "sql_effects";
+  effects: Array<
+    {
+      id: string;
+      kind: "sql_row";
+      table: string;
+      keyColumn: string;
+      keyValue: string;
+      requiredFields: Record<string, VerificationScalar>;
+    }
+  >;
+};
+
+export type StepVerificationRequest = VerificationRequest | SqlEffectsVerificationPayload | null;
+
 export type StepStatus =
   | "verified"
   | "missing"
   | "inconsistent"
-  | "incomplete_verification";
+  | "incomplete_verification"
+  | "partially_verified";
 
 export type Reason = { code: string; message: string; field?: string };
 
@@ -44,7 +74,7 @@ export type StepOutcome = {
   seq: number;
   toolId: string;
   intendedEffect: string;
-  verificationRequest: VerificationRequest | null;
+  verificationRequest: StepVerificationRequest;
   status: StepStatus;
   reasons: Reason[];
   evidenceSummary: Record<string, unknown>;

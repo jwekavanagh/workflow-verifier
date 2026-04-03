@@ -1,0 +1,13 @@
+workflow_id: wf_multi_all_fail
+workflow_status: inconsistent
+trust: NOT_TRUSTED: At least one step failed verification against the database (determinate failure).
+run_level: (none)
+steps:
+  - seq=0 tool=demo.multi_contact status=FAILED_VALUE_MISMATCH
+    observations: evaluated=1 of 1 in_capture_order
+    reason: [MULTI_EFFECT_ALL_FAILED] All 2 effects failed: primary, secondary
+    intended: Multi "missing_one" "missing_two"
+    effect: id=primary status=FAILED_ROW_MISSING
+      reason: [ROW_ABSENT] No row matched key
+    effect: id=secondary status=FAILED_ROW_MISSING
+      reason: [ROW_ABSENT] No row matched key

@@ -60,6 +60,13 @@ const REQUIRED = [
   "Reading logs:",
   "`schemaVersion` **`2`**",
   "repeatObservationCount",
+  "PARTIALLY_VERIFIED",
+  "partially_verified",
+  "`sql_effects`",
+  "multiEffectRollup.ts",
+  "Workflow result: multi-effect shape",
+  "DUPLICATE_EFFECT_ID",
+  "effect: id=",
 ];
 
 describe("docs contract (SSOT + README)", () => {

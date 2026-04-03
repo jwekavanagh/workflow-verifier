@@ -59,6 +59,15 @@ describe("WorkflowAggregator precedence", () => {
     expect(r.runLevelReasons).toEqual([]);
   });
 
+  it("inconsistent when partially_verified (step-level partial multi-effect)", () => {
+    const r = aggregateWorkflow(
+      "w",
+      [step({ seq: 0, toolId: "t", status: "partially_verified" })],
+      [],
+    );
+    expect(r.status).toBe("inconsistent");
+  });
+
   it("incomplete when zero steps adds NO_STEPS_FOR_WORKFLOW", () => {
     const r = aggregateWorkflow("w", [], []);
     expect(r.status).toBe("incomplete");

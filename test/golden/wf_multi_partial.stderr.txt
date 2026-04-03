@@ -1,0 +1,12 @@
+workflow_id: wf_multi_partial
+workflow_status: inconsistent
+trust: NOT_TRUSTED: At least one step failed verification against the database (determinate failure).
+run_level: (none)
+steps:
+  - seq=0 tool=demo.multi_contact status=PARTIALLY_VERIFIED
+    observations: evaluated=1 of 1 in_capture_order
+    reason: [MULTI_EFFECT_PARTIAL] Verified 1 of 2 effects; not verified: secondary
+    intended: Multi "c_ok" "c_partial"
+    effect: id=primary status=VERIFIED
+    effect: id=secondary status=FAILED_VALUE_MISMATCH
+      reason: [VALUE_MISMATCH] Expected "Alice" but found null for field name field=name

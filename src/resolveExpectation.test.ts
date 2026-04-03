@@ -21,7 +21,7 @@ describe("resolveVerificationRequest requiredFields scalars", () => {
       fields: { name: null, qty: 7 },
     });
     expect(r.ok).toBe(true);
-    if (r.ok) {
+    if (r.ok && r.verificationKind === "sql_row") {
       expect(r.request.requiredFields).toEqual({ name: null, qty: 7 });
     }
   });
@@ -31,7 +31,7 @@ describe("resolveVerificationRequest requiredFields scalars", () => {
       fields: { active: true, label: "hi" },
     });
     expect(r.ok).toBe(true);
-    if (r.ok) {
+    if (r.ok && r.verificationKind === "sql_row") {
       expect(r.request.requiredFields).toEqual({ active: true, label: "hi" });
     }
   });
@@ -84,7 +84,7 @@ describe("resolver code catalog", () => {
           ...baseEntry.verification,
           key: { column: { pointer: "/missing" }, value: { const: "1" } },
         },
-      },
+      } as ToolRegistryEntry,
       {},
     );
     expect(r.ok).toBe(false);
@@ -102,7 +102,7 @@ describe("resolver code catalog", () => {
           ...baseEntry.verification,
           key: { column: { pointer: "/n" }, value: { const: "1" } },
         },
-      },
+      } as ToolRegistryEntry,
       { n: 3 },
     );
     expect(r.ok).toBe(false);
@@ -120,7 +120,7 @@ describe("resolver code catalog", () => {
           ...baseEntry.verification,
           key: { column: { pointer: "/s" }, value: { const: "1" } },
         },
-      },
+      } as ToolRegistryEntry,
       { s: "" },
     );
     expect(r.ok).toBe(false);
@@ -138,7 +138,7 @@ describe("resolver code catalog", () => {
           ...baseEntry.verification,
           key: { column: { const: "id" }, value: { pointer: "/kv" } },
         },
-      },
+      } as ToolRegistryEntry,
       { fields: {} },
     );
     expect(r.ok).toBe(false);
@@ -156,7 +156,7 @@ describe("resolver code catalog", () => {
           ...baseEntry.verification,
           key: { column: { const: "id" }, value: { pointer: "/kv" } },
         },
-      },
+      } as ToolRegistryEntry,
       { fields: {}, kv: { a: 1 } },
     );
     expect(r.ok).toBe(false);
@@ -171,7 +171,7 @@ describe("resolver code catalog", () => {
       ...baseEntry,
       verification: {
         ...baseEntry.verification,
-        key: { column: { const: "id" }, value: {} as ToolRegistryEntry["verification"]["key"]["value"] },
+        key: { column: { const: "id" }, value: {} as never },
       },
     } as ToolRegistryEntry;
     const r = resolveVerificationRequest(entry, {});
@@ -200,7 +200,7 @@ describe("resolver code catalog", () => {
       ...baseEntry,
       verification: {
         ...baseEntry.verification,
-        table: {} as ToolRegistryEntry["verification"]["table"],
+        table: {} as never,
       },
     } as ToolRegistryEntry;
     const r = resolveVerificationRequest(entry, { fields: {} });
@@ -219,7 +219,7 @@ describe("resolver code catalog", () => {
           ...baseEntry.verification,
           table: { pointer: "/tbl" },
         },
-      },
+      } as ToolRegistryEntry,
       { tbl: "", fields: {} },
     );
     expect(r.ok).toBe(false);
@@ -253,6 +253,79 @@ describe("resolver code catalog", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.code).toBe("REQUIRED_FIELDS_VALUE_NOT_SCALAR");
+    }
+  });
+});
+
+describe("sql_effects", () => {
+  const multiEntry: ToolRegistryEntry = {
+    toolId: "multi",
+    effectDescriptionTemplate: "m",
+    verification: {
+      kind: "sql_effects",
+      effects: [
+        {
+          id: "z_last",
+          table: { const: "contacts" },
+          key: { column: { const: "id" }, value: { const: "z" } },
+          requiredFields: { pointer: "/fieldsZ" },
+        },
+        {
+          id: "a_first",
+          table: { const: "contacts" },
+          key: { column: { const: "id" }, value: { const: "a" } },
+          requiredFields: { pointer: "/fieldsA" },
+        },
+      ],
+    },
+  };
+
+  it("resolves and sorts effects by id (UTF-16)", () => {
+    const r = resolveVerificationRequest(multiEntry, {
+      fieldsZ: { n: 1 },
+      fieldsA: { n: 2 },
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok || r.verificationKind !== "sql_effects") return;
+    expect(r.effects.map((e) => e.id)).toEqual(["a_first", "z_last"]);
+    expect(r.effects[0]!.request.keyValue).toBe("a");
+    expect(r.effects[1]!.request.keyValue).toBe("z");
+  });
+
+  it("rejects DUPLICATE_EFFECT_ID", () => {
+    const bad: ToolRegistryEntry = {
+      ...multiEntry,
+      verification: {
+        kind: "sql_effects",
+        effects: [
+          {
+            id: "dup",
+            table: { const: "contacts" },
+            key: { column: { const: "id" }, value: { const: "1" } },
+            requiredFields: { pointer: "/f" },
+          },
+          {
+            id: "dup",
+            table: { const: "contacts" },
+            key: { column: { const: "id" }, value: { const: "2" } },
+            requiredFields: { pointer: "/f" },
+          },
+        ],
+      },
+    };
+    const r = resolveVerificationRequest(bad, { f: {} });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.code).toBe("DUPLICATE_EFFECT_ID");
+    }
+  });
+
+  it("prefixes effect field errors with effects[id].", () => {
+    const r = resolveVerificationRequest(multiEntry, { fieldsZ: [], fieldsA: {} });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.message).toContain("effects[z_last].");
+      expect(r.code).toBe("REQUIRED_FIELDS_NOT_OBJECT");
     }
   });
 });

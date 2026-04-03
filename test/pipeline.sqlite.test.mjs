@@ -8,6 +8,7 @@ import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { verifyWorkflow, withWorkflowVerification } from "../dist/pipeline.js";
 import { formatWorkflowTruthReport } from "../dist/workflowTruthReport.js";
+import { loadSchemaValidator } from "../dist/schemaLoad.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -269,4 +270,52 @@ describe("verifyWorkflow integration", () => {
     assert.equal(received.length, 1);
     assert.equal(received[0], formatWorkflowTruthReport(r));
   });
+});
+
+function normTruthText(s) {
+  return s.replace(/\r\n/g, "\n").trimEnd();
+}
+
+describe("multi-effect verification (golden stdout, stderr, AJV)", () => {
+  let dir;
+  let dbPath;
+
+  before(() => {
+    dir = mkdtempSync(join(tmpdir(), "etl-multi-"));
+    dbPath = join(dir, "test.db");
+    const db = new DatabaseSync(dbPath);
+    db.exec(readFileSync(join(root, "examples", "seed.sql"), "utf8"));
+    db.close();
+  });
+
+  after(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const eventsMulti = join(root, "test/fixtures/multi-effect/events.ndjson");
+  const registryMulti = join(root, "test/fixtures/multi-effect/tools.json");
+  const goldenDir = join(root, "test/golden");
+  const noopLog = () => {};
+  const sqliteDb = () => ({ kind: "sqlite", path: dbPath });
+  const validateResult = loadSchemaValidator("workflow-result");
+
+  for (const wfId of ["wf_multi_ok", "wf_multi_partial", "wf_multi_all_fail"]) {
+    it(`${wfId} matches golden stdout, stderr, and workflow-result schema`, async () => {
+      const expectedObj = JSON.parse(readFileSync(join(goldenDir, `${wfId}.stdout.json`), "utf8"));
+      const expectedErr = normTruthText(readFileSync(join(goldenDir, `${wfId}.stderr.txt`), "utf8"));
+      const r = await verifyWorkflow({
+        workflowId: wfId,
+        eventsPath: eventsMulti,
+        registryPath: registryMulti,
+        database: sqliteDb(),
+        logStep: noopLog,
+        truthReport: () => {},
+      });
+      assert.deepStrictEqual(r, expectedObj);
+      assert.equal(normTruthText(formatWorkflowTruthReport(r)), expectedErr);
+      if (!validateResult(r)) {
+        assert.fail(JSON.stringify(validateResult.errors ?? []));
+      }
+    });
+  }
 });

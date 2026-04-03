@@ -65,4 +65,96 @@ describe("JSON Schemas (SSOT)", () => {
     };
     expect(v(result)).toBe(true);
   });
+
+  it("validates multi-effect workflow result (sql_effects + evidenceSummary.effects)", () => {
+    const v = loadSchemaValidator("workflow-result");
+    const result = {
+      schemaVersion: 2,
+      workflowId: "wf_multi",
+      status: "inconsistent",
+      runLevelCodes: [],
+      runLevelReasons: [],
+      steps: [
+        {
+          seq: 0,
+          toolId: "demo.multi",
+          intendedEffect: "x",
+          verificationRequest: {
+            kind: "sql_effects",
+            effects: [
+              {
+                id: "a",
+                kind: "sql_row",
+                table: "contacts",
+                keyColumn: "id",
+                keyValue: "c1",
+                requiredFields: { name: "A" },
+              },
+              {
+                id: "b",
+                kind: "sql_row",
+                table: "contacts",
+                keyColumn: "id",
+                keyValue: "c2",
+                requiredFields: { name: "B" },
+              },
+            ],
+          },
+          status: "partially_verified",
+          reasons: [{ code: "MULTI_EFFECT_PARTIAL", message: "Verified 1 of 2 effects; not verified: b" }],
+          evidenceSummary: {
+            effectCount: 2,
+            effects: [
+              {
+                id: "a",
+                status: "verified",
+                reasons: [],
+                evidenceSummary: { rowCount: 1 },
+              },
+              {
+                id: "b",
+                status: "inconsistent",
+                reasons: [{ code: "VALUE_MISMATCH", message: "Expected \"B\" but found \"X\" for field name" }],
+                evidenceSummary: { rowCount: 1, field: "name" },
+              },
+            ],
+          },
+          repeatObservationCount: 1,
+          evaluatedObservationOrdinal: 1,
+        },
+      ],
+    };
+    expect(v(result)).toBe(true);
+  });
+
+  it("rejects single-effect step evidenceSummary with effectCount", () => {
+    const v = loadSchemaValidator("workflow-result");
+    const bad = {
+      schemaVersion: 2,
+      workflowId: "w",
+      status: "complete",
+      runLevelCodes: [],
+      runLevelReasons: [],
+      steps: [
+        {
+          seq: 0,
+          toolId: "t",
+          intendedEffect: "",
+          verificationRequest: {
+            kind: "sql_row",
+            table: "contacts",
+            keyColumn: "id",
+            keyValue: "1",
+            requiredFields: {},
+          },
+          status: "verified",
+          reasons: [],
+          evidenceSummary: { rowCount: 1, effectCount: 2 },
+          repeatObservationCount: 1,
+          evaluatedObservationOrdinal: 1,
+        },
+      ],
+    };
+    expect(v(bad)).toBe(false);
+  });
 });
