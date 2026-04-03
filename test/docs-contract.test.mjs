@@ -10,6 +10,7 @@ const root = join(__dirname, "..");
 const REQUIRED = [
   "### Low-friction integration (in-process)",
   "### Batch and CLI (replay)",
+  "### Human truth report",
   "### Engineer note: shared step core",
   "### Operator",
   "await withWorkflowVerification",
@@ -23,6 +24,23 @@ const REQUIRED = [
   "Same event contract for CI and external logs without requiring in-process wrapper.",
   "One reconciliation path; batch and in-process cannot drift.",
   "redact params in retained logs",
+  "truthReport",
+  "formatWorkflowTruthReport",
+  "STEP_STATUS_TRUTH_LABELS",
+  "workflow_id:",
+  "workflow_status:",
+  "run_level:",
+  "steps:",
+  "status=",
+  "TRUSTED: Every step matched the database under the configured verification rules.",
+  "NOT_TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.",
+  "NOT_TRUSTED: At least one step failed verification against the database (determinate failure).",
+  "Event line was missing, invalid JSON, or failed schema validation for a tool observation.",
+  "Duplicate seq values appeared for this workflow; ordering may be unreliable.",
+  "Unknown run-level code (forward compatibility).",
+  "For the CLI, a **human-readable verification report** is written to **stderr**",
+  "docs/execution-truth-layer.md#human-truth-report",
+  "Reading logs:",
 ];
 
 describe("docs contract (SSOT + README)", () => {

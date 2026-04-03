@@ -13,6 +13,9 @@
  *
  * Self-check (exit 1 if fail): workflow outcomes per plan; combined printed text must contain
  * the substrings "complete", "inconsistent", and "ROW_ABSENT" (case-sensitive).
+ *
+ * stderr: two human truth reports (one per verifyWorkflow call), emitted by default truthReport.
+ * stdout: fixed narrative lines and JSON per workflow (unchanged self-check).
  */
 import { readFileSync, unlinkSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -26,8 +29,6 @@ const seedPath = join(root, "examples", "seed.sql");
 const eventsPath = join(root, "examples", "events.ndjson");
 const registryPath = join(root, "examples", "tools.json");
 const dbPath = join(root, "examples", "demo.db");
-
-const noopLog = () => {};
 
 /** @type {string[]} */
 const printed = [];
@@ -60,7 +61,6 @@ const r1 = verifyWorkflow({
   eventsPath,
   registryPath,
   dbPath,
-  logStep: noopLog,
 });
 println(JSON.stringify(r1));
 println(
@@ -81,7 +81,6 @@ const r2 = verifyWorkflow({
   eventsPath,
   registryPath,
   dbPath,
-  logStep: noopLog,
 });
 println(JSON.stringify(r2));
 println(

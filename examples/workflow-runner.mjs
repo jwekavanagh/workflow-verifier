@@ -30,7 +30,13 @@ try {
   const ev = JSON.parse(firstLine);
 
   const result = await withWorkflowVerification(
-    { workflowId: "wf_complete", registryPath, dbPath, logStep: () => {} },
+    {
+      workflowId: "wf_complete",
+      registryPath,
+      dbPath,
+      logStep: () => {},
+      truthReport: () => {},
+    },
     async (observeStep) => {
       observeStep(ev);
     },

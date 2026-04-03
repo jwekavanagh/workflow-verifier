@@ -52,6 +52,10 @@ describe("withWorkflowVerification", () => {
   it("public export surface", () => {
     assert.equal(Object.hasOwn(api, "withWorkflowVerification"), true);
     assert.equal(typeof api.withWorkflowVerification, "function");
+    assert.equal(Object.hasOwn(api, "formatWorkflowTruthReport"), true);
+    assert.equal(typeof api.formatWorkflowTruthReport, "function");
+    assert.equal(Object.hasOwn(api, "STEP_STATUS_TRUTH_LABELS"), true);
+    assert.equal(api.STEP_STATUS_TRUTH_LABELS.verified, "VERIFIED");
     assert.equal(Object.hasOwn(api, "createWorkflowVerificationSession"), false);
     assert.equal(Object.hasOwn(api, "finish"), false);
   });
@@ -65,9 +69,10 @@ describe("withWorkflowVerification", () => {
         registryPath,
         dbPath,
         logStep: noopLog,
+        truthReport: () => {},
       });
       const wrapperResult = await withWorkflowVerification(
-        { workflowId: wf, registryPath, dbPath, logStep: noopLog },
+        { workflowId: wf, registryPath, dbPath, logStep: noopLog, truthReport: () => {} },
         async (observeStep) => {
           for (const ev of events) {
             observeStep(ev);
@@ -80,7 +85,7 @@ describe("withWorkflowVerification", () => {
 
   it("non-object observeStep → MALFORMED_EVENT_LINE, incomplete, no steps", async () => {
     const result = await withWorkflowVerification(
-      { workflowId: "wf_complete", registryPath, dbPath, logStep: noopLog },
+      { workflowId: "wf_complete", registryPath, dbPath, logStep: noopLog, truthReport: () => {} },
       async (observeStep) => {
         observeStep("not-json-line");
       },
@@ -92,7 +97,7 @@ describe("withWorkflowVerification", () => {
 
   it("invalid object observeStep → MALFORMED_EVENT_LINE", async () => {
     const result = await withWorkflowVerification(
-      { workflowId: "wf_complete", registryPath, dbPath, logStep: noopLog },
+      { workflowId: "wf_complete", registryPath, dbPath, logStep: noopLog, truthReport: () => {} },
       async (observeStep) => {
         observeStep({});
       },
@@ -106,7 +111,7 @@ describe("withWorkflowVerification", () => {
     const good = eventsForWorkflow(eventsPath, "wf_complete")[0];
     const other = eventsForWorkflow(eventsPath, "wf_missing")[0];
     const result = await withWorkflowVerification(
-      { workflowId: "wf_complete", registryPath, dbPath, logStep: noopLog },
+      { workflowId: "wf_complete", registryPath, dbPath, logStep: noopLog, truthReport: () => {} },
       async (observeStep) => {
         observeStep(other);
         observeStep(good);
@@ -118,6 +123,7 @@ describe("withWorkflowVerification", () => {
       registryPath,
       dbPath,
       logStep: noopLog,
+      truthReport: () => {},
     });
     assert.deepStrictEqual(result, batchResult);
   });
@@ -126,7 +132,7 @@ describe("withWorkflowVerification", () => {
     const events = eventsForWorkflow(eventsPath, "wf_dup_seq");
     assert.equal(events.length, 2);
     const result = await withWorkflowVerification(
-      { workflowId: "wf_dup_seq", registryPath, dbPath, logStep: noopLog },
+      { workflowId: "wf_dup_seq", registryPath, dbPath, logStep: noopLog, truthReport: () => {} },
       async (observeStep) => {
         observeStep(events[0]);
         observeStep(events[1]);
@@ -142,7 +148,7 @@ describe("withWorkflowVerification", () => {
     const ev = eventsForWorkflow(eventsPath, "wf_complete")[0];
     await assert.rejects(
       withWorkflowVerification(
-        { workflowId: "wf_complete", registryPath, dbPath, logStep: noopLog },
+        { workflowId: "wf_complete", registryPath, dbPath, logStep: noopLog, truthReport: () => {} },
         async (observeStep) => {
           observeStep(ev);
           throw err;
@@ -160,7 +166,7 @@ describe("withWorkflowVerification", () => {
     let stash;
     const ev = eventsForWorkflow(eventsPath, "wf_complete")[0];
     await withWorkflowVerification(
-      { workflowId: "wf_complete", registryPath, dbPath, logStep: noopLog },
+      { workflowId: "wf_complete", registryPath, dbPath, logStep: noopLog, truthReport: () => {} },
       async (observeStep) => {
         stash = observeStep;
         observeStep(ev);
@@ -177,7 +183,7 @@ describe("withWorkflowVerification", () => {
   it("success path WorkflowResult validates workflow-result schema", async () => {
     const ev = eventsForWorkflow(eventsPath, "wf_complete")[0];
     const result = await withWorkflowVerification(
-      { workflowId: "wf_complete", registryPath, dbPath, logStep: noopLog },
+      { workflowId: "wf_complete", registryPath, dbPath, logStep: noopLog, truthReport: () => {} },
       async (observeStep) => {
         observeStep(ev);
       },

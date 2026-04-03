@@ -10,8 +10,13 @@ import {
   resolveVerificationRequest,
 } from "./resolveExpectation.js";
 import type { StepOutcome, ToolObservedEvent, ToolRegistryEntry, WorkflowResult } from "./types.js";
+import { formatWorkflowTruthReport } from "./workflowTruthReport.js";
 
 const validateRegistry = loadSchemaValidator("tools-registry");
+
+function defaultTruthReportToStderr(report: string): void {
+  process.stderr.write(`${report}\n`);
+}
 const validateEvent = loadSchemaValidator("event");
 
 export function loadToolsRegistry(registryPath: string): Map<string, ToolRegistryEntry> {
@@ -109,9 +114,11 @@ export function verifyWorkflow(options: {
   registryPath: string;
   dbPath: string;
   logStep?: (line: object) => void;
+  truthReport?: (report: string) => void;
 }): WorkflowResult {
   const { eventsPath, registryPath, dbPath, workflowId } = options;
-  const log = options.logStep ?? ((obj: object) => console.error(JSON.stringify(obj)));
+  const log = options.logStep ?? (() => {});
+  const truthReport = options.truthReport ?? defaultTruthReportToStderr;
 
   const { events, runLevelCodes } = loadEventsForWorkflow(eventsPath, workflowId);
   const registry = loadToolsRegistry(registryPath);
@@ -127,7 +134,9 @@ export function verifyWorkflow(options: {
     db.close();
   }
 
-  return aggregateWorkflow(workflowId, steps, runLevelCodes);
+  const result = aggregateWorkflow(workflowId, steps, runLevelCodes);
+  truthReport(formatWorkflowTruthReport(result));
+  return result;
 }
 
 const POST_CLOSE_MSG = "Workflow verification observeStep invoked after workflow run completed";
@@ -210,10 +219,12 @@ export async function withWorkflowVerification(
     registryPath: string;
     dbPath: string;
     logStep?: (line: object) => void;
+    truthReport?: (report: string) => void;
   },
   run: (observeStep: (value: unknown) => StepOutcome | undefined) => void | Promise<void>,
 ): Promise<WorkflowResult> {
-  const log = options.logStep ?? ((obj: object) => console.error(JSON.stringify(obj)));
+  const log = options.logStep ?? (() => {});
+  const truthReport = options.truthReport ?? defaultTruthReportToStderr;
   let session: WorkflowVerificationSession | undefined;
   let runFailure: unknown;
   try {
@@ -229,5 +240,7 @@ export async function withWorkflowVerification(
   if (runFailure !== undefined) {
     throw runFailure;
   }
-  return session!.buildWorkflowResult();
+  const result = session!.buildWorkflowResult();
+  truthReport(formatWorkflowTruthReport(result));
+  return result;
 }

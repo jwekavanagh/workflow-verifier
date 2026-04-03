@@ -6,7 +6,8 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { verifyWorkflow } from "../dist/pipeline.js";
+import { verifyWorkflow, withWorkflowVerification } from "../dist/pipeline.js";
+import { formatWorkflowTruthReport } from "../dist/workflowTruthReport.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -40,6 +41,7 @@ describe("verifyWorkflow integration", () => {
       registryPath,
       dbPath,
       logStep: noopLog,
+      truthReport: () => {},
     });
     assert.equal(r.status, "complete");
     assert.equal(r.steps[0]?.status, "verified");
@@ -52,6 +54,7 @@ describe("verifyWorkflow integration", () => {
       registryPath,
       dbPath,
       logStep: noopLog,
+      truthReport: () => {},
     });
     assert.equal(r.status, "inconsistent");
     assert.equal(r.steps[0]?.status, "missing");
@@ -65,6 +68,7 @@ describe("verifyWorkflow integration", () => {
       registryPath,
       dbPath,
       logStep: noopLog,
+      truthReport: () => {},
     });
     assert.equal(r.status, "inconsistent");
     assert.equal(r.steps[0]?.status, "partial");
@@ -78,6 +82,7 @@ describe("verifyWorkflow integration", () => {
       registryPath,
       dbPath,
       logStep: noopLog,
+      truthReport: () => {},
     });
     assert.equal(r.status, "inconsistent");
     assert.equal(r.steps[0]?.status, "inconsistent");
@@ -91,6 +96,7 @@ describe("verifyWorkflow integration", () => {
       registryPath,
       dbPath,
       logStep: noopLog,
+      truthReport: () => {},
     });
     assert.equal(r.status, "inconsistent");
     assert.equal(r.steps[0]?.reasons[0]?.code, "DUPLICATE_ROWS");
@@ -103,6 +109,7 @@ describe("verifyWorkflow integration", () => {
       registryPath,
       dbPath,
       logStep: noopLog,
+      truthReport: () => {},
     });
     assert.equal(r.status, "incomplete");
     assert.equal(r.steps[0]?.status, "incomplete_verification");
@@ -116,6 +123,7 @@ describe("verifyWorkflow integration", () => {
       registryPath,
       dbPath,
       logStep: noopLog,
+      truthReport: () => {},
     });
     assert.equal(r.status, "incomplete");
     assert.ok(r.runLevelCodes.includes("DUPLICATE_SEQ"));
@@ -144,6 +152,7 @@ describe("verifyWorkflow integration", () => {
       registryPath,
       dbPath,
       logStep: noopLog,
+      truthReport: () => {},
     });
     assert.equal(r.status, "inconsistent");
     assert.equal(r.steps[0]?.status, "missing");
@@ -158,6 +167,7 @@ describe("verifyWorkflow integration", () => {
       registryPath,
       dbPath,
       logStep: noopLog,
+      truthReport: () => {},
     });
     assert.equal(r.status, "incomplete");
     assert.ok(r.runLevelCodes.includes("MALFORMED_EVENT_LINE"));
@@ -170,8 +180,50 @@ describe("verifyWorkflow integration", () => {
       registryPath,
       dbPath,
       logStep: noopLog,
+      truthReport: () => {},
     });
     assert.equal(r.status, "incomplete");
     assert.equal(r.steps.length, 0);
+  });
+
+  it("truthReport receives formatWorkflowTruthReport(result) once (verifyWorkflow)", () => {
+    const received = [];
+    const r = verifyWorkflow({
+      workflowId: "wf_complete",
+      eventsPath,
+      registryPath,
+      dbPath,
+      logStep: noopLog,
+      truthReport: (s) => received.push(s),
+    });
+    assert.equal(received.length, 1);
+    assert.equal(received[0], formatWorkflowTruthReport(r));
+  });
+
+  it("truthReport receives formatWorkflowTruthReport(result) once (withWorkflowVerification)", async () => {
+    let ev;
+    for (const line of readFileSync(eventsPath, "utf8").split(/\r?\n/).filter((l) => l.trim().length > 0)) {
+      const o = JSON.parse(line);
+      if (o.workflowId === "wf_complete") {
+        ev = o;
+        break;
+      }
+    }
+    assert.ok(ev);
+    const received = [];
+    const r = await withWorkflowVerification(
+      {
+        workflowId: "wf_complete",
+        registryPath,
+        dbPath,
+        logStep: noopLog,
+        truthReport: (s) => received.push(s),
+      },
+      async (observeStep) => {
+        observeStep(ev);
+      },
+    );
+    assert.equal(received.length, 1);
+    assert.equal(received[0], formatWorkflowTruthReport(r));
   });
 });

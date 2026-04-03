@@ -33,4 +33,6 @@ To run the same check through the CLI (after `npm run first-run` so `examples/de
 node dist/cli.js --workflow-id wf_complete --events examples/events.ndjson --registry examples/tools.json --db examples/demo.db
 ```
 
+For the CLI, a **human-readable verification report** is written to **stderr** and the machine-readable **workflow result JSON** to **stdout**; full format, defaults, and stream order are specified only in the SSOT section **[Human truth report](docs/execution-truth-layer.md#human-truth-report)**.
+
 Contributors: run the full suite with `npm test`.
