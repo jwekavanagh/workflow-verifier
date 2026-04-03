@@ -56,11 +56,11 @@ println("Execution Truth Layer — first verification");
 println(
   "[1/2] Workflow wf_complete (success case): you should see workflow status complete and step status verified.",
 );
-const r1 = verifyWorkflow({
+const r1 = await verifyWorkflow({
   workflowId: "wf_complete",
   eventsPath,
   registryPath,
-  dbPath,
+  database: { kind: "sqlite", path: dbPath },
 });
 println(JSON.stringify(r1));
 println(
@@ -76,11 +76,11 @@ if (!s1 || s1.status !== "verified") {
 println(
   "[2/2] Workflow wf_missing (failure case): you should see workflow status inconsistent, step missing, reason ROW_ABSENT.",
 );
-const r2 = verifyWorkflow({
+const r2 = await verifyWorkflow({
   workflowId: "wf_missing",
   eventsPath,
   registryPath,
-  dbPath,
+  database: { kind: "sqlite", path: dbPath },
 });
 println(JSON.stringify(r2));
 println(

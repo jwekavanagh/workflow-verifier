@@ -63,3 +63,8 @@ export type LoadEventsResult = {
   events: ToolObservedEvent[];
   runLevelCodes: string[];
 };
+
+/** Batch / CLI verification target (`verifyWorkflow`). In-process hook remains SQLite `dbPath` only. */
+export type VerificationDatabase =
+  | { kind: "sqlite"; path: string }
+  | { kind: "postgres"; connectionString: string };

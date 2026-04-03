@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsc",
     "first-run": "npm run build && node scripts/first-run.mjs",
-    "test": "npm run build && vitest run && node --test test/reconciler.sqlite.test.mjs test/pipeline.sqlite.test.mjs test/withWorkflowVerification.test.mjs test/workflowTruthReport.test.mjs test/cli.test.mjs test/docs-contract.test.mjs && node scripts/first-run.mjs",
+    "test": "npm run build && node scripts/pg-ci-init.mjs && vitest run && node --test test/reconciler.sqlite.test.mjs test/pipeline.sqlite.test.mjs test/withWorkflowVerification.test.mjs test/workflowTruthReport.test.mjs test/cli.test.mjs test/postgres-session-readonly.test.mjs test/postgres-privilege.test.mjs test/pipeline.postgres.test.mjs test/docs-contract.test.mjs && node scripts/first-run.mjs",
     "example:workflow-hook": "npm run build && node examples/workflow-runner.mjs",
     "verify-workflow": "node dist/cli.js"
   },
@@ -19,9 +19,13 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/pg": "^8.20.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "pg": "^8.20.0"
   }
 }

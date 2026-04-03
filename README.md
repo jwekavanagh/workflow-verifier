@@ -1,12 +1,13 @@
 # execution-truth-layer
 
-MVP **Execution Truth Layer**: verify agent workflow steps against **SQLite** ground truth using an append-only **NDJSON** event log and a **`tools.json`** registry.
+MVP **Execution Truth Layer**: verify agent workflow steps against **SQLite** or **Postgres** ground truth using an append-only **NDJSON** event log and a **`tools.json`** registry.
 
 Authoritative specification: **[docs/execution-truth-layer.md](docs/execution-truth-layer.md)**.
 
 ## Requirements
 
 - **Node.js ≥ 22.13** (uses built-in [`node:sqlite`](https://nodejs.org/api/sqlite.html))
+- **Runtime dependency [`pg`](https://node-postgres.com/)** for Postgres batch/CLI verification
 
 ## Quick start
 
@@ -19,7 +20,7 @@ The first run uses bundled `examples/events.ndjson` and `examples/tools.json`. I
 
 Each JSON object printed for a workflow matches [`schemas/workflow-result.schema.json`](schemas/workflow-result.schema.json).
 
-**In-process hook (single boundary):** see [Low-friction integration (in-process)](docs/execution-truth-layer.md#low-friction-integration-in-process) in the SSOT — one `await withWorkflowVerification` at the workflow root vs. NDJSON batch when you already log to a file.
+**In-process hook (single boundary):** see [Low-friction integration (in-process)](docs/execution-truth-layer.md#low-friction-integration-in-process) in the SSOT — one `await withWorkflowVerification` at the workflow root (**SQLite only**). For Postgres, use batch `await verifyWorkflow` or the CLI.
 
 Try the runnable demo (temp DB + one `observeStep`):
 
@@ -33,6 +34,30 @@ To run the same check through the CLI (after `npm run first-run` so `examples/de
 node dist/cli.js --workflow-id wf_complete --events examples/events.ndjson --registry examples/tools.json --db examples/demo.db
 ```
 
+Postgres (exactly one of `--db` or `--postgres-url`):
+
+```bash
+node dist/cli.js --workflow-id wf_complete --events examples/events.ndjson --registry examples/tools.json --postgres-url "postgresql://user:pass@host:5432/dbname"
+```
+
 For the CLI, a **human-readable verification report** is written to **stderr** and the machine-readable **workflow result JSON** to **stdout**; full format, defaults, and stream order are specified only in the SSOT section **[Human truth report](docs/execution-truth-layer.md#human-truth-report)**.
 
-Contributors: run the full suite with `npm test`.
+## Full test suite (`npm test`)
+
+`npm test` runs **`scripts/pg-ci-init.mjs`** against Postgres, then the Node/Vitest suites. Set:
+
+- **`POSTGRES_ADMIN_URL`** — superuser (e.g. `postgresql://postgres:postgres@127.0.0.1:5432/postgres`)
+- **`POSTGRES_VERIFICATION_URL`** — `verifier_ro` after init (e.g. `postgresql://verifier_ro:verifier@127.0.0.1:5432/postgres`)
+
+One local Postgres 16+ instance:
+
+```bash
+docker run -d --name etl-pg -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:16
+export POSTGRES_ADMIN_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres
+export POSTGRES_VERIFICATION_URL=postgresql://verifier_ro:verifier@127.0.0.1:5432/postgres
+npm test
+```
+
+(On Windows PowerShell, use `$env:POSTGRES_ADMIN_URL="..."` instead of `export`.)
+
+CI uses [`.github/workflows/ci.yml`](.github/workflows/ci.yml) with the same URL shape.

@@ -63,11 +63,11 @@ describe("withWorkflowVerification", () => {
   it("parity wf_complete wf_missing wf_dup_seq vs verifyWorkflow", async () => {
     for (const wf of ["wf_complete", "wf_missing", "wf_dup_seq"]) {
       const events = eventsForWorkflow(eventsPath, wf);
-      const batchResult = verifyWorkflow({
+      const batchResult = await verifyWorkflow({
         workflowId: wf,
         eventsPath,
         registryPath,
-        dbPath,
+        database: { kind: "sqlite", path: dbPath },
         logStep: noopLog,
         truthReport: () => {},
       });
@@ -117,11 +117,11 @@ describe("withWorkflowVerification", () => {
         observeStep(good);
       },
     );
-    const batchResult = verifyWorkflow({
+    const batchResult = await verifyWorkflow({
       workflowId: "wf_complete",
       eventsPath,
       registryPath,
-      dbPath,
+      database: { kind: "sqlite", path: dbPath },
       logStep: noopLog,
       truthReport: () => {},
     });

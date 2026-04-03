@@ -5,14 +5,22 @@ export {
   renderIntendedEffect,
   buildRegistryMap,
 } from "./resolveExpectation.js";
-export { reconcileSqlRow } from "./reconciler.js";
+export { reconcileSqlRow, reconcileSqlRowAsync } from "./reconciler.js";
 export { aggregateWorkflow } from "./aggregate.js";
 export { formatWorkflowTruthReport, STEP_STATUS_TRUTH_LABELS } from "./workflowTruthReport.js";
 export { fetchRowsForVerification, ConnectorError } from "./sqlConnector.js";
+export {
+  applyPostgresVerificationSessionGuards,
+  buildSelectByKeySql,
+  connectPostgresVerificationClient,
+  createPostgresSqlReadBackend,
+} from "./sqlReadBackend.js";
 export type {
   ToolObservedEvent,
   ToolRegistryEntry,
   VerificationRequest,
+  VerificationDatabase,
   WorkflowResult,
   StepOutcome,
 } from "./types.js";
+export type { SqlReadBackend } from "./sqlReadBackend.js";

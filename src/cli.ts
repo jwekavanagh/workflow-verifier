@@ -9,7 +9,11 @@ function argValue(args: string[], name: string): string | undefined {
 }
 
 function usage(): string {
-  return `Usage: verify-workflow --workflow-id <id> --events <path> --registry <path> --db <path>
+  return `Usage:
+  verify-workflow --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
+  verify-workflow --workflow-id <id> --events <path> --registry <path> --postgres-url <url>
+
+Provide exactly one of --db or --postgres-url.
 
 Exit codes:
   0  workflow status complete
@@ -17,7 +21,7 @@ Exit codes:
   2  workflow status incomplete`;
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const args = process.argv.slice(2);
   if (args.includes("--help") || args.includes("-h")) {
     console.log(usage());
@@ -28,18 +32,33 @@ function main(): void {
   const eventsPath = argValue(args, "--events");
   const registryPath = argValue(args, "--registry");
   const dbPath = argValue(args, "--db");
+  const postgresUrl = argValue(args, "--postgres-url");
 
-  if (!workflowId || !eventsPath || !registryPath || !dbPath) {
+  if (!workflowId || !eventsPath || !registryPath) {
     console.error(usage());
     process.exit(2);
   }
 
-  const result = verifyWorkflow({
-    workflowId,
-    eventsPath,
-    registryPath,
-    dbPath,
-  });
+  const dbCount = (dbPath ? 1 : 0) + (postgresUrl ? 1 : 0);
+  if (dbCount !== 1) {
+    console.error(usage());
+    process.exit(2);
+  }
+
+  let result;
+  try {
+    result = await verifyWorkflow({
+      workflowId,
+      eventsPath,
+      registryPath,
+      database: postgresUrl
+        ? { kind: "postgres", connectionString: postgresUrl }
+        : { kind: "sqlite", path: dbPath! },
+    });
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : String(e));
+    process.exit(2);
+  }
 
   const validateResult = loadSchemaValidator("workflow-result");
   if (!validateResult(result)) {
@@ -54,4 +73,7 @@ function main(): void {
   process.exit(2);
 }
 
-main();
+void main().catch((e) => {
+  console.error(e instanceof Error ? e.message : String(e));
+  process.exit(2);
+});

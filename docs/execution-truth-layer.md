@@ -6,7 +6,8 @@ This document is the authoritative specification for the MVP. The product verifi
 
 - **NDJSON events**: One line per tool invocation provides a concrete “observe each step” capture surface that any agent stack can implement by appending JSON after each tool call.
 - **Tool registry (`tools.json`)**: Keeps “intent → expected state” inside the product using RFC 6901 JSON Pointers into `params`, so events do not carry caller-supplied expectation blobs.
-- **SQLite via `node:sqlite`**: Read-only `SELECT` against a file path gives reproducible ground truth in CI. The reference plan named `better-sqlite3`; this repo uses Node’s built-in module (**Node ≥ 22.13**) to avoid native compilation on constrained environments while preserving the same SQL contract (`SELECT * … WHERE … = ? LIMIT 2`, bound parameters only).
+- **SQLite via `node:sqlite`**: Read-only `SELECT` against a file path gives reproducible ground truth in CI. The reference plan named `better-sqlite3`; this repo uses Node’s built-in module (**Node ≥ 22.13**) to avoid native compilation on constrained environments while preserving the same reconciliation rules as Postgres (see [SQL connector contract](#sql-connector-contract)).
+- **Postgres via `pg` (batch/CLI only)**: `verifyWorkflow` can target PostgreSQL using a single `pg.Client` per run, session read-only guards (`applyPostgresVerificationSessionGuards`), then verification `SELECT`s only. The in-process hook does **not** use Postgres (see [Postgres verification (batch and CLI)](#postgres-verification-batch-and-cli)).
 
 ## Audiences
 
@@ -17,16 +18,17 @@ This document is the authoritative specification for the MVP. The product verifi
 | `schemaLoad.ts` | AJV 2020-12 validators for event line, registry, workflow result |
 | `loadEvents.ts` | Read NDJSON, validate, filter `workflowId`, sort by `seq`, detect `DUPLICATE_SEQ` |
 | `resolveExpectation.ts` | Registry + params → `VerificationRequest`; `intendedEffect` template rendering (audit only) |
-| `sqlConnector.ts` | Parameterized read; lowercase column keys |
-| `reconciler.ts` | Deterministic rule table (below) |
+| `sqlConnector.ts` | SQLite parameterized read; lowercase column keys |
+| `sqlReadBackend.ts` | `buildSelectByKeySql`, Postgres `SqlReadBackend`, `connectPostgresVerificationClient`, `applyPostgresVerificationSessionGuards` |
+| `reconciler.ts` | `reconcileFromRows` (pure rule table), `reconcileSqlRow` (SQLite sync), `reconcileSqlRowAsync` (Postgres) |
 | `aggregate.ts` | Workflow status precedence |
 | `workflowTruthReport.ts` | `formatWorkflowTruthReport`, `STEP_STATUS_TRUTH_LABELS`; fixed human report grammar |
-| `pipeline.ts` | Orchestration: `verifyWorkflow`, `verifyToolObservedStep`, `withWorkflowVerification`; default `truthReport` / `logStep` |
+| `pipeline.ts` | Orchestration: async `verifyWorkflow` (SQLite or Postgres `database` option), sync `verifyToolObservedStep`, `withWorkflowVerification` (SQLite `dbPath` only); default `truthReport` / `logStep` |
 | `cli.ts` | CLI entry |
 
 ### Engineer note: shared step core
 
-`verifyToolObservedStep` in `pipeline.ts` is shared by `withWorkflowVerification` (in-process) and `verifyWorkflow` (NDJSON batch). **Why:** One reconciliation path; batch and in-process cannot drift.
+`reconcileFromRows` in `reconciler.ts` is the single rule table. `verifyToolObservedStep` (SQLite, sync) backs `withWorkflowVerification` and the SQLite branch of `verifyWorkflow`. The Postgres branch uses an internal async step path that calls `reconcileSqlRowAsync` after the same fetch semantics. **Why:** One classification table; SQLite stays synchronous at the integrator boundary; Postgres stays on the batch path only.
 
 ### Integrator
 
@@ -34,16 +36,24 @@ This document is the authoritative specification for the MVP. The product verifi
 
 Primary integration for running workflows in code: **`await withWorkflowVerification(options, run)`** from `pipeline.ts` (re-exported in the package entry). The `run` callback receives **`observeStep`**; call it after each tool with one [event line](#event-line-schema) object. There is **no** public `finish` — the library closes the read-only SQLite handle in a `finally` block after `run` completes or throws.
 
-**Why:** One root boundary; library owns DB close in finally; avoids silent leaks when integrators omit a terminal call.
+**`withWorkflowVerification` is SQLite-only** (option `dbPath` → read-only file). For Postgres ground truth, replay NDJSON and call **`await verifyWorkflow`** with `database: { kind: "postgres", connectionString }` or use the CLI (`--postgres-url`). **Why:** Keeps `observeStep` synchronous and a single stable hook; async `pg` is isolated to batch verification.
+
+One root boundary; library owns DB close in finally; avoids silent leaks when integrators omit a terminal call.
 
 Normative contracts:
 
 - **`observeStep` input:** Only a JavaScript **non-null object** is schema-validated against the event schema; **strings and primitives are not parsed as NDJSON**—non-objects yield **`MALFORMED_EVENT_LINE`** (same run-level meaning as a bad NDJSON line in batch mode).
 - **`withWorkflowVerification` return:** **`Promise<WorkflowResult>`** fulfilled on success; **rejected** on invalid registry/DB setup (before `run`) or if **`run`** throws or rejects — after the DB is closed in **`finally`**.
 - **Post-close `observeStep`:** If a caller keeps the injected function and uses it after the run, it throws **`Error`** with message **`Workflow verification observeStep invoked after workflow run completed`**.
-- **Parity:** Feeding the same event objects in file order as an NDJSON workflow must match **`verifyWorkflow`** on that file for the same `workflowId`, `registryPath`, and `dbPath`.
+- **Parity:** Feeding the same event objects in file order as an NDJSON workflow must match **`await verifyWorkflow`** on that file for the same `workflowId`, `registryPath`, and SQLite `database: { kind: "sqlite", path }` (same file path as `dbPath` for the hook).
 
-**Defaults (`truthReport` / `logStep`):** **`withWorkflowVerification`** uses the same defaults as **`verifyWorkflow`**: **`truthReport`** writes the canonical human report (see [Human truth report](#human-truth-report)) to **stderr** once when the `WorkflowResult` is ready; **`logStep`** default is a **no-op** (no per-step stderr JSON). Override with `truthReport: () => {}` in tests. **Migration:** if you depended on previous default per-step JSON on stderr, pass an explicit `logStep`, e.g. `(obj) => console.error(JSON.stringify(obj))`. For custom UIs while keeping canonical copy: `import { formatWorkflowTruthReport } from '<package>'`.
+**Defaults (`truthReport` / `logStep`):** **`withWorkflowVerification`** uses the same defaults as **`verifyWorkflow`**: **`truthReport`** writes the canonical human report (see [Human truth report](#human-truth-report)) to **stderr** once when the `WorkflowResult` is ready; **`logStep`** default is a **no-op** (no per-step stderr JSON). Override with `truthReport: () => {}` in tests. **Migration:** if you depended on previous default per-step JSON on stderr, pass an explicit `logStep`, e.g. `(obj) => console.error(JSON.stringify(obj))`. For custom UIs while keeping canonical copy: `import { formatWorkflowTruthReport } from '<package>'`. **Migration:** `verifyWorkflow` is **async** and takes **`database`** instead of `dbPath`; use `database: { kind: "sqlite", path }` for file-backed batch verification.
+
+### Postgres verification (batch and CLI)
+
+- **Library:** `await verifyWorkflow({ workflowId, eventsPath, registryPath, database: { kind: "postgres", connectionString }, … })`. One **`pg.Client`** per invocation: `connect()` → **`applyPostgresVerificationSessionGuards`** (runs **`SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY`**) → **`SELECT 1`** on that client → per-step parameterized verification `SELECT`s → `client.end()` in `finally` (cleanup errors must not mask the primary failure).
+- **CLI:** Exactly one of `--db <sqlitePath>` or **`--postgres-url <url>`**. Connection or guard failure **throws** before steps; the CLI prints the error to **stderr** and exits **2** with **no** JSON on stdout.
+- **Safety evidence in CI:** Tests assert (1) after session guards, **`INSERT` into `readonly_probe`** fails with **read-only transaction** (`25006`), and (2) role **`verifier_ro`** has **SELECT only** on verification tables (`INSERT` denied `42501`). Operators should still use a **least-privilege DB user** and TLS (`sslmode` in the URL) in real environments.
 
 ### Batch and CLI (replay)
 
@@ -56,7 +66,9 @@ For CI, audits, or logs written as NDJSON:
 
 ```bash
 npm run build
-node dist/cli.js --workflow-id <id> --events <path> --registry <path> --db <path>
+node dist/cli.js --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
+# or
+node dist/cli.js --workflow-id <id> --events <path> --registry <path> --postgres-url <postgresql-url>
 ```
 
 **Why:** Same event contract for CI and external logs without requiring in-process wrapper.
@@ -128,7 +140,8 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 - **Reading logs:** Treat **stderr** as the human verdict for a verification run; **stdout** (CLI) is the machine-readable `WorkflowResult`. Correlate them by process / timestamp in your log stack.
 - **`trust:` line:** Treat as **trusted** only when it is the `TRUSTED:` sentence **and** `workflow_status: complete`. Any `NOT_TRUSTED:` means the workflow must not be treated as fully verified—investigate `steps:` and `run_level:`.
 - **Exit codes:** Same mapping as [above](#batch-and-cli-replay) (0 = `complete`, 1 = `inconsistent`, 2 = `incomplete`).
-- DB user should be **read-only** in production.
+- DB user should be **read-only** in production (Postgres: **SELECT-only** role; the product also sets **session read-only** via `applyPostgresVerificationSessionGuards`).
+- **`npm test`** requires Postgres 16+ and env **`POSTGRES_ADMIN_URL`** (superuser, runs [`scripts/pg-ci-init.mjs`](../scripts/pg-ci-init.mjs)) and **`POSTGRES_VERIFICATION_URL`** (role `verifier_ro` / SELECT-only on seeded tables). CI sets both; locally use the README Docker one-liner and export the same URLs.
 - SQLite file must exist when `readOnly: true` is used (Node `DatabaseSync`).
 - Redact secrets from `params` before writing events if logs are retained; **redact params in retained logs** when those logs leave the trust boundary. The human report can include **`intended:`** text from the registry template—apply the same redaction policy if that text can contain secrets.
 
@@ -179,7 +192,17 @@ Resolved internal shape:
 
 ## SQL connector contract
 
+### SQLite (`node:sqlite`)
+
 - Only query: `SELECT * FROM "<table>" WHERE "<keyColumn>" = ? LIMIT 2` with `String(keyValue)` bound.
+
+### Postgres (`pg.Client`)
+
+- Only query: `SELECT * FROM "<table>" WHERE "<keyColumn>" = $1 LIMIT 2` with one text parameter `String(keyValue)`.
+- Session: **`SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY`** before any verification statement, then mandatory `SELECT 1`, then verification `SELECT`s.
+
+### Shared
+
 - Column names in results are normalized to **lowercase** before reconciliation.
 
 ## Reconciler rule table (`sql_row`)
@@ -217,6 +240,7 @@ Step statuses: `verified` | `missing` | `partial` | `inconsistent` | `incomplete
 | Claim | Proven in CI / local | Proven in production / pilot only |
 |-------|----------------------|-----------------------------------|
 | No `complete` without SQL verification | Yes — integration tests | — |
+| Postgres session read-only + SELECT-only role | Yes — `postgres-session-readonly` / `postgres-privilege` tests | — |
 | Four falsifiable step outcomes + duplicates / unknown tool / dup seq / malformed line | Yes — `npm test` | — |
 | Framework-agnostic capture | Yes — NDJSON contract + examples | Integration list / adapters |
 | Manual verification steps ↓, time-to-confirm ↓, trust / re-runs | No | Metrics & study (define counters in ops) |

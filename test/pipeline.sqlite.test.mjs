@@ -33,13 +33,14 @@ describe("verifyWorkflow integration", () => {
   const registryPath = join(root, "examples", "tools.json");
 
   const noopLog = () => {};
+  const sqliteDb = () => ({ kind: "sqlite", path: dbPath });
 
-  it("wf_complete → complete", () => {
-    const r = verifyWorkflow({
+  it("wf_complete → complete", async () => {
+    const r = await verifyWorkflow({
       workflowId: "wf_complete",
       eventsPath,
       registryPath,
-      dbPath,
+      database: sqliteDb(),
       logStep: noopLog,
       truthReport: () => {},
     });
@@ -47,12 +48,12 @@ describe("verifyWorkflow integration", () => {
     assert.equal(r.steps[0]?.status, "verified");
   });
 
-  it("wf_missing → inconsistent / ROW_ABSENT", () => {
-    const r = verifyWorkflow({
+  it("wf_missing → inconsistent / ROW_ABSENT", async () => {
+    const r = await verifyWorkflow({
       workflowId: "wf_missing",
       eventsPath,
       registryPath,
-      dbPath,
+      database: sqliteDb(),
       logStep: noopLog,
       truthReport: () => {},
     });
@@ -61,12 +62,12 @@ describe("verifyWorkflow integration", () => {
     assert.equal(r.steps[0]?.reasons[0]?.code, "ROW_ABSENT");
   });
 
-  it("wf_partial → inconsistent / NULL_FIELD", () => {
-    const r = verifyWorkflow({
+  it("wf_partial → inconsistent / NULL_FIELD", async () => {
+    const r = await verifyWorkflow({
       workflowId: "wf_partial",
       eventsPath,
       registryPath,
-      dbPath,
+      database: sqliteDb(),
       logStep: noopLog,
       truthReport: () => {},
     });
@@ -75,12 +76,12 @@ describe("verifyWorkflow integration", () => {
     assert.equal(r.steps[0]?.reasons[0]?.code, "NULL_FIELD");
   });
 
-  it("wf_inconsistent → inconsistent / VALUE_MISMATCH", () => {
-    const r = verifyWorkflow({
+  it("wf_inconsistent → inconsistent / VALUE_MISMATCH", async () => {
+    const r = await verifyWorkflow({
       workflowId: "wf_inconsistent",
       eventsPath,
       registryPath,
-      dbPath,
+      database: sqliteDb(),
       logStep: noopLog,
       truthReport: () => {},
     });
@@ -89,12 +90,12 @@ describe("verifyWorkflow integration", () => {
     assert.equal(r.steps[0]?.reasons[0]?.code, "VALUE_MISMATCH");
   });
 
-  it("wf_duplicate_rows → DUPLICATE_ROWS", () => {
-    const r = verifyWorkflow({
+  it("wf_duplicate_rows → DUPLICATE_ROWS", async () => {
+    const r = await verifyWorkflow({
       workflowId: "wf_duplicate_rows",
       eventsPath,
       registryPath,
-      dbPath,
+      database: sqliteDb(),
       logStep: noopLog,
       truthReport: () => {},
     });
@@ -102,12 +103,12 @@ describe("verifyWorkflow integration", () => {
     assert.equal(r.steps[0]?.reasons[0]?.code, "DUPLICATE_ROWS");
   });
 
-  it("wf_unknown_tool → incomplete", () => {
-    const r = verifyWorkflow({
+  it("wf_unknown_tool → incomplete", async () => {
+    const r = await verifyWorkflow({
       workflowId: "wf_unknown_tool",
       eventsPath,
       registryPath,
-      dbPath,
+      database: sqliteDb(),
       logStep: noopLog,
       truthReport: () => {},
     });
@@ -116,12 +117,12 @@ describe("verifyWorkflow integration", () => {
     assert.equal(r.steps[0]?.reasons[0]?.code, "UNKNOWN_TOOL");
   });
 
-  it("wf_dup_seq → incomplete run-level", () => {
-    const r = verifyWorkflow({
+  it("wf_dup_seq → incomplete run-level", async () => {
+    const r = await verifyWorkflow({
       workflowId: "wf_dup_seq",
       eventsPath,
       registryPath,
-      dbPath,
+      database: sqliteDb(),
       logStep: noopLog,
       truthReport: () => {},
     });
@@ -129,7 +130,7 @@ describe("verifyWorkflow integration", () => {
     assert.ok(r.runLevelCodes.includes("DUPLICATE_SEQ"));
   });
 
-  it("ignores params.ok — fake success still needs row", () => {
+  it("ignores params.ok — fake success still needs row", async () => {
     const eventsFile = join(dir, "events_ok.jsonl");
     writeFileSync(
       eventsFile,
@@ -146,11 +147,11 @@ describe("verifyWorkflow integration", () => {
         },
       })}\n`,
     );
-    const r = verifyWorkflow({
+    const r = await verifyWorkflow({
       workflowId: "wf_fake_ok",
       eventsPath: eventsFile,
       registryPath,
-      dbPath,
+      database: sqliteDb(),
       logStep: noopLog,
       truthReport: () => {},
     });
@@ -158,14 +159,14 @@ describe("verifyWorkflow integration", () => {
     assert.equal(r.steps[0]?.status, "missing");
   });
 
-  it("malformed line → MALFORMED_EVENT_LINE", () => {
+  it("malformed line → MALFORMED_EVENT_LINE", async () => {
     const badFile = join(dir, "bad.ndjson");
     writeFileSync(badFile, "not json\n");
-    const r = verifyWorkflow({
+    const r = await verifyWorkflow({
       workflowId: "wf_complete",
       eventsPath: badFile,
       registryPath,
-      dbPath,
+      database: sqliteDb(),
       logStep: noopLog,
       truthReport: () => {},
     });
@@ -173,12 +174,12 @@ describe("verifyWorkflow integration", () => {
     assert.ok(r.runLevelCodes.includes("MALFORMED_EVENT_LINE"));
   });
 
-  it("empty workflow id filter → incomplete", () => {
-    const r = verifyWorkflow({
+  it("empty workflow id filter → incomplete", async () => {
+    const r = await verifyWorkflow({
       workflowId: "no_such_workflow",
       eventsPath,
       registryPath,
-      dbPath,
+      database: sqliteDb(),
       logStep: noopLog,
       truthReport: () => {},
     });
@@ -186,13 +187,13 @@ describe("verifyWorkflow integration", () => {
     assert.equal(r.steps.length, 0);
   });
 
-  it("truthReport receives formatWorkflowTruthReport(result) once (verifyWorkflow)", () => {
+  it("truthReport receives formatWorkflowTruthReport(result) once (verifyWorkflow)", async () => {
     const received = [];
-    const r = verifyWorkflow({
+    const r = await verifyWorkflow({
       workflowId: "wf_complete",
       eventsPath,
       registryPath,
-      dbPath,
+      database: sqliteDb(),
       logStep: noopLog,
       truthReport: (s) => received.push(s),
     });

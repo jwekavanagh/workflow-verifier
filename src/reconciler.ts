@@ -1,4 +1,5 @@
 import { ConnectorError, fetchRowsForVerification } from "./sqlConnector.js";
+import type { SqlReadBackend } from "./sqlReadBackend.js";
 import type { DatabaseSync } from "node:sqlite";
 import type { Reason, StepStatus, VerificationRequest } from "./types.js";
 
@@ -8,24 +9,8 @@ export type ReconcileOutput = {
   evidenceSummary: Record<string, unknown>;
 };
 
-export function reconcileSqlRow(
-  db: DatabaseSync,
-  req: VerificationRequest,
-): ReconcileOutput {
-  let rows: Record<string, unknown>[];
-  try {
-    rows = fetchRowsForVerification(db, req);
-  } catch (e) {
-    if (e instanceof ConnectorError) {
-      return {
-        status: "incomplete_verification",
-        reasons: [{ code: "CONNECTOR_ERROR", message: e.message }],
-        evidenceSummary: { rowCount: null, error: true },
-      };
-    }
-    throw e;
-  }
-
+/** Pure rule table after rows are fetched (shared by SQLite and Postgres paths). */
+export function reconcileFromRows(rows: Record<string, unknown>[], req: VerificationRequest): ReconcileOutput {
   const n = rows.length;
   if (n === 0) {
     return {
@@ -91,4 +76,41 @@ export function reconcileSqlRow(
     reasons: [],
     evidenceSummary: { rowCount: 1 },
   };
+}
+
+export function reconcileSqlRow(db: DatabaseSync, req: VerificationRequest): ReconcileOutput {
+  let rows: Record<string, unknown>[];
+  try {
+    rows = fetchRowsForVerification(db, req);
+  } catch (e) {
+    if (e instanceof ConnectorError) {
+      return {
+        status: "incomplete_verification",
+        reasons: [{ code: "CONNECTOR_ERROR", message: e.message }],
+        evidenceSummary: { rowCount: null, error: true },
+      };
+    }
+    throw e;
+  }
+  return reconcileFromRows(rows, req);
+}
+
+export async function reconcileSqlRowAsync(
+  backend: SqlReadBackend,
+  req: VerificationRequest,
+): Promise<ReconcileOutput> {
+  let rows: Record<string, unknown>[];
+  try {
+    rows = await backend.fetchRows(req);
+  } catch (e) {
+    if (e instanceof ConnectorError) {
+      return {
+        status: "incomplete_verification",
+        reasons: [{ code: "CONNECTOR_ERROR", message: e.message }],
+        evidenceSummary: { rowCount: null, error: true },
+      };
+    }
+    throw e;
+  }
+  return reconcileFromRows(rows, req);
 }

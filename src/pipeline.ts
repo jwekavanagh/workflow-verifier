@@ -2,14 +2,25 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "fs";
 import { aggregateWorkflow } from "./aggregate.js";
 import { loadEventsForWorkflow } from "./loadEvents.js";
-import { reconcileSqlRow } from "./reconciler.js";
+import { reconcileSqlRow, reconcileSqlRowAsync } from "./reconciler.js";
 import { loadSchemaValidator } from "./schemaLoad.js";
 import {
   buildRegistryMap,
   renderIntendedEffect,
   resolveVerificationRequest,
 } from "./resolveExpectation.js";
-import type { StepOutcome, ToolObservedEvent, ToolRegistryEntry, WorkflowResult } from "./types.js";
+import {
+  connectPostgresVerificationClient,
+  createPostgresSqlReadBackend,
+  type SqlReadBackend,
+} from "./sqlReadBackend.js";
+import type {
+  StepOutcome,
+  ToolObservedEvent,
+  ToolRegistryEntry,
+  VerificationDatabase,
+  WorkflowResult,
+} from "./types.js";
 import { formatWorkflowTruthReport } from "./workflowTruthReport.js";
 
 const validateRegistry = loadSchemaValidator("tools-registry");
@@ -108,30 +119,126 @@ export function verifyToolObservedStep(options: {
   return outcome;
 }
 
-export function verifyWorkflow(options: {
+async function verifyToolObservedStepAsync(options: {
+  workflowId: string;
+  ev: ToolObservedEvent;
+  registry: Map<string, ToolRegistryEntry>;
+  backend: SqlReadBackend;
+  logStep: (line: object) => void;
+}): Promise<StepOutcome> {
+  const { workflowId, ev, registry, backend, logStep } = options;
+  const entry = registry.get(ev.toolId);
+  if (!entry) {
+    const outcome: StepOutcome = {
+      seq: ev.seq,
+      toolId: ev.toolId,
+      intendedEffect: `Unknown tool: ${ev.toolId}`,
+      verificationRequest: null,
+      status: "incomplete_verification",
+      reasons: [{ code: "UNKNOWN_TOOL", message: `Unknown toolId: ${ev.toolId}` }],
+      evidenceSummary: {},
+    };
+    logStep({
+      workflowId,
+      seq: ev.seq,
+      toolId: ev.toolId,
+      intendedEffect: outcome.intendedEffect,
+      verificationRequest: null,
+      status: outcome.status,
+      reasons: outcome.reasons,
+      evidenceSummary: outcome.evidenceSummary,
+    });
+    return outcome;
+  }
+
+  const intendedEffect = renderIntendedEffect(entry.effectDescriptionTemplate, ev.params);
+  const resolved = resolveVerificationRequest(entry, ev.params);
+  if (!resolved.ok) {
+    const outcome: StepOutcome = {
+      seq: ev.seq,
+      toolId: ev.toolId,
+      intendedEffect,
+      verificationRequest: null,
+      status: "incomplete_verification",
+      reasons: [{ code: resolved.code, message: resolved.message }],
+      evidenceSummary: {},
+    };
+    logStep({
+      workflowId,
+      seq: ev.seq,
+      toolId: ev.toolId,
+      intendedEffect,
+      verificationRequest: null,
+      status: outcome.status,
+      reasons: outcome.reasons,
+      evidenceSummary: outcome.evidenceSummary,
+    });
+    return outcome;
+  }
+
+  const rec = await reconcileSqlRowAsync(backend, resolved.request);
+  const outcome: StepOutcome = {
+    seq: ev.seq,
+    toolId: ev.toolId,
+    intendedEffect,
+    verificationRequest: resolved.request,
+    status: rec.status,
+    reasons: rec.reasons,
+    evidenceSummary: rec.evidenceSummary,
+  };
+  logStep({
+    workflowId,
+    seq: ev.seq,
+    toolId: ev.toolId,
+    intendedEffect,
+    verificationRequest: resolved.request,
+    status: outcome.status,
+    reasons: outcome.reasons,
+    evidenceSummary: outcome.evidenceSummary,
+  });
+  return outcome;
+}
+
+export async function verifyWorkflow(options: {
   workflowId: string;
   eventsPath: string;
   registryPath: string;
-  dbPath: string;
+  database: VerificationDatabase;
   logStep?: (line: object) => void;
   truthReport?: (report: string) => void;
-}): WorkflowResult {
-  const { eventsPath, registryPath, dbPath, workflowId } = options;
+}): Promise<WorkflowResult> {
+  const { eventsPath, registryPath, workflowId, database } = options;
   const log = options.logStep ?? (() => {});
   const truthReport = options.truthReport ?? defaultTruthReportToStderr;
 
   const { events, runLevelCodes } = loadEventsForWorkflow(eventsPath, workflowId);
   const registry = loadToolsRegistry(registryPath);
-  const db = new DatabaseSync(dbPath, { readOnly: true });
 
   const steps: StepOutcome[] = [];
 
-  try {
-    for (const ev of events) {
-      steps.push(verifyToolObservedStep({ workflowId, ev, registry, db, logStep: log }));
+  if (database.kind === "sqlite") {
+    const db = new DatabaseSync(database.path, { readOnly: true });
+    try {
+      for (const ev of events) {
+        steps.push(verifyToolObservedStep({ workflowId, ev, registry, db, logStep: log }));
+      }
+    } finally {
+      db.close();
     }
-  } finally {
-    db.close();
+  } else {
+    const client = await connectPostgresVerificationClient(database.connectionString);
+    const backend = createPostgresSqlReadBackend(client);
+    try {
+      for (const ev of events) {
+        steps.push(await verifyToolObservedStepAsync({ workflowId, ev, registry, backend, logStep: log }));
+      }
+    } finally {
+      try {
+        await client.end();
+      } catch {
+        /* cleanup only */
+      }
+    }
   }
 
   const result = aggregateWorkflow(workflowId, steps, runLevelCodes);
