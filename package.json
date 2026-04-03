@@ -9,7 +9,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "npm run build && vitest run && node --test test/reconciler.sqlite.test.mjs test/pipeline.sqlite.test.mjs",
+    "first-run": "npm run build && node scripts/first-run.mjs",
+    "test": "npm run build && vitest run && node --test test/reconciler.sqlite.test.mjs test/pipeline.sqlite.test.mjs && node scripts/first-run.mjs",
     "verify-workflow": "node dist/cli.js"
   },
   "engines": {

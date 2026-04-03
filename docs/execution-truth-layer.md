@@ -25,9 +25,10 @@ This document is the authoritative specification for the MVP. The product verifi
 
 ### Integrator
 
-1. After **each** tool call, append one JSON object line to your NDJSON file (see [Event line schema](#event-line-schema)).
-2. Maintain `tools.json` with one entry per `toolId` your workflows emit.
-3. Run:
+1. To verify your checkout with bundled `examples/` artifacts, run `npm run first-run` from the repository root (see [Examples](#examples)). It builds the project, creates `examples/demo.db` from `seed.sql`, and runs two sample workflows.
+2. After **each** tool call, append one JSON object line to your NDJSON file (see [Event line schema](#event-line-schema)).
+3. Maintain `tools.json` with one entry per `toolId` your workflows emit.
+4. For your own workflows, run:
 
 ```bash
 npm run build
@@ -145,11 +146,8 @@ Step statuses: `verified` | `missing` | `partial` | `inconsistent` | `incomplete
 
 ## Examples
 
-See [`examples/`](../examples/): `seed.sql`, `tools.json`, `events.ndjson`. Build a DB file:
+Bundled files under [`examples/`](../examples/): `seed.sql`, `tools.json`, `events.ndjson`.
 
-```bash
-node --input-type=module -e "import { DatabaseSync } from 'node:sqlite'; import fs from 'node:fs'; const db=new DatabaseSync('examples/demo.db'); db.exec(fs.readFileSync('examples/seed.sql','utf8')); db.close();"
-node dist/cli.js --workflow-id wf_complete --events examples/events.ndjson --registry examples/tools.json --db examples/demo.db
-```
+- **Onboarding:** run `npm run first-run` from the repository root. The onboarding driver is [`scripts/first-run.mjs`](../scripts/first-run.mjs), invoked only via that npm script (`npm run build && node scripts/first-run.mjs`). It seeds `examples/demo.db`, then verifies workflows `wf_complete` (expect `complete` / `verified`) and `wf_missing` (expect `inconsistent` / `missing` / `ROW_ABSENT`).
 
 (Node may print an experimental warning for `node:sqlite` depending on version.)

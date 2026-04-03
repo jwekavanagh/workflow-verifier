@@ -12,13 +12,17 @@ Authoritative specification: **[docs/execution-truth-layer.md](docs/execution-tr
 
 ```bash
 npm install
-npm test
+npm run first-run
 ```
 
-CLI (after `npm run build`):
+The first run uses bundled `examples/events.ndjson` and `examples/tools.json`. It creates `examples/demo.db` from `examples/seed.sql` (this file is gitignored), verifies workflow `wf_complete` against the database (expect **complete** / **verified**), then verifies `wf_missing` (expect **inconsistent** / **missing** / **ROW_ABSENT**). You see both a passing and a failing verification without authoring your own events or registry.
+
+Each JSON object printed for a workflow matches [`schemas/workflow-result.schema.json`](schemas/workflow-result.schema.json).
+
+To run the same check through the CLI (after `npm run first-run` so `examples/demo.db` exists):
 
 ```bash
-node dist/cli.js --workflow-id <id> --events <events.ndjson> --registry examples/tools.json --db <path-to.db>
+node dist/cli.js --workflow-id wf_complete --events examples/events.ndjson --registry examples/tools.json --db examples/demo.db
 ```
 
-See [docs/execution-truth-layer.md](docs/execution-truth-layer.md) for exit codes, schemas, the reconciler rule table, and a demo DB recipe.
+Contributors: run the full suite with `npm test`.
