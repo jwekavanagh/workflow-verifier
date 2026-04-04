@@ -15,6 +15,9 @@ const cliJs = join(root, "dist", "cli.js");
 const eventsPath = join(root, "examples", "events.ndjson");
 const registryPath = join(root, "examples", "tools.json");
 
+/** Bound hung CLI regressions (spawnSync defaults to waiting forever). */
+const cliSpawnMs = 120_000;
+
 describe("CI workflow truth contract (Postgres CLI)", () => {
   const verifyUrl = process.env.POSTGRES_VERIFICATION_URL;
 
@@ -40,8 +43,9 @@ describe("CI workflow truth contract (Postgres CLI)", () => {
         verifyUrl,
         "--no-truth-report",
       ],
-      { encoding: "utf8", cwd: root, env },
+      { encoding: "utf8", cwd: root, env, timeout: cliSpawnMs },
     );
+    assert.ok(!r.error, r.error?.message ?? String(r.error));
     assert.equal(r.status, 0, r.stderr);
     assert.equal(r.stderr, "");
     const parsed = JSON.parse(r.stdout.trim());
@@ -71,8 +75,9 @@ describe("CI workflow truth contract (Postgres CLI)", () => {
         verifyUrl,
         "--no-truth-report",
       ],
-      { encoding: "utf8", cwd: root, env },
+      { encoding: "utf8", cwd: root, env, timeout: cliSpawnMs },
     );
+    assert.ok(!r.error, r.error?.message ?? String(r.error));
     assert.equal(r.status, 1, r.stderr);
     assert.equal(r.stderr, "");
     const parsed = JSON.parse(r.stdout.trim());
@@ -88,8 +93,9 @@ describe("CI workflow truth contract (Postgres CLI)", () => {
     const r = spawnSync(
       process.execPath,
       ["--no-warnings", cliJs, "--workflow-id", "wf_complete"],
-      { encoding: "utf8", cwd: root },
+      { encoding: "utf8", cwd: root, timeout: cliSpawnMs },
     );
+    assert.ok(!r.error, r.error?.message ?? String(r.error));
     assert.equal(r.status, 3);
     assert.equal(r.stdout.trim(), "");
     const err = JSON.parse(r.stderr.trim());

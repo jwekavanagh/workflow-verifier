@@ -20,22 +20,32 @@ describe("Postgres session read-only (applyPostgresVerificationSessionGuards)", 
   });
 
   it("INSERT fails with read-only transaction after guards; SELECT still succeeds", async () => {
-    const client = new pg.Client({ connectionString: adminUrl });
+    const client = new pg.Client({
+      connectionString: adminUrl,
+      connectionTimeoutMillis: 30_000,
+    });
     await client.connect();
-    await applyPostgresVerificationSessionGuards(client);
-    await client.query("SELECT 1");
-    let insertErr;
     try {
-      await client.query("INSERT INTO readonly_probe VALUES (1)");
-    } catch (e) {
-      insertErr = e;
+      await applyPostgresVerificationSessionGuards(client);
+      await client.query("SELECT 1");
+      let insertErr;
+      try {
+        await client.query("INSERT INTO readonly_probe VALUES (1)");
+      } catch (e) {
+        insertErr = e;
+      }
+      assert.ok(insertErr instanceof Error, "INSERT should fail under read-only session");
+      const pgErr = /** @type {import('pg').DatabaseError} */ (insertErr);
+      assert.equal(pgErr.code, "25006");
+      const r = await client.query("SELECT 1 AS x");
+      assert.equal(r.rows[0]?.x, 1);
+    } finally {
+      try {
+        await client.end();
+      } catch {
+        /* cleanup */
+      }
     }
-    assert.ok(insertErr instanceof Error, "INSERT should fail under read-only session");
-    const pgErr = /** @type {import('pg').DatabaseError} */ (insertErr);
-    assert.equal(pgErr.code, "25006");
-    const r = await client.query("SELECT 1 AS x");
-    assert.equal(r.rows[0]?.x, 1);
-    await client.end();
   });
 
   it("connectPostgresVerificationClient + verification SELECT succeeds", async () => {

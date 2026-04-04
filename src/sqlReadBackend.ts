@@ -30,7 +30,11 @@ export async function applyPostgresVerificationSessionGuards(client: pg.Client):
  * Connect, apply session read-only guards, then `SELECT 1` on the same client before any verification query.
  */
 export async function connectPostgresVerificationClient(connectionString: string): Promise<pg.Client> {
-  const client = new pg.Client({ connectionString });
+  const client = new pg.Client({
+    connectionString,
+    /** Avoid indefinite hangs when the host accepts TCP but Postgres never responds. */
+    connectionTimeoutMillis: 60_000,
+  });
   await client.connect();
   try {
     await applyPostgresVerificationSessionGuards(client);

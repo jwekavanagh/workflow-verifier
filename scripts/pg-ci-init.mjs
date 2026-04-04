@@ -37,7 +37,10 @@ INSERT INTO contacts (id, name, status) VALUES ('c_side', 'Side', 'active');
 CREATE TABLE readonly_probe (x int);
 `;
 
-const client = new pg.Client({ connectionString: adminUrl });
+const client = new pg.Client({
+  connectionString: adminUrl,
+  connectionTimeoutMillis: 30_000,
+});
 await client.connect();
 
 await client.query(`

@@ -14,17 +14,27 @@ describe("Postgres verifier_ro privilege (SELECT only)", () => {
   });
 
   it("INSERT is denied (42501 insufficient_privilege)", async () => {
-    const client = new pg.Client({ connectionString: verifyUrl });
+    const client = new pg.Client({
+      connectionString: verifyUrl,
+      connectionTimeoutMillis: 30_000,
+    });
     await client.connect();
-    let err;
     try {
-      await client.query("INSERT INTO contacts (id, name, status) VALUES ('hack', 'x', 'y')");
-    } catch (e) {
-      err = e;
+      let err;
+      try {
+        await client.query("INSERT INTO contacts (id, name, status) VALUES ('hack', 'x', 'y')");
+      } catch (e) {
+        err = e;
+      }
+      assert.ok(err instanceof Error);
+      const pgErr = /** @type {import('pg').DatabaseError} */ (err);
+      assert.equal(pgErr.code, "42501");
+    } finally {
+      try {
+        await client.end();
+      } catch {
+        /* cleanup */
+      }
     }
-    assert.ok(err instanceof Error);
-    const pgErr = /** @type {import('pg').DatabaseError} */ (err);
-    assert.equal(pgErr.code, "42501");
-    await client.end();
   });
 });

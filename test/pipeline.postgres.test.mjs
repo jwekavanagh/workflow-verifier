@@ -25,6 +25,9 @@ const cliJs = join(root, "dist", "cli.js");
 
 const verifyUrl = process.env.POSTGRES_VERIFICATION_URL;
 
+/** Bound hung CLI regressions (spawnSync defaults to waiting forever). */
+const cliSpawnMs = 120_000;
+
 describe("verifyWorkflow Postgres integration", () => {
   before(() => {
     assert.ok(verifyUrl && verifyUrl.length > 0, "POSTGRES_VERIFICATION_URL must be set");
@@ -144,8 +147,9 @@ describe("verifyWorkflow Postgres integration", () => {
         "--postgres-url",
         badUrl,
       ],
-      { encoding: "utf8", cwd: root },
+      { encoding: "utf8", cwd: root, timeout: cliSpawnMs },
     );
+    assert.ok(!r.error, r.error?.message ?? String(r.error));
     assert.equal(r.status, 3);
     assert.equal(r.stdout.trim(), "");
     const err = JSON.parse(r.stderr.trim());
@@ -171,8 +175,9 @@ describe("verifyWorkflow Postgres integration", () => {
         "--postgres-url",
         verifyUrl,
       ],
-      { encoding: "utf8", cwd: root },
+      { encoding: "utf8", cwd: root, timeout: cliSpawnMs },
     );
+    assert.ok(!r.error, r.error?.message ?? String(r.error));
     assert.equal(r.status, 3);
     const err = JSON.parse(r.stderr.trim());
     assert.equal(err.code, "CLI_USAGE");
