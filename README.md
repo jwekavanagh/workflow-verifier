@@ -4,6 +4,8 @@ MVP **Execution Truth Layer**: verify agent workflow steps against **SQLite** or
 
 Authoritative specification: **[docs/execution-truth-layer.md](docs/execution-truth-layer.md)**.
 
+The **CI workflow truth contract** (Postgres CLI, machine-readable **`verify-workflow`** I/O) is defined only in the SSOT: **[CI workflow truth contract (Postgres CLI)](docs/execution-truth-layer.md#ci-workflow-truth-contract-postgres-cli)**.
+
 ## Requirements
 
 - **Node.js ≥ 22.13** (uses built-in [`node:sqlite`](https://nodejs.org/api/sqlite.html))

@@ -94,13 +94,55 @@ node dist/cli.js --workflow-id <id> --events <path> --registry <path> --postgres
 
 **`--help` / `-h`:** Prints usage to **stdout** and exits **0** (not a verification run).
 
-**I/O order (CLI — verdict paths 0/1/2):** **`verifyWorkflow`** emits the human report via default **`truthReport`** to **stderr** first, then the CLI writes **stdout**. So: **stderr (human) → stdout (JSON)**.
+**I/O order (CLI — verdict paths 0/1/2):** **`verifyWorkflow`** emits the human report via default **`truthReport`** to **stderr** first, then the CLI writes **stdout**. So: **stderr (human) → stdout (JSON)**. If the CLI is invoked with **`--no-truth-report`**, the CLI passes a no-op **`truthReport`** into **`verifyWorkflow`**: for exits **0–2**, **stderr** is **empty** (no human report); **stdout** is unchanged (still one **`WorkflowResult`** JSON line). Exit **3** is unchanged (see [CLI operational errors](#cli-operational-errors)).
 
 **stdout:** Single JSON object matching `schemas/workflow-result.schema.json` (`schemaVersion` **`5`**; required **`verificationPolicy`** `{ consistencyMode, verificationWindowMs, pollIntervalMs }`; required **`eventSequenceIntegrity`**; includes required **`runLevelReasons`** alongside **`runLevelCodes`**; each step includes **`repeatObservationCount`** and **`evaluatedObservationOrdinal`**; each non-**`verified`** step includes required **`failureDiagnostic`** — see [Verification diagnostics](#verification-diagnostics-normative)).
 
 **Verification policy (CLI):** Default is **`strong`** (single read per check). For **`eventual`**, pass **`--consistency eventual`** plus required **`--verification-window-ms`** and **`--poll-interval-ms`** (integers ≥ 1, **`pollIntervalMs` ≤ `verificationWindowMs`**). With **`strong`**, do not pass the millisecond flags. See [Verification policy (normative)](#verification-policy-normative).
 
-**stderr (verdict paths):** One **human truth report** per verification (same text as `formatWorkflowTruthReport`); see [Human truth report](#human-truth-report).
+**stderr (verdict paths):** Unless **`--no-truth-report`** is set, one **human truth report** per verification (same text as `formatWorkflowTruthReport`); see [Human truth report](#human-truth-report).
+
+### CI workflow truth contract (Postgres CLI)
+
+This subsection is **normative** for CI and for any automation that treats **`verify-workflow`** as the sole machine-facing verification surface. The **only** structured artifacts for workflow truth from the CLI are:
+
+- **Exits 0–2:** one JSON object on **stdout** matching **`schemas/workflow-result.schema.json`** (see **stdout** above).
+- **Exit 3:** **stdout** empty; **stderr** exactly one JSON line with **`kind`:** **`execution_truth_layer_error`** (see [CLI operational errors](#cli-operational-errors)).
+
+There is **no** separate CI-only report format. Integrators should parse **stdout** for verdicts **0–2** and **stderr** for exit **3**, not the human truth report text.
+
+**Environment:** **`POSTGRES_VERIFICATION_URL`** must be set to a **`verifier_ro`**-capable URL after **`scripts/pg-ci-init.mjs`** (or equivalent) has created roles and seeded tables. **`examples/events.ndjson`** and **`examples/tools.json`** are the event and registry paths.
+
+**`--no-truth-report`:** For the cases below that verify exits **0** and **1**, the CLI **must** be invoked with **`--no-truth-report`** so **stderr** is **empty** and automation does not need to skip human lines.
+
+**Case 1 — Postgres happy path (exit 0)**
+
+| Observable | Required |
+|------------|----------|
+| argv | `--workflow-id wf_complete --events <examples/events.ndjson> --registry <examples/tools.json> --postgres-url <POSTGRES_VERIFICATION_URL> --no-truth-report` |
+| Exit code | **0** |
+| **stdout** | One line; valid **`WorkflowResult`**; **`schemaVersion`** **5**; **`workflowId`** **`wf_complete`**; **`status`** **`complete`**; first step **`status`** **`verified`**; **`runLevelReasons`** **`[]`**; **`runLevelCodes`** **`[]`** |
+| **stderr** | Empty |
+
+**Case 2 — Postgres determinate failure (exit 1)**
+
+| Observable | Required |
+|------------|----------|
+| argv | Same as case 1 with **`--workflow-id wf_missing`** |
+| Exit code | **1** |
+| **stdout** | One line; valid **`WorkflowResult`**; **`workflowId`** **`wf_missing`**; **`status`** **`inconsistent`**; first step **`status`** **`missing`**; first step first reason **`code`** **`ROW_ABSENT`** |
+| **stderr** | Empty |
+
+**Case 3 — Operational failure before verification (exit 3)**
+
+| Observable | Required |
+|------------|----------|
+| argv | **`--workflow-id wf_complete`** only (omit **`--events`**, **`--registry`**, **`--db`**, **`--postgres-url`**) |
+| Exit code | **3** |
+| **stdout** | Empty |
+| **stderr** | One line; JSON with **`kind`** **`execution_truth_layer_error`**, **`code`** **`CLI_USAGE`**, **`message`** non-empty string length ≤ **2048** |
+
+**Enforcement:** **`test/ci-workflow-truth-postgres-contract.test.mjs`** implements these three cases; **`npm run test:workflow-truth-contract`** runs that file alone. GitHub Actions runs that script in a dedicated step after **`npm run test:node`**.
 
 ### CLI operational errors
 
@@ -120,7 +162,7 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 **Why this shape**
 
 - **One formatter, one string:** CLI, `verifyWorkflow`, and `withWorkflowVerification` share the same text—no drift between surfaces.
-- **stderr human / stdout JSON:** Automation keeps a single JSON record on stdout (`jq`, pipes); operators read the verdict on stderr.
+- **stderr human / stdout JSON:** Automation keeps a single JSON record on stdout (`jq`, pipes); operators read the verdict on stderr. The CLI flag **`--no-truth-report`** yields empty stderr on verdict exits **0–2** so logs and parsers need not skip the human report (see [Batch and CLI (replay)](#batch-and-cli-replay)).
 - **Default `truthReport` to stderr:** Gives a clear truth signal without extra configuration; silent tests pass `truthReport: () => {}`.
 - **Default `logStep` no-op:** Removes the old default of one JSON object per step on stderr, which duplicated `WorkflowResult` and conflicted with the human report.
 - **Fixed `trust:` lines and step labels (`STEP_STATUS_TRUTH_LABELS`):** Stable strings for alerts, screenshots, and training; most `trust:` lines map to one `WorkflowStatus` from `aggregate.ts`, except the **eventual-window uncertainty** line which applies when `workflow_status` is `incomplete` under the narrow rule in the grammar below.

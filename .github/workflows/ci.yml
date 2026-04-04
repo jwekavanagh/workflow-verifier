@@ -28,5 +28,17 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-      - run: npm ci
-      - run: npm test
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Postgres schema (CI)
+        run: node scripts/pg-ci-init.mjs
+      - name: Unit tests (Vitest)
+        run: npm run test:vitest
+      - name: Node integration tests
+        run: npm run test:node
+      - name: Workflow truth contract (Postgres CLI)
+        run: npm run test:workflow-truth-contract
+      - name: First-run examples
+        run: node scripts/first-run.mjs

@@ -128,30 +128,6 @@ describe("verifyWorkflow Postgres integration", () => {
     }
   });
 
-  it("CLI postgres-url: success exit 0", () => {
-    const r = spawnSync(
-      process.execPath,
-      [
-        "--no-warnings",
-        cliJs,
-        "--workflow-id",
-        "wf_complete",
-        "--events",
-        eventsPath,
-        "--registry",
-        registryPath,
-        "--postgres-url",
-        verifyUrl,
-      ],
-      { encoding: "utf8", cwd: root, env: { ...process.env, POSTGRES_VERIFICATION_URL: verifyUrl } },
-    );
-    assert.equal(r.status, 0, r.stderr);
-    const parsed = JSON.parse(r.stdout.trim());
-    const validateResult = loadSchemaValidator("workflow-result");
-    assert.equal(validateResult(parsed), true);
-    assert.equal(parsed.status, "complete");
-  });
-
   it("CLI invalid postgres port → exit 3 and stderr JSON", () => {
     const badUrl = "postgresql://verifier_ro:verifier@127.0.0.1:65534/postgres";
     const r = spawnSync(

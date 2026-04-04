@@ -64,6 +64,34 @@ describe("CLI verify-workflow", () => {
     assert.equal(stderr, formatWorkflowTruthReport(parsed).replace(/\r\n/g, "\n"));
   });
 
+  it("--no-truth-report: stderr empty; stdout schema-valid wf_complete", () => {
+    const r = spawnSync(
+      process.execPath,
+      [
+        "--no-warnings",
+        cliJs,
+        "--workflow-id",
+        "wf_complete",
+        "--events",
+        eventsPath,
+        "--registry",
+        registryPath,
+        "--db",
+        dbPath,
+        "--no-truth-report",
+      ],
+      { encoding: "utf8", cwd: root },
+    );
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stderr, "");
+    const parsed = JSON.parse(r.stdout.trim());
+    const validateResult = loadSchemaValidator("workflow-result");
+    assert.equal(validateResult(parsed), true);
+    assert.equal(parsed.workflowId, "wf_complete");
+    assert.equal(parsed.status, "complete");
+    assert.equal(parsed.steps[0]?.status, "verified");
+  });
+
   it("--help exits 0 and prints usage to stdout", () => {
     const r = spawnSync(process.execPath, ["--no-warnings", cliJs, "--help"], {
       encoding: "utf8",

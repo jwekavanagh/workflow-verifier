@@ -10,7 +10,10 @@
   "scripts": {
     "build": "tsc",
     "first-run": "npm run build && node scripts/first-run.mjs",
-    "test": "npm run build && node scripts/pg-ci-init.mjs && vitest run && node --test test/reconciler.sqlite.test.mjs test/pipeline.sqlite.test.mjs test/withWorkflowVerification.test.mjs test/workflowTruthReport.test.mjs test/cli.test.mjs test/stable-failure-consistency.test.mjs test/workflow-result-consumer-contract.test.mjs test/postgres-session-readonly.test.mjs test/postgres-privilege.test.mjs test/pipeline.postgres.test.mjs test/docs-contract.test.mjs && node scripts/first-run.mjs",
+    "test:vitest": "vitest run",
+    "test:node": "node --test test/reconciler.sqlite.test.mjs test/pipeline.sqlite.test.mjs test/withWorkflowVerification.test.mjs test/workflowTruthReport.test.mjs test/cli.test.mjs test/stable-failure-consistency.test.mjs test/workflow-result-consumer-contract.test.mjs test/postgres-session-readonly.test.mjs test/postgres-privilege.test.mjs test/pipeline.postgres.test.mjs test/docs-contract.test.mjs",
+    "test:workflow-truth-contract": "node --test test/ci-workflow-truth-postgres-contract.test.mjs",
+    "test": "npm run build && node scripts/pg-ci-init.mjs && npm run test:vitest && npm run test:node && npm run test:workflow-truth-contract && node scripts/first-run.mjs",
     "example:workflow-hook": "npm run build && node examples/workflow-runner.mjs",
     "verify-workflow": "node dist/cli.js"
   },

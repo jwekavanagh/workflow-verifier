@@ -53,6 +53,9 @@ With strong, do not pass --verification-window-ms or --poll-interval-ms.
 
 Provide exactly one of --db or --postgres-url.
 
+Optional output:
+  --no-truth-report   For verdict exits 0–2, do not print the human truth report to stderr (stderr empty). stdout WorkflowResult JSON is unchanged. Exit 3 stderr is unchanged (single-line JSON envelope).
+
 Exit codes:
   0  workflow status complete
   1  workflow status inconsistent
@@ -360,6 +363,8 @@ async function main(): Promise<void> {
     throw e;
   }
 
+  const noTruthReport = args.includes("--no-truth-report");
+
   let result;
   try {
     result = await verifyWorkflow({
@@ -370,6 +375,7 @@ async function main(): Promise<void> {
         ? { kind: "postgres", connectionString: postgresUrl }
         : { kind: "sqlite", path: dbPath! },
       verificationPolicy,
+      ...(noTruthReport ? { truthReport: () => {} } : {}),
     });
   } catch (e) {
     if (e instanceof TruthLayerError) {
