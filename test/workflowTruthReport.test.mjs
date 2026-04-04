@@ -5,6 +5,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   formatWorkflowTruthReport,
+  HUMAN_REPORT_RESULT_PHRASE,
   STEP_STATUS_TRUTH_LABELS,
   TRUST_LINE_UNCERTAIN_WITHIN_WINDOW,
   TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX,
@@ -30,7 +31,7 @@ trust: TRUSTED: Every step matched the database under the configured verificatio
 run_level: (none)
 event_sequence: normal
 steps:
-  - seq=0 tool=crm.upsert_contact status=VERIFIED
+  - seq=0 tool=crm.upsert_contact result=Matched the database.
     observations: evaluated=1 of 1 in_capture_order
     intended: Upsert contact "c_ok" with fields {"name":"Alice","status":"active"}`;
 
@@ -40,10 +41,11 @@ trust: NOT TRUSTED: At least one step failed verification against the database (
 run_level: (none)
 event_sequence: normal
 steps:
-  - seq=0 tool=crm.upsert_contact status=FAILED_ROW_MISSING
+  - seq=0 tool=crm.upsert_contact result=Expected row is missing from the database (the log implies a write that is not present).
     observations: evaluated=1 of 1 in_capture_order
     category: workflow_execution
-    reason: [ROW_ABSENT] No row matched key
+    detail: No row matched key
+    reference_code: ROW_ABSENT
     intended: Upsert contact "missing_id" with fields {"name":"X","status":"Y"}`;
 
 const GOLDEN_INCOMPLETE_UNKNOWN_TOOL = `workflow_id: wf_unknown_tool
@@ -52,10 +54,11 @@ trust: NOT TRUSTED: Verification is incomplete; the workflow cannot be fully con
 run_level: (none)
 event_sequence: normal
 steps:
-  - seq=0 tool=nope.tool status=INCOMPLETE_CANNOT_VERIFY
+  - seq=0 tool=nope.tool result=This step could not be fully verified (registry, connector, or data shape issue).
     observations: evaluated=1 of 1 in_capture_order
     category: verification_setup
-    reason: [UNKNOWN_TOOL] Unknown toolId: nope.tool
+    detail: Unknown toolId: nope.tool
+    reference_code: UNKNOWN_TOOL
     intended: Unknown tool: nope.tool`;
 
 const MALFORMED_MSG =
@@ -66,10 +69,12 @@ const GOLDEN_MALFORMED = `workflow_id: wf_complete
 workflow_status: incomplete
 trust: NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
 run_level:
-  - MALFORMED_EVENT_LINE: ${MALFORMED_MSG}
+  - detail: ${MALFORMED_MSG}
     category: workflow_execution
-  - NO_STEPS_FOR_WORKFLOW: ${NO_STEPS_MSG}
+    reference_code: MALFORMED_EVENT_LINE
+  - detail: ${NO_STEPS_MSG}
     category: workflow_execution
+    reference_code: NO_STEPS_FOR_WORKFLOW
 event_sequence: normal
 steps:`;
 
@@ -77,8 +82,9 @@ const GOLDEN_EMPTY_STEPS = `workflow_id: no_such_workflow
 workflow_status: incomplete
 trust: NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
 run_level:
-  - NO_STEPS_FOR_WORKFLOW: ${NO_STEPS_MSG}
+  - detail: ${NO_STEPS_MSG}
     category: workflow_execution
+    reference_code: NO_STEPS_FOR_WORKFLOW
 event_sequence: normal
 steps:`;
 
@@ -86,11 +92,12 @@ const GOLDEN_UNKNOWN_RUN_LEVEL = `workflow_id: w
 workflow_status: complete
 trust: TRUSTED: Every step matched the database under the configured verification rules.
 run_level:
-  - UNKNOWN_CODE_X: Unknown run-level code (forward compatibility).
+  - detail: Unknown run-level code (forward compatibility).
     category: workflow_execution
+    reference_code: UNKNOWN_CODE_X
 event_sequence: normal
 steps:
-  - seq=0 tool=t status=VERIFIED
+  - seq=0 tool=t result=Matched the database.
     observations: evaluated=1 of 1 in_capture_order`;
 
 const GOLDEN_UNCERTAIN_TRUST = `workflow_id: wf_uncertain
@@ -99,10 +106,11 @@ trust: ${TRUST_LINE_UNCERTAIN_WITHIN_WINDOW}
 run_level: (none)
 event_sequence: normal
 steps:
-  - seq=0 tool=t status=UNCERTAIN_NOT_OBSERVED_WITHIN_WINDOW
+  - seq=0 tool=t result=The expected row did not appear within the verification window.
     observations: evaluated=1 of 1 in_capture_order
     category: observation_uncertainty
-    reason: [ROW_NOT_OBSERVED_WITHIN_WINDOW] No row within window`;
+    detail: No row within window
+    reference_code: ROW_NOT_OBSERVED_WITHIN_WINDOW`;
 
 describe("formatWorkflowTruthReport", () => {
   it("golden complete / inconsistent missing / incomplete unknown tool", () => {
@@ -220,7 +228,8 @@ describe("formatWorkflowTruthReport", () => {
       ),
     );
     assert.ok(out.includes("event_sequence: irregular\n"));
-    assert.ok(out.includes(`  - ${captureReason.code}: ${captureReason.message}`));
+    assert.ok(out.includes(`  - detail: ${captureReason.message}`));
+    assert.ok(out.includes(`    reference_code: ${captureReason.code}`));
     assert.ok(out.includes(`    category: workflow_execution`));
   });
 
@@ -281,7 +290,7 @@ describe("formatWorkflowTruthReport", () => {
     assert.equal(normTruthText(formatWorkflowTruthReport(r)), normTruthText(GOLDEN_UNKNOWN_RUN_LEVEL));
   });
 
-  it("multi-step: each step line uses STEP_STATUS_TRUTH_LABELS", () => {
+  it("multi-step: each step line uses HUMAN_REPORT_RESULT_PHRASE for result=", () => {
     const result = {
       schemaVersion: 5,
       workflowId: "multi",
@@ -329,8 +338,9 @@ describe("formatWorkflowTruthReport", () => {
     const out = formatWorkflowTruthReport(result);
     for (const s of result.steps) {
       const label = STEP_STATUS_TRUTH_LABELS[s.status];
+      const phrase = HUMAN_REPORT_RESULT_PHRASE[label];
       assert.ok(
-        out.includes(`seq=${s.seq} tool=${s.toolId} status=${label}`),
+        out.includes(`seq=${s.seq} tool=${s.toolId} result=${phrase}`),
         `expected step line for seq=${s.seq}`,
       );
     }
@@ -370,7 +380,7 @@ describe("formatWorkflowTruthReport", () => {
     assert.equal(normTruthText(formatWorkflowTruthReport(uncertain)), normTruthText(GOLDEN_UNCERTAIN_TRUST));
   });
 
-  it("all StepStatus values appear with correct status= token", () => {
+  it("all StepStatus values appear with correct result= phrase", () => {
     const statuses = [
       "verified",
       "missing",
@@ -412,7 +422,8 @@ describe("formatWorkflowTruthReport", () => {
     };
     const out = formatWorkflowTruthReport(r);
     for (const status of statuses) {
-      assert.ok(out.includes(`status=${STEP_STATUS_TRUTH_LABELS[status]}`));
+      const label = STEP_STATUS_TRUTH_LABELS[status];
+      assert.ok(out.includes(`result=${HUMAN_REPORT_RESULT_PHRASE[label]}`));
     }
   });
 
@@ -427,7 +438,8 @@ describe("formatWorkflowTruthReport", () => {
       eventSequenceIntegrity: { kind: "normal" },
       steps: [],
     };
-    assert.ok(formatWorkflowTruthReport(trimmed).includes("  - X: hello"));
+    assert.ok(formatWorkflowTruthReport(trimmed).includes("  - detail: hello"));
+    assert.ok(formatWorkflowTruthReport(trimmed).includes("reference_code: X"));
 
     const blank = {
       schemaVersion: 5,
@@ -439,7 +451,8 @@ describe("formatWorkflowTruthReport", () => {
       eventSequenceIntegrity: { kind: "normal" },
       steps: [],
     };
-    assert.ok(formatWorkflowTruthReport(blank).includes("  - Y: (no message)"));
+    assert.ok(formatWorkflowTruthReport(blank).includes("  - detail: (no message)"));
+    assert.ok(formatWorkflowTruthReport(blank).includes("reference_code: Y"));
   });
 
   it("empty reason message renders (no message)", () => {
@@ -466,7 +479,8 @@ describe("formatWorkflowTruthReport", () => {
       ],
     };
     const out = formatWorkflowTruthReport(r);
-    assert.ok(out.includes("reason: [CONNECTOR_ERROR] (no message)"));
+    assert.ok(out.includes("detail: (no message)"));
+    assert.ok(out.includes("reference_code: CONNECTOR_ERROR"));
   });
 
   it("reason with field appends field=", () => {
@@ -492,7 +506,9 @@ describe("formatWorkflowTruthReport", () => {
         },
       ],
     };
-    assert.ok(formatWorkflowTruthReport(r).includes("reason: [CONNECTOR_ERROR] msg field=col"));
+    const t = formatWorkflowTruthReport(r);
+    assert.ok(t.includes("detail: msg field=col"));
+    assert.ok(t.includes("reference_code: CONNECTOR_ERROR"));
   });
 
   it("newlines in toolId sanitized", () => {

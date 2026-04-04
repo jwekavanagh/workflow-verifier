@@ -30,7 +30,7 @@ This document is the authoritative specification for the MVP. The product verifi
 | `multiEffectRollup.ts` | `rollupMultiEffectsSync` / `rollupMultiEffectsAsync`: per-effect reconcile, UTF-16 sort by effect `id`, step rollup (`verified` / `partially_verified` / `inconsistent` / `incomplete_verification`) |
 | `aggregate.ts` | Workflow status precedence |
 | `verificationDiagnostics.ts` | Pinned step `failureDiagnostic`; `formatVerificationTargetSummary`; run/event-sequence `category:` helpers for human report (internal; not re-exported from package entry) |
-| `workflowTruthReport.ts` | `buildWorkflowTruthReport`, `finalizeEmittedWorkflowResult`, `formatWorkflowTruthReportStruct`, `formatWorkflowTruthReport`, `STEP_STATUS_TRUTH_LABELS`, `TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX`; human report is rendering of structured truth |
+| `workflowTruthReport.ts` | `buildWorkflowTruthReport`, `finalizeEmittedWorkflowResult`, `formatWorkflowTruthReportStruct`, `formatWorkflowTruthReport`, `HUMAN_REPORT_RESULT_PHRASE`, `STEP_STATUS_TRUTH_LABELS`, `TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX`; human report text is rendering of structured truth with plain `result=` / `detail:` lines |
 | `workflowResultNormalize.ts` | `normalizeToEmittedWorkflowResult`, `workflowEngineResultFromEmitted` (compare v5/v6 inputs) |
 | `runComparison.ts` | `buildRunComparisonReport`, `formatRunComparisonReport`, `logicalStepKeyFromStep`, `recurrenceSignature`; cross-run comparison |
 | `verificationPolicy.ts` | `VerificationPolicy` normalization/validation; `executeVerificationWithPolicySync` / `executeVerificationWithPolicyAsync` (strong vs eventual polling); `createSqlitePolicyContext` |
@@ -166,8 +166,9 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 - **stderr human / stdout JSON:** Automation keeps a single JSON record on stdout (`jq`, pipes); operators read the verdict on stderr. The CLI flag **`--no-truth-report`** yields empty stderr on verdict exits **0–2** so logs and parsers need not skip the human report (see [Batch and CLI (replay)](#batch-and-cli-replay)).
 - **Default `truthReport` to stderr:** Gives a clear truth signal without extra configuration; silent tests pass `truthReport: () => {}`.
 - **Default `logStep` no-op:** Removes the old default of one JSON object per step on stderr, which duplicated `WorkflowResult` and conflicted with the human report.
-- **Fixed `trust:` lines and step labels (`STEP_STATUS_TRUTH_LABELS`):** Stable strings for alerts, screenshots, and training; most `trust:` lines map to one `WorkflowStatus` from `aggregate.ts`, except the **eventual-window uncertainty** line which applies when `workflow_status` is `incomplete` under the narrow rule in the grammar below.
-- **Run-level lines:** Each line uses **`runLevelReasons`** from the engine payload / emitted `WorkflowResult`: `code` + `message` from each `Reason` (same literals as `failureCatalog.ts` for catalog-defined codes).
+- **Fixed `trust:` lines:** Most `trust:` lines map to one `WorkflowStatus` from `aggregate.ts`, except the **eventual-window uncertainty** line which applies when `workflow_status` is `incomplete` under the narrow rule in the grammar below.
+- **Machine-stable JSON labels (`STEP_STATUS_TRUTH_LABELS`):** The structured **`workflowTruthReport`** on stdout JSON uses fixed **`outcomeLabel`** strings (`VERIFIED`, `FAILED_ROW_MISSING`, …) for integrators and **`verify-workflow compare`**. The **human report text** uses plain-language **`result=`** phrases from **`HUMAN_REPORT_RESULT_PHRASE`** in `workflowTruthReport.ts` (same mapping table as JSON labels—see [Human text vs JSON `outcomeLabel`](#human-text-vs-json-outcomelabel) below). **Automation should key on stdout JSON**, not on parsing stderr text.
+- **Run-level and event-sequence issues:** Human text leads with **`detail:`** (trimmed `message`), then **`category:`**, then **`reference_code:`** (wire `code`). Same sources as **`runLevelReasons`** / **`eventSequenceIntegrity.reasons`**.
 - **No trailing newline inside the returned string:** The default `truthReport` implementation appends `\n` when writing to stderr.
 
 ### Structured workflow truth report (normative)
@@ -193,7 +194,7 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 
 **Classification** is implemented in **`verificationDiagnostics.ts`** (`failureDiagnosticForStep`): `incomplete_verification` reasons are mapped in fixed precedence (e.g. **`RETRY_OBSERVATIONS_DIVERGE`** → `workflow_execution`; **`MULTI_EFFECT_INCOMPLETE`** → `verification_setup`; registry/resolve and reconciler incomplete codes → `verification_setup`).
 
-**Human report (`category:`):** After each run-level reason line and each irregular `event_sequence` reason line, one line `    category: ` + the same string as above (`workflow_execution` for all current SSOT run-level and event-sequence codes). For each step with **`status !== "verified"`**, after **`observations:`**, one line `    category: ` + that step’s **`failureDiagnostic`**. When **`formatVerificationTargetSummary`** returns non-null, the next line is `    verify_target: ` + that one-line summary (table/key and required field names; truncated like operational messages).
+**Human report (`category:`):** After each run-level **`detail:`** block and each irregular `event_sequence` **`detail:`** block, one line `    category: ` + the same string as above (`workflow_execution` for all current SSOT run-level and event-sequence codes). For each step with **`status !== "verified"`**, after **`observations:`**, one line `    category: ` + that step’s **`failureDiagnostic`**. When **`formatVerificationTargetSummary`** returns non-null, the next line is `    verify_target: ` + that one-line summary (table/key and required field names; truncated like operational messages).
 
 **Migration from schema v4/v5:** Bump consumers to **`schemaVersion` 6**; read required **`workflowTruthReport`** for stable step labels and trust summary; for each step, if **`status !== "verified"`**, read **`failureDiagnostic`**. Saved **`schemaVersion` 5** files remain valid **`verify-workflow compare`** inputs (normalized in memory).
 
@@ -211,35 +212,48 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 
 2. **Run-level**
    - If `runLevelReasons` is empty: line exactly `run_level: (none)`.
-   - Otherwise: line `run_level:` then for each entry in **`runLevelReasons`** order: line `  - ` + `reason.code` + `: ` + `reason.message` (trimmed), then line `    category: ` + `workflow_execution` (four spaces before `category:`).
+   - Otherwise: line `run_level:` then for each entry in **`runLevelReasons`** order: line `  - detail: ` + `reason.message` (trimmed), or `(no message)` if empty after trim; then line `    category: ` + category from `failureDiagnosticForRunLevelCode(reason.code)`; then line `    reference_code: ` + `reason.code`.
    - `runLevelCodes[i]` always equals `runLevelReasons[i].code` (derived from `runLevelReasons` at aggregation). When there are no matching events for the workflow id, the library appends **`NO_STEPS_FOR_WORKFLOW`** with message `No tool_observed events for this workflow id after filtering.`
    - Catalog literal for **`MALFORMED_EVENT_LINE`**: `Event line was missing, invalid JSON, or failed schema validation for a tool observation.`
 
 3. **Event sequence integrity**
    - Immediately after the **run-level** block: if **`eventSequenceIntegrity.kind`** is **`normal`**, line exactly `event_sequence: normal`.
-   - If **`kind`** is **`irregular`**: line `event_sequence: irregular`, then for each entry in **`eventSequenceIntegrity.reasons`** in array order: line `  - ` + `reason.code` + `: ` + `reason.message` (trimmed), then line `    category: ` + `workflow_execution`.
+   - If **`kind`** is **`irregular`**: line `event_sequence: irregular`, then for each entry in **`eventSequenceIntegrity.reasons`** in array order: line `  - detail: ` + `reason.message` (trimmed), or `(no message)` if empty after trim; then line `    category: ` + `workflow_execution`; then line `    reference_code: ` + `reason.code`.
    - **Codes and messages** for these reasons are defined in **`EVENT_SEQUENCE_MESSAGES`** and **`eventSequenceTimestampNotMonotonicReason`** in `failureCatalog.ts` (SSOT for wire `message` strings).
 
 4. **Steps**
    - Line exactly `steps:`.
-   - For each step in array order: one line `  - seq=` + decimal seq + ` tool=` + toolId + ` status=` + label, where label is from **`STEP_STATUS_TRUTH_LABELS`** (defensive: `\r`/`\n` in toolId → `_`). Status → label mapping:
+   - For each step in array order: one line `  - seq=` + decimal seq + ` tool=` + toolId + ` result=` + plain phrase, where the phrase is **`HUMAN_REPORT_RESULT_PHRASE[outcomeLabel]`** in `workflowTruthReport.ts` and **`outcomeLabel`** is from **`STEP_STATUS_TRUTH_LABELS`** for that step status (defensive: `\r`/`\n` in toolId → `_`). Status → JSON **`outcomeLabel`** (and thus human **`result=`**) mapping:
 
-| Step status | Label |
-|-------------|--------|
-| `verified` | `VERIFIED` |
-| `missing` | `FAILED_ROW_MISSING` |
-| `inconsistent` | `FAILED_VALUE_MISMATCH` |
-| `incomplete_verification` | `INCOMPLETE_CANNOT_VERIFY` |
-| `partially_verified` | `PARTIALLY_VERIFIED` |
-| `uncertain` | `UNCERTAIN_NOT_OBSERVED_WITHIN_WINDOW` |
+| Step status | JSON `outcomeLabel` | Human `result=` phrase (exact strings in `HUMAN_REPORT_RESULT_PHRASE`) |
+|-------------|---------------------|------------------------------------------------------------------------|
+| `verified` | `VERIFIED` | `Matched the database.` |
+| `missing` | `FAILED_ROW_MISSING` | `Expected row is missing from the database (the log implies a write that is not present).` |
+| `inconsistent` | `FAILED_VALUE_MISMATCH` | `A row was found, but required values do not match.` |
+| `incomplete_verification` | `INCOMPLETE_CANNOT_VERIFY` | `This step could not be fully verified (registry, connector, or data shape issue).` |
+| `partially_verified` | `PARTIALLY_VERIFIED` | `Some intended database effects matched; others did not.` |
+| `uncertain` | `UNCERTAIN_NOT_OBSERVED_WITHIN_WINDOW` | `The expected row did not appear within the verification window.` |
 
    - Immediately after that header line: exactly one line `    observations: evaluated=` + decimal `evaluatedObservationOrdinal` + ` of ` + decimal `repeatObservationCount` + ` in_capture_order` (four spaces before `observations:`; no trailing spaces; no period).
    - If **`status !== "verified"`**: next line `    category: ` + that step’s **`failureDiagnostic`** (must match JSON). If a non-null verification target summary is defined for the step’s **`verificationRequest`**, the following line is `    verify_target: ` + that summary; otherwise no `verify_target:` line.
-   - For each reason: `    reason: [` + code + `] ` + trimmed message, or `(no message)` if the message is empty after trim; if `field` is set and non-empty, append ` field=` + field value.
+   - For each step-level reason: line `    detail: ` + trimmed message, or `(no message)` if empty after trim; if `field` is set and non-empty, append ` field=` + field value to the same line; then line `    reference_code: ` + code.
    - If `intendedEffect` is non-empty after trim: `    intended: ` + single-line text (each `\r`/`\n` replaced by ASCII space, runs of spaces collapsed, trimmed).
-   - **Multi-effect steps:** when `evidenceSummary.effects` is present (see [Workflow result: multi-effect shape](#workflow-result-multi-effect-shape)), after `intended:` (if any), emit one line per effect in **UTF-16 lexicographic order of effect `id`** (same comparator as `canonicalJsonForParams` object keys): `    effect: id=` + id + ` status=` + per-effect label, where per-effect labels use the same mapping as the table above **except** `partially_verified` does not appear at the effect level. For each effect with non-empty `reasons`, emit `      reason: [` + code + `] ` + message (six spaces before `reason:`), with optional ` field=` as for step-level reasons.
+   - **Multi-effect steps:** when `evidenceSummary.effects` is present (see [Workflow result: multi-effect shape](#workflow-result-multi-effect-shape)), after `intended:` (if any), emit one line per effect in **UTF-16 lexicographic order of effect `id`** (same comparator as `canonicalJsonForParams` object keys): `    effect: id=` + id + ` result=` + phrase from **`HUMAN_REPORT_EFFECT_RESULT_PHRASE`** (same mapping as the table above for effect-level statuses; **`partially_verified`** does not appear at the effect level). For each effect reason: line `      detail: ` + message (same rules as step-level), then `      reference_code: ` + code (six spaces before `detail:` and `reference_code:`).
 
-**Engineer note:** Any change to fixed sentences or labels requires updating golden tests and `test/docs-contract.test.mjs` pins.
+**Engineer note:** Any change to fixed sentences or phrases requires updating golden tests and `test/docs-contract.test.mjs` pins.
+
+#### Human text vs JSON `outcomeLabel`
+
+| Human report `result=` (prefix) | JSON `workflowTruthReport.steps[].outcomeLabel` | Typical `WorkflowResult.steps[].status` |
+|---------------------------------|-------------------------------------------------|----------------------------------------|
+| `Matched the database.` | `VERIFIED` | `verified` |
+| `Expected row is missing from the database` … | `FAILED_ROW_MISSING` | `missing` |
+| `A row was found, but required values do not match.` | `FAILED_VALUE_MISMATCH` | `inconsistent` |
+| `This step could not be fully verified` … | `INCOMPLETE_CANNOT_VERIFY` | `incomplete_verification` |
+| `Some intended database effects matched` … | `PARTIALLY_VERIFIED` | `partially_verified` |
+| `The expected row did not appear within the verification window.` | `UNCERTAIN_NOT_OBSERVED_WITHIN_WINDOW` | `uncertain` |
+
+Step- and effect-level **`detail:`** / **`reference_code:`** pairs align with **`reasons[].message`** and **`reasons[].code`** on the same object in stdout JSON. **Alerts and automation** should prefer **`stdout` JSON** or structured **`workflowTruthReport`**, not regex on stderr, because human wording may evolve while JSON labels stay versioned. Older integrations that matched human lines containing **`status=`** must migrate to JSON fields or to **`result=`** / **`reference_code:`** lines.
 
 ### Operator
 

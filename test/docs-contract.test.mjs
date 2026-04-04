@@ -41,7 +41,10 @@ const REQUIRED = [
   "redact params in retained logs",
   "truthReport",
   "formatWorkflowTruthReport",
+  "HUMAN_REPORT_RESULT_PHRASE",
   "STEP_STATUS_TRUTH_LABELS",
+  "reference_code:",
+  "result=",
   "workflow_id:",
   "workflow_status:",
   "run_level:",
@@ -106,6 +109,9 @@ const REQUIRED = [
   "validate-registry",
   "examples/templates/",
   "validateToolsRegistry",
+  "## The problem (and cost of ignoring it)",
+  "## Is this for you?",
+  "## How this differs from logs, tests, and observability",
 ];
 
 describe("docs contract (SSOT + README)", () => {
@@ -116,5 +122,28 @@ describe("docs contract (SSOT + README)", () => {
     for (const s of REQUIRED) {
       assert.ok(bundle.includes(s), `missing substring: ${s.slice(0, 60)}…`);
     }
+  });
+
+  it("README above-the-fold covers visitor outcomes (problem, persona, differentiation, try path)", () => {
+    const readme = readFileSync(join(root, "README.md"), "utf8");
+    const head = readme.slice(0, 5500);
+    assert.ok(
+      head.includes("## The problem (and cost of ignoring it)"),
+      "problem section in first screen",
+    );
+    assert.ok(head.includes("## Is this for you?"), "persona section in first screen");
+    assert.ok(
+      head.includes("## How this differs from logs, tests, and observability"),
+      "differentiation section in first screen",
+    );
+    assert.ok(head.includes("## Try it in under five minutes"), "fast try path before deep CI");
+    assert.ok(
+      /If you ignore that gap/i.test(head) && /cost/i.test(head),
+      "cost of inaction stated in prose",
+    );
+    assert.ok(
+      /This is for you if/i.test(head) && /This is not for you if/i.test(head),
+      "self-identification lists",
+    );
   });
 });

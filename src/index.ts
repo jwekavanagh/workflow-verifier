@@ -42,6 +42,7 @@ export {
   finalizeEmittedWorkflowResult,
   formatWorkflowTruthReport,
   formatWorkflowTruthReportStruct,
+  HUMAN_REPORT_RESULT_PHRASE,
   STEP_STATUS_TRUTH_LABELS,
   TRUST_LINE_UNCERTAIN_WITHIN_WINDOW,
   TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX,

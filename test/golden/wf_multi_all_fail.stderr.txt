@@ -4,13 +4,16 @@ trust: NOT TRUSTED: At least one step failed verification against the database (
 run_level: (none)
 event_sequence: normal
 steps:
-  - seq=0 tool=demo.multi_contact status=FAILED_VALUE_MISMATCH
+  - seq=0 tool=demo.multi_contact result=A row was found, but required values do not match.
     observations: evaluated=1 of 1 in_capture_order
     category: workflow_execution
     verify_target: sql_effects count=2 primary:contacts.id=missing_one; secondary:contacts.id=missing_two
-    reason: [MULTI_EFFECT_ALL_FAILED] All 2 effects failed: primary, secondary
+    detail: All 2 effects failed: primary, secondary
+    reference_code: MULTI_EFFECT_ALL_FAILED
     intended: Multi "missing_one" "missing_two"
-    effect: id=primary status=FAILED_ROW_MISSING
-      reason: [ROW_ABSENT] No row matched key (table=contacts id=missing_one)
-    effect: id=secondary status=FAILED_ROW_MISSING
-      reason: [ROW_ABSENT] No row matched key (table=contacts id=missing_two)
+    effect: id=primary result=Expected row is missing from the database (the log implies a write that is not present).
+      detail: No row matched key (table=contacts id=missing_one)
+      reference_code: ROW_ABSENT
+    effect: id=secondary result=Expected row is missing from the database (the log implies a write that is not present).
+      detail: No row matched key (table=contacts id=missing_two)
+      reference_code: ROW_ABSENT

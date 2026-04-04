@@ -58,6 +58,8 @@ describe("withWorkflowVerification", () => {
     assert.equal(typeof api.formatWorkflowTruthReport, "function");
     assert.equal(Object.hasOwn(api, "STEP_STATUS_TRUTH_LABELS"), true);
     assert.equal(api.STEP_STATUS_TRUTH_LABELS.verified, "VERIFIED");
+    assert.equal(Object.hasOwn(api, "HUMAN_REPORT_RESULT_PHRASE"), true);
+    assert.equal(api.HUMAN_REPORT_RESULT_PHRASE.VERIFIED, "Matched the database.");
     assert.equal(Object.hasOwn(api, "createWorkflowVerificationSession"), false);
     assert.equal(Object.hasOwn(api, "finish"), false);
   });

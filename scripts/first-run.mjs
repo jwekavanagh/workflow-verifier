@@ -75,16 +75,16 @@ const verifyOpts = {
 println("Execution Truth Layer — first run");
 println("");
 println(
-  "This tool checks tool-call logs (NDJSON) against real database rows—not the agent’s own success message.",
+  "We compare what your tool log claims happened against what is actually in SQL—because an agent saying “done” is not proof a row exists.",
 );
-println("You will see two examples: one where the database matches the log, and one where it does not.");
+println(
+  "Example 1: the log and DB agree. Example 2: the log claims a contact write, but that row is missing—a failure logs and green checkmarks often miss.",
+);
 println("");
 
+println("[1/2] Workflow wf_complete — expected: DB contains the contact row the log describes.");
 println(
-  "[1/2] Workflow wf_complete — the log says crm.upsert_contact ran for record id c_ok with Alice/active.",
-);
-println(
-  "The bundled SQLite database has that contact row. Expect verification to succeed (complete / verified).",
+  "The log records crm.upsert_contact for id c_ok (Alice, active). The seeded SQLite DB has that row. Actual: verification should report complete / verified.",
 );
 println("");
 
@@ -104,11 +104,9 @@ if (!s1 || s1.status !== "verified") {
 }
 
 println("");
+println("[2/2] Workflow wf_missing — expected: same tool call shape, but the DB has no row for that id.");
 println(
-  "[2/2] Workflow wf_missing — the log shows the same tool for record id missing_id, as if that row were written.",
-);
-println(
-  "There is no contacts row for missing_id in the database. The log and reality disagree; expect inconsistent / missing / ROW_ABSENT.",
+  "The log records crm.upsert_contact for missing_id as if the write succeeded. Actual: no contacts row for missing_id—verification should flag inconsistent / missing with ROW_ABSENT in the JSON (see human report for plain wording).",
 );
 println("");
 

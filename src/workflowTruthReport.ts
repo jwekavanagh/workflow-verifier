@@ -17,6 +17,26 @@ import type {
   WorkflowTruthStep,
 } from "./types.js";
 
+/** Plain-language `result=` line in the human report only. JSON `outcomeLabel` stays machine-stable (see STEP_STATUS_TRUTH_LABELS). */
+export const HUMAN_REPORT_RESULT_PHRASE: Record<WorkflowTruthStep["outcomeLabel"], string> = {
+  VERIFIED: "Matched the database.",
+  FAILED_ROW_MISSING:
+    "Expected row is missing from the database (the log implies a write that is not present).",
+  FAILED_VALUE_MISMATCH: "A row was found, but required values do not match.",
+  INCOMPLETE_CANNOT_VERIFY:
+    "This step could not be fully verified (registry, connector, or data shape issue).",
+  PARTIALLY_VERIFIED: "Some intended database effects matched; others did not.",
+  UNCERTAIN_NOT_OBSERVED_WITHIN_WINDOW:
+    "The expected row did not appear within the verification window.",
+};
+
+const HUMAN_REPORT_EFFECT_RESULT_PHRASE: Record<WorkflowTruthEffect["outcomeLabel"], string> = {
+  VERIFIED: HUMAN_REPORT_RESULT_PHRASE.VERIFIED,
+  FAILED_ROW_MISSING: HUMAN_REPORT_RESULT_PHRASE.FAILED_ROW_MISSING,
+  FAILED_VALUE_MISMATCH: HUMAN_REPORT_RESULT_PHRASE.FAILED_VALUE_MISMATCH,
+  INCOMPLETE_CANNOT_VERIFY: HUMAN_REPORT_RESULT_PHRASE.INCOMPLETE_CANNOT_VERIFY,
+};
+
 export const STEP_STATUS_TRUTH_LABELS: Record<StepStatus, string> = {
   verified: "VERIFIED",
   missing: "FAILED_ROW_MISSING",
@@ -116,6 +136,17 @@ function copyReason(r: Reason): Reason {
   return out;
 }
 
+function pushHumanReasonLines(lines: string[], r: Reason, indent: string): void {
+  const msg = r.message.trim();
+  const human = msg.length > 0 ? msg : "(no message)";
+  let detailLine = `${indent}detail: ${human}`;
+  if (r.field !== undefined && r.field.length > 0) {
+    detailLine += ` field=${r.field}`;
+  }
+  lines.push(detailLine);
+  lines.push(`${indent}reference_code: ${r.code}`);
+}
+
 function buildTruthStep(s: StepOutcome): WorkflowTruthStep {
   const label = STEP_STATUS_TRUTH_LABELS[s.status] as WorkflowTruthStep["outcomeLabel"];
   const vt = formatVerificationTargetSummary(s.verificationRequest);
@@ -210,8 +241,9 @@ export function formatWorkflowTruthReportStruct(truth: WorkflowTruthReport): str
     for (const r of truth.runLevelIssues) {
       const msg = r.message.trim();
       const human = msg.length > 0 ? msg : "(no message)";
-      lines.push(`  - ${r.code}: ${human}`);
+      lines.push(`  - detail: ${human}`);
       lines.push(`    category: ${r.category}`);
+      lines.push(`    reference_code: ${r.code}`);
     }
   }
 
@@ -222,15 +254,17 @@ export function formatWorkflowTruthReportStruct(truth: WorkflowTruthReport): str
     for (const r of truth.eventSequence.issues) {
       const msg = r.message.trim();
       const human = msg.length > 0 ? msg : "(no message)";
-      lines.push(`  - ${r.code}: ${human}`);
+      lines.push(`  - detail: ${human}`);
       lines.push(`    category: ${r.category}`);
+      lines.push(`    reference_code: ${r.code}`);
     }
   }
 
   lines.push("steps:");
   for (const s of truth.steps) {
     const toolId = sanitizeOneLineId(s.toolId);
-    lines.push(`  - seq=${s.seq} tool=${toolId} status=${s.outcomeLabel}`);
+    const resultPhrase = HUMAN_REPORT_RESULT_PHRASE[s.outcomeLabel];
+    lines.push(`  - seq=${s.seq} tool=${toolId} result=${resultPhrase}`);
     lines.push(
       `    observations: evaluated=${s.observations.evaluatedOrdinal} of ${s.observations.repeatCount} in_capture_order`,
     );
@@ -242,13 +276,7 @@ export function formatWorkflowTruthReportStruct(truth: WorkflowTruthReport): str
       }
     }
     for (const r of s.reasons) {
-      const msg = r.message.trim();
-      const human = msg.length > 0 ? msg : "(no message)";
-      let line = `    reason: [${r.code}] ${human}`;
-      if (r.field !== undefined && r.field.length > 0) {
-        line += ` field=${r.field}`;
-      }
-      lines.push(line);
+      pushHumanReasonLines(lines, r, "    ");
     }
     if (s.intendedEffect.length > 0) {
       lines.push(`    intended: ${s.intendedEffect}`);
@@ -257,15 +285,10 @@ export function formatWorkflowTruthReportStruct(truth: WorkflowTruthReport): str
     if (s.effects !== undefined) {
       for (const eff of s.effects) {
         const eid = sanitizeOneLineId(eff.id);
-        lines.push(`    effect: id=${eid} status=${eff.outcomeLabel}`);
+        const effPhrase = HUMAN_REPORT_EFFECT_RESULT_PHRASE[eff.outcomeLabel];
+        lines.push(`    effect: id=${eid} result=${effPhrase}`);
         for (const r of eff.reasons) {
-          const msg = r.message.trim();
-          const human = msg.length > 0 ? msg : "(no message)";
-          let line = `      reason: [${r.code}] ${human}`;
-          if (r.field !== undefined && r.field.length > 0) {
-            line += ` field=${r.field}`;
-          }
-          lines.push(line);
+          pushHumanReasonLines(lines, r, "      ");
         }
       }
     }

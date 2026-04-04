@@ -4,12 +4,14 @@ trust: NOT TRUSTED: At least one step failed verification against the database (
 run_level: (none)
 event_sequence: normal
 steps:
-  - seq=0 tool=demo.multi_contact status=PARTIALLY_VERIFIED
+  - seq=0 tool=demo.multi_contact result=Some intended database effects matched; others did not.
     observations: evaluated=1 of 1 in_capture_order
     category: workflow_execution
     verify_target: sql_effects count=2 primary:contacts.id=c_ok; secondary:contacts.id=c_partial
-    reason: [MULTI_EFFECT_PARTIAL] Verified 1 of 2 effects; not verified: secondary
+    detail: Verified 1 of 2 effects; not verified: secondary
+    reference_code: MULTI_EFFECT_PARTIAL
     intended: Multi "c_ok" "c_partial"
-    effect: id=primary status=VERIFIED
-    effect: id=secondary status=FAILED_VALUE_MISMATCH
-      reason: [VALUE_MISMATCH] Expected "Alice" but found null for field name (table=contacts id=c_partial) field=name
+    effect: id=primary result=Matched the database.
+    effect: id=secondary result=A row was found, but required values do not match.
+      detail: Expected "Alice" but found null for field name (table=contacts id=c_partial) field=name
+      reference_code: VALUE_MISMATCH
