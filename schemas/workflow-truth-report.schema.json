@@ -11,10 +11,12 @@
     "runLevelIssues",
     "eventSequence",
     "steps",
-    "failureAnalysis"
+    "failureAnalysis",
+    "executionPathFindings",
+    "executionPathSummary"
   ],
   "properties": {
-    "schemaVersion": { "const": 3 },
+    "schemaVersion": { "const": 4 },
     "workflowId": { "type": "string" },
     "workflowStatus": {
       "type": "string",
@@ -56,9 +58,61 @@
     },
     "failureAnalysis": {
       "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/failureAnalysis" }]
-    }
+    },
+    "executionPathFindings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/executionPathFinding" }
+    },
+    "executionPathSummary": { "type": "string", "maxLength": 4096 }
   },
   "$defs": {
+    "pathConcernCategory": {
+      "type": "string",
+      "enum": [
+        "context_quality",
+        "decision_execution",
+        "tool_selection_execution",
+        "action_inputs_invalid",
+        "workflow_completeness",
+        "capture_integrity"
+      ]
+    },
+    "pathFindingSeverity": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "executionPathEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope"],
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": ["run_context", "run_level", "event_sequence", "step"]
+        },
+        "codes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "ingestIndex": { "type": "integer", "minimum": 0 },
+        "seq": { "type": "integer", "minimum": 0 },
+        "toolId": { "type": "string" },
+        "source": { "type": "string" },
+        "runEventId": { "type": ["string", "null"] }
+      }
+    },
+    "executionPathFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "concernCategory", "message", "evidence"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "severity": { "$ref": "#/$defs/pathFindingSeverity" },
+        "concernCategory": { "$ref": "#/$defs/pathConcernCategory" },
+        "message": { "type": "string", "maxLength": 2048 },
+        "evidence": { "$ref": "#/$defs/executionPathEvidence" }
+      }
+    },
     "failureOrigin": {
       "type": "string",
       "enum": [

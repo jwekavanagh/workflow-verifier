@@ -7,13 +7,13 @@
   "artifacts": {
     "workflowResult": {
       "relativePath": "workflow-result.json",
-      "sha256": "e3566b3a06430868d71e9287dfd6c6c520a3da027aabea01951d407ee131dc2f",
-      "byteLength": 4
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "byteLength": 3
     },
     "events": {
       "relativePath": "events.ndjson",
-      "sha256": "63e3dd7aab40d0ec65388b939635accc366537110fbad97fa36506571734dd49",
-      "byteLength": 182
+      "sha256": "24af387aef1e701e77eabb172fe16d6a3dfb4837301ec46d7c1f69802943fc39",
+      "byteLength": 181
     }
   }
 }

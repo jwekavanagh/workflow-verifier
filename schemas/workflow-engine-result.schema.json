@@ -80,7 +80,10 @@
         "controlEvents",
         "modelTurnEvents",
         "toolSkippedEvents",
-        "toolObservedIngestIndexBySeq"
+        "toolObservedIngestIndexBySeq",
+        "firstToolObservedIngestIndex",
+        "hasRunCompletedControl",
+        "lastRunEvent"
       ],
       "properties": {
         "maxWireSchemaVersion": { "type": "integer", "enum": [1, 2] },
@@ -94,7 +97,8 @@
               "ingestIndex": { "type": "integer", "minimum": 0 },
               "runEventId": { "type": ["string", "null"] },
               "source": { "type": "string" },
-              "status": { "type": "string", "enum": ["ok", "empty", "error"] }
+              "status": { "type": "string", "enum": ["ok", "empty", "error"] },
+              "hitCount": { "type": "integer", "minimum": 0 }
             }
           }
         },
@@ -148,6 +152,37 @@
         "toolObservedIngestIndexBySeq": {
           "type": "object",
           "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "firstToolObservedIngestIndex": {
+          "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0 }]
+        },
+        "hasRunCompletedControl": { "type": "boolean" },
+        "lastRunEvent": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["ingestIndex", "type"],
+              "properties": {
+                "ingestIndex": { "type": "integer", "minimum": 0 },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "tool_observed",
+                    "model_turn",
+                    "retrieval",
+                    "control",
+                    "tool_skipped"
+                  ]
+                },
+                "modelTurnStatus": {
+                  "type": "string",
+                  "enum": ["completed", "error", "aborted", "incomplete"]
+                }
+              }
+            }
+          ]
         }
       }
     },

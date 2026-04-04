@@ -73,6 +73,9 @@ describe("buildFailureAnalysis precedence", () => {
       modelTurnEvents: [],
       toolSkippedEvents: [],
       toolObservedIngestIndexBySeq: { "0": 2 },
+      firstToolObservedIngestIndex: 2,
+      hasRunCompletedControl: false,
+      lastRunEvent: { ingestIndex: 2, type: "tool_observed" },
     };
     const a = buildFailureAnalysis(
       engine({
@@ -108,6 +111,9 @@ describe("buildFailureAnalysis precedence", () => {
       modelTurnEvents: [{ ingestIndex: 1, runEventId: "m1", status: "error" }],
       toolSkippedEvents: [],
       toolObservedIngestIndexBySeq: { "0": 3 },
+      firstToolObservedIngestIndex: 3,
+      hasRunCompletedControl: false,
+      lastRunEvent: { ingestIndex: 3, type: "tool_observed" },
     };
     const a = buildFailureAnalysis(
       engine({
@@ -142,6 +148,9 @@ describe("buildFailureAnalysis precedence", () => {
       modelTurnEvents: [{ ingestIndex: 0, runEventId: "m1", status: "error" }],
       toolSkippedEvents: [],
       toolObservedIngestIndexBySeq: { "0": 1 },
+      firstToolObservedIngestIndex: 1,
+      hasRunCompletedControl: false,
+      lastRunEvent: { ingestIndex: 1, type: "tool_observed" },
     };
     const a = buildFailureAnalysis(
       engine({

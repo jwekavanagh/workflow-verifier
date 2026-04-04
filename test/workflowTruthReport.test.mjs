@@ -31,6 +31,7 @@ function normTruthText(s) {
 const GOLDEN_COMPLETE = `workflow_id: wf_complete
 workflow_status: complete
 trust: TRUSTED: Every step matched the database under the configured verification rules.
+execution_path: Full upstream execution-path visibility requires schemaVersion 2 run events (retrieval, model_turn, control, tool_skipped) with run graph fields.
 run_level: (none)
 event_sequence: normal
 steps:
@@ -41,6 +42,7 @@ steps:
 const GOLDEN_MISSING = `workflow_id: wf_missing
 workflow_status: inconsistent
 trust: NOT TRUSTED: At least one step failed verification against the database (determinate failure).
+execution_path: Full upstream execution-path visibility requires schemaVersion 2 run events (retrieval, model_turn, control, tool_skipped) with run graph fields.
 diagnosis:
   summary: Primary failure at seq 0 tool crm.upsert_contact (code ROW_ABSENT); origin: downstream_system_state.
   primary_origin: downstream_system_state
@@ -64,6 +66,9 @@ steps:
 const GOLDEN_INCOMPLETE_UNKNOWN_TOOL = `workflow_id: wf_unknown_tool
 workflow_status: incomplete
 trust: NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
+execution_path: execution_path_concerns=1; codes=ACTION_INPUT_RESOLUTION_FAILED
+  - path_finding: code=ACTION_INPUT_RESOLUTION_FAILED severity=high concern=action_inputs_invalid scope=step codes=UNKNOWN_TOOL seq=0 tool=nope.tool
+    detail: Tool nope.tool at seq 0: parameter/registry resolution failed (UNKNOWN_TOOL).
 diagnosis:
   summary: Primary failure at seq 0 tool nope.tool (code UNKNOWN_TOOL); origin: tool_use.
   primary_origin: tool_use
@@ -87,6 +92,9 @@ const NO_STEPS_MSG = "No tool_observed events for this workflow id after filteri
 const GOLDEN_MALFORMED = `workflow_id: wf_complete
 workflow_status: incomplete
 trust: NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
+execution_path: execution_path_concerns=1; codes=RUN_LEVEL_INGEST_ISSUES
+  - path_finding: code=RUN_LEVEL_INGEST_ISSUES severity=high concern=capture_integrity scope=run_level codes=MALFORMED_EVENT_LINE,NO_STEPS_FOR_WORKFLOW
+    detail: Run-level ingest or parse issues (MALFORMED_EVENT_LINE, NO_STEPS_FOR_WORKFLOW).
 diagnosis:
   summary: Run-level ingest or planning issue (MALFORMED_EVENT_LINE, NO_STEPS_FOR_WORKFLOW); origin: inputs.
   primary_origin: inputs
@@ -106,6 +114,9 @@ steps:`;
 const GOLDEN_EMPTY_STEPS = `workflow_id: no_such_workflow
 workflow_status: incomplete
 trust: NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
+execution_path: execution_path_concerns=1; codes=RUN_LEVEL_INGEST_ISSUES
+  - path_finding: code=RUN_LEVEL_INGEST_ISSUES severity=high concern=capture_integrity scope=run_level codes=NO_STEPS_FOR_WORKFLOW
+    detail: Run-level ingest or parse issues (NO_STEPS_FOR_WORKFLOW).
 diagnosis:
   summary: Run-level ingest or planning issue (NO_STEPS_FOR_WORKFLOW); origin: workflow_flow.
   primary_origin: workflow_flow
@@ -122,6 +133,9 @@ steps:`;
 const GOLDEN_UNKNOWN_RUN_LEVEL = `workflow_id: w
 workflow_status: complete
 trust: TRUSTED: Every step matched the database under the configured verification rules.
+execution_path: execution_path_concerns=1; codes=RUN_LEVEL_INGEST_ISSUES
+  - path_finding: code=RUN_LEVEL_INGEST_ISSUES severity=high concern=capture_integrity scope=run_level codes=UNKNOWN_CODE_X
+    detail: Run-level ingest or parse issues (UNKNOWN_CODE_X).
 run_level:
   - detail: Unknown run-level code (forward compatibility).
     category: workflow_execution
@@ -134,6 +148,7 @@ steps:
 const GOLDEN_UNCERTAIN_TRUST = `workflow_id: wf_uncertain
 workflow_status: incomplete
 trust: ${TRUST_LINE_UNCERTAIN_WITHIN_WINDOW}
+execution_path: Full upstream execution-path visibility requires schemaVersion 2 run events (retrieval, model_turn, control, tool_skipped) with run graph fields.
 diagnosis:
   summary: Primary failure at seq 0 tool t (code ROW_NOT_OBSERVED_WITHIN_WINDOW); origin: downstream_system_state.
   primary_origin: downstream_system_state
@@ -262,12 +277,9 @@ describe("formatWorkflowTruthReport", () => {
     const baseTrust =
       "TRUSTED: Every step matched the database under the configured verification rules.";
     assert.ok(
-      out.startsWith(
-        normTruthText(
-          `workflow_id: w\nworkflow_status: complete\ntrust: ${baseTrust} ${TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX}\n`,
-        ),
-      ),
+      out.includes(`trust: ${baseTrust} ${TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX}`),
     );
+    assert.ok(out.includes("EVENT_SEQUENCE_IRREGULAR"));
     assert.ok(out.includes("event_sequence: irregular\n"));
     assert.ok(out.includes(`  - detail: ${captureReason.message}`));
     assert.ok(out.includes(`    reference_code: ${captureReason.code}`));

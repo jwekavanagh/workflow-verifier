@@ -19,6 +19,7 @@ const rows: RunListItem[] = [
     toolIds: ["t1"],
     customerId: UNSPECIFIED_CUSTOMER,
     primaryReasonCodes: [],
+    pathFindingCodes: [],
     capturedAtEffectiveMs: 1000,
   },
   {
@@ -30,6 +31,7 @@ const rows: RunListItem[] = [
     toolIds: ["crm.x"],
     customerId: "cust-1",
     primaryReasonCodes: ["VALUE_MISMATCH"],
+    pathFindingCodes: ["MISSING_RUN_COMPLETED", "NO_RETRIEVAL_EVENTS"],
     capturedAtEffectiveMs: 2000,
   },
   {
@@ -38,6 +40,7 @@ const rows: RunListItem[] = [
     toolIds: [],
     customerId: UNSPECIFIED_CUSTOMER,
     primaryReasonCodes: ["MISSING_EVENTS"],
+    pathFindingCodes: [],
     capturedAtEffectiveMs: 500,
     error: { code: "MISSING_EVENTS", message: "x" },
   },
@@ -77,5 +80,12 @@ describe("debugRunFilters", () => {
     const sp = new URLSearchParams();
     sp.set("cursor", encodeCursor(5));
     expect(parseLimitCursor(sp).offset).toBe(5);
+  });
+
+  it("hasPathFindings true keeps only ok rows with pathFindingCodes", () => {
+    const q = parseRunListQuery(new URLSearchParams("hasPathFindings=true"));
+    expect(matchesRunListQuery(rows[0]!, q)).toBe(false);
+    expect(matchesRunListQuery(rows[1]!, q)).toBe(true);
+    expect(matchesRunListQuery(rows[2]!, q)).toBe(false);
   });
 });

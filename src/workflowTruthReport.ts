@@ -1,4 +1,8 @@
 import { deriveActionableFailureWorkflow } from "./actionableFailure.js";
+import {
+  buildExecutionPathFindings,
+  buildExecutionPathSummary,
+} from "./executionPathFindings.js";
 import { buildFailureAnalysis } from "./failureAnalysis.js";
 import {
   failureDiagnosticForEventSequenceCode,
@@ -219,8 +223,15 @@ export function buildWorkflowTruthReport(engine: WorkflowEngineResult): Workflow
           actionableFailure: deriveActionableFailureWorkflow(engine, failureAnalysisBase),
         };
 
+  const ctx = engine.verificationRunContext;
+  const executionPathFindings = buildExecutionPathFindings(engine);
+  const executionPathSummary = buildExecutionPathSummary(
+    executionPathFindings,
+    ctx.maxWireSchemaVersion,
+  );
+
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     workflowId: engine.workflowId,
     workflowStatus: engine.status,
     trustSummary: trustSummaryForEngine(engine),
@@ -228,13 +239,15 @@ export function buildWorkflowTruthReport(engine: WorkflowEngineResult): Workflow
     eventSequence,
     steps: engine.steps.map(buildTruthStep),
     failureAnalysis,
+    executionPathFindings,
+    executionPathSummary,
   };
 }
 
 export function finalizeEmittedWorkflowResult(engine: WorkflowEngineResult): WorkflowResult {
   return {
     ...engine,
-    schemaVersion: 8,
+    schemaVersion: 9,
     workflowTruthReport: buildWorkflowTruthReport(engine),
   };
 }
@@ -245,6 +258,22 @@ export function formatWorkflowTruthReportStruct(truth: WorkflowTruthReport): str
   lines.push(`workflow_id: ${sanitizeOneLineId(truth.workflowId)}`);
   lines.push(`workflow_status: ${truth.workflowStatus}`);
   lines.push(`trust: ${truth.trustSummary}`);
+  lines.push(`execution_path: ${truth.executionPathSummary}`);
+  for (const pf of truth.executionPathFindings) {
+    const parts = [
+      `code=${sanitizeOneLineId(pf.code)}`,
+      `severity=${pf.severity}`,
+      `concern=${pf.concernCategory}`,
+    ];
+    parts.push(`scope=${pf.evidence.scope}`);
+    if (pf.evidence.codes !== undefined) parts.push(`codes=${pf.evidence.codes.join(",")}`);
+    if (pf.evidence.ingestIndex !== undefined) parts.push(`ingest_index=${pf.evidence.ingestIndex}`);
+    if (pf.evidence.seq !== undefined) parts.push(`seq=${pf.evidence.seq}`);
+    if (pf.evidence.toolId !== undefined) parts.push(`tool=${sanitizeOneLineId(pf.evidence.toolId)}`);
+    if (pf.evidence.source !== undefined) parts.push(`source=${sanitizeOneLineId(pf.evidence.source)}`);
+    lines.push(`  - path_finding: ${parts.join(" ")}`);
+    lines.push(`    detail: ${pf.message.replace(/\r\n|\r|\n/g, " ").trim()}`);
+  }
 
   if (truth.failureAnalysis !== null) {
     const d = truth.failureAnalysis;

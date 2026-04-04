@@ -14,6 +14,8 @@ export type RunListItem = {
   toolIds: string[];
   customerId: string;
   primaryReasonCodes: string[];
+  /** Sorted unique `executionPathFindings[].code` from workflow truth report. */
+  pathFindingCodes: string[];
   capturedAtEffectiveMs: number;
   error?: { code: string; message: string };
 };
@@ -42,11 +44,17 @@ export function runListItemFromOutcome(outcome: CorpusRunOutcome, runIndex: numb
       toolIds: [],
       customerId: effectiveCustomerId(undefined),
       primaryReasonCodes: [outcome.error.code],
+      pathFindingCodes: [],
       capturedAtEffectiveMs: outcome.capturedAtEffectiveMs,
       error: { code: outcome.error.code, message: outcome.error.message },
     };
   }
   return runListItemFromOk(outcome, runIndex);
+}
+
+function pathCodesFromResult(r: WorkflowResult): string[] {
+  const codes = r.workflowTruthReport.executionPathFindings.map((f) => f.code);
+  return [...new Set(codes)].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
 }
 
 function runListItemFromOk(o: CorpusRunLoadedOk, runIndex: number): RunListItem {
@@ -64,6 +72,7 @@ function runListItemFromOk(o: CorpusRunLoadedOk, runIndex: number): RunListItem 
     toolIds,
     customerId: effectiveCustomerId(o.meta),
     primaryReasonCodes: primaryCodesFromResult(r),
+    pathFindingCodes: pathCodesFromResult(r),
     capturedAtEffectiveMs: o.capturedAtEffectiveMs,
   };
 }

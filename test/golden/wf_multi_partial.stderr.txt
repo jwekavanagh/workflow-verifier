@@ -1,6 +1,7 @@
 workflow_id: wf_multi_partial
 workflow_status: inconsistent
 trust: NOT TRUSTED: At least one step failed verification against the database (determinate failure).
+execution_path: Full upstream execution-path visibility requires schemaVersion 2 run events (retrieval, model_turn, control, tool_skipped) with run graph fields.
 diagnosis:
   summary: Primary failure at seq 0 tool demo.multi_contact (code VALUE_MISMATCH); origin: downstream_system_state.
   primary_origin: downstream_system_state

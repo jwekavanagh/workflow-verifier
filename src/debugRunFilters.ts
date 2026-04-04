@@ -11,6 +11,8 @@ export type RunListQuery = {
   customerId?: string;
   timeFrom?: number;
   timeTo?: number;
+  /** When true, only runs with non-empty `pathFindingCodes`. */
+  hasPathFindings?: boolean;
   includeLoadErrors: boolean;
 };
 
@@ -34,6 +36,8 @@ export function parseRunListQuery(searchParams: URLSearchParams): RunListQuery {
   const customerId = searchParams.get("customerId") ?? undefined;
   const timeFrom = parseOptionalInt(searchParams.get("timeFrom"));
   const timeTo = parseOptionalInt(searchParams.get("timeTo"));
+  const hasPathFindingsRaw = searchParams.get("hasPathFindings");
+  const hasPathFindings = hasPathFindingsRaw === "true" ? true : undefined;
   return {
     loadStatus,
     workflowId,
@@ -44,6 +48,7 @@ export function parseRunListQuery(searchParams: URLSearchParams): RunListQuery {
     customerId,
     timeFrom,
     timeTo,
+    hasPathFindings,
     includeLoadErrors,
   };
 }
@@ -124,6 +129,13 @@ export function matchesRunListQuery(row: RunListItem, q: RunListQuery): boolean 
 
   if (q.timeFrom !== undefined && row.capturedAtEffectiveMs < q.timeFrom) return false;
   if (q.timeTo !== undefined && row.capturedAtEffectiveMs > q.timeTo) return false;
+
+  if (
+    q.hasPathFindings === true &&
+    (row.loadStatus !== "ok" || row.pathFindingCodes.length === 0)
+  ) {
+    return false;
+  }
 
   return true;
 }

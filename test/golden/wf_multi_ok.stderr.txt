@@ -1,6 +1,7 @@
 workflow_id: wf_multi_ok
 workflow_status: complete
 trust: TRUSTED: Every step matched the database under the configured verification rules.
+execution_path: Full upstream execution-path visibility requires schemaVersion 2 run events (retrieval, model_turn, control, tool_skipped) with run graph fields.
 run_level: (none)
 event_sequence: normal
 steps:

@@ -20,8 +20,8 @@ export function workflowEngineResultFromEmitted(emitted: WorkflowResult): Workfl
 }
 
 /**
- * Compare input may be v5 engine JSON or v6+ emitted JSON. Returns canonical v8 emitted result.
- * Files with `workflowTruthReport.schemaVersion >= 3` must match recomputation from engine fields.
+ * Compare input may be v5 engine JSON or v6+ emitted JSON. Returns canonical v9 emitted result.
+ * Files with `workflowTruthReport.schemaVersion >= 3` (including v4 execution-path fields) must match recomputation from engine fields.
  * Legacy truth report `schemaVersion` 1–2 is upgraded without equality check.
  */
 export function normalizeToEmittedWorkflowResult(

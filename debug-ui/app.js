@@ -30,7 +30,7 @@ function buildFilterParamsFromForm() {
   const fd = new FormData(form);
   const p = new URLSearchParams();
   for (const [k, v] of fd.entries()) {
-    if (k === "includeLoadErrors") continue;
+    if (k === "includeLoadErrors" || k === "hasPathFindings") continue;
     if (v !== "" && v != null) {
       p.set(k, String(v));
     }
@@ -39,6 +39,10 @@ function buildFilterParamsFromForm() {
   const includeLoadErrorsEl = form.querySelector('[name="includeLoadErrors"]');
   if (includeLoadErrorsEl && !includeLoadErrorsEl.checked) {
     p.set("includeLoadErrors", "false");
+  }
+  const hasPathFindingsEl = form.querySelector('[name="hasPathFindings"]');
+  if (hasPathFindingsEl && hasPathFindingsEl.checked) {
+    p.set("hasPathFindings", "true");
   }
   return p;
 }
@@ -61,6 +65,7 @@ async function loadRuns(append) {
     tr.className = row.loadStatus === "error" ? "load-error" : "load-ok";
     tr.dataset.runId = row.runId;
     const codes = (row.primaryReasonCodes || []).slice(0, 6).join(", ");
+    const pathCodes = (row.pathFindingCodes || []).slice(0, 4).join(", ");
     tr.innerHTML = `
       <td><input type="checkbox" class="pick" aria-label="select ${row.runId}" /></td>
       <td><button type="button" class="open-run">${escapeHtml(row.runId)}</button></td>
@@ -69,6 +74,7 @@ async function loadRuns(append) {
       <td>${escapeHtml(row.status || "—")}</td>
       <td>${escapeHtml(row.actionableCategory || "—")}</td>
       <td>${escapeHtml(row.customerId || "—")}</td>
+      <td>${escapeHtml(pathCodes || "—")}</td>
       <td>${escapeHtml(codes)}</td>
     `;
     tr.querySelector(".open-run").addEventListener("click", () => openDetail(row.runId));

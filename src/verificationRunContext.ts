@@ -4,6 +4,14 @@ function isToolObserved(ev: RunEvent): ev is ToolObservedEvent {
   return ev.type === "tool_observed";
 }
 
+/** Fill missing fields (for tests and manual partials). */
+export function mergeVerificationRunContext(
+  partial: Partial<VerificationRunContext> &
+    Pick<VerificationRunContext, "maxWireSchemaVersion">,
+): VerificationRunContext {
+  return { ...createEmptyVerificationRunContext(), ...partial };
+}
+
 /** Canonical empty digest for v1-only / legacy inputs. */
 export function createEmptyVerificationRunContext(): VerificationRunContext {
   return {
@@ -13,7 +21,26 @@ export function createEmptyVerificationRunContext(): VerificationRunContext {
     modelTurnEvents: [],
     toolSkippedEvents: [],
     toolObservedIngestIndexBySeq: {},
+    firstToolObservedIngestIndex: null,
+    hasRunCompletedControl: false,
+    lastRunEvent: null,
   };
+}
+
+function lastEventSummary(
+  runEvents: RunEvent[],
+): VerificationRunContext["lastRunEvent"] {
+  if (runEvents.length === 0) return null;
+  const last = runEvents[runEvents.length - 1]!;
+  const ingestIndex = runEvents.length - 1;
+  if (last.type === "model_turn" && last.schemaVersion === 2) {
+    return {
+      ingestIndex,
+      type: last.type,
+      modelTurnStatus: last.status,
+    };
+  }
+  return { ingestIndex, type: last.type };
 }
 
 /**
@@ -26,6 +53,8 @@ export function buildVerificationRunContext(runEvents: RunEvent[]): Verification
   const modelTurnEvents: VerificationRunContext["modelTurnEvents"] = [];
   const toolSkippedEvents: VerificationRunContext["toolSkippedEvents"] = [];
   const toolObservedIngestIndexBySeq: Record<string, number> = {};
+  let firstToolObservedIngestIndex: number | null = null;
+  let hasRunCompletedControl = false;
 
   for (let ingestIndex = 0; ingestIndex < runEvents.length; ingestIndex++) {
     const ev = runEvents[ingestIndex]!;
@@ -35,13 +64,20 @@ export function buildVerificationRunContext(runEvents: RunEvent[]): Verification
     }
 
     if (ev.type === "retrieval" && ev.schemaVersion === 2) {
-      retrievalEvents.push({
+      const row: VerificationRunContext["retrievalEvents"][number] = {
         ingestIndex,
         runEventId: ev.runEventId,
         source: ev.source,
         status: ev.status,
-      });
+      };
+      if (ev.hitCount !== undefined) {
+        row.hitCount = ev.hitCount;
+      }
+      retrievalEvents.push(row);
     } else if (ev.type === "control" && ev.schemaVersion === 2) {
+      if (ev.controlKind === "run_completed") {
+        hasRunCompletedControl = true;
+      }
       controlEvents.push({
         ingestIndex,
         runEventId: ev.runEventId,
@@ -63,6 +99,9 @@ export function buildVerificationRunContext(runEvents: RunEvent[]): Verification
       });
     } else if (isToolObserved(ev)) {
       toolObservedIngestIndexBySeq[String(ev.seq)] = ingestIndex;
+      if (firstToolObservedIngestIndex === null || ingestIndex < firstToolObservedIngestIndex) {
+        firstToolObservedIngestIndex = ingestIndex;
+      }
     }
   }
 
@@ -73,5 +112,8 @@ export function buildVerificationRunContext(runEvents: RunEvent[]): Verification
     modelTurnEvents,
     toolSkippedEvents,
     toolObservedIngestIndexBySeq,
+    firstToolObservedIngestIndex,
+    hasRunCompletedControl,
+    lastRunEvent: lastEventSummary(runEvents),
   };
 }

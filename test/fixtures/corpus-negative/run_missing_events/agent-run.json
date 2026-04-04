@@ -2,13 +2,16 @@
   "schemaVersion": 1,
   "runId": "run_missing_events",
   "workflowId": "wf_complete",
-  "producer": { "name": "execution-truth-layer", "version": "0.1.0" },
+  "producer": {
+    "name": "execution-truth-layer",
+    "version": "0.1.0"
+  },
   "verifiedAt": "2026-04-04T00:00:00.000Z",
   "artifacts": {
     "workflowResult": {
       "relativePath": "workflow-result.json",
-      "sha256": "f06d52860be7aefc2b1367c5eeb4c541d160716ca94e62518e5189ab8ff28c83",
-      "byteLength": 1423
+      "sha256": "317fcc59f4a130874d763687598b2c22d8c102eac77b998d31c79b6a5f5089b7",
+      "byteLength": 1742
     },
     "events": {
       "relativePath": "events.ndjson",

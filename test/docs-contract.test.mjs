@@ -65,7 +65,7 @@ const REQUIRED = [
   "For the CLI, a **human-readable verification report** is written to **stderr**",
   "docs/execution-truth-layer.md#human-truth-report",
   "Reading logs:",
-  "`schemaVersion` **`8`**",
+  "`schemaVersion` **`9`**",
   "workflow-truth-report.schema.json",
   "workflow-engine-result.schema.json",
   "workflow-result-compare-input.schema.json",

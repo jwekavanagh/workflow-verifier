@@ -128,7 +128,7 @@ npm run test:ci
 
 ## Advanced topics (normative detail only in SSOT)
 
-Schema versions (**`schemaVersion` `8`** on emitted **`WorkflowResult`**, engine shape **`6`**, truth subtree **`schemaVersion` `3`** with **`failureAnalysis`**, **`actionableFailure`**, and **`verificationRunContext`**), **`workflowTruthReport`**, **`verificationPolicy`**, **`eventSequenceIntegrity`**, **`failureDiagnostic`**, CLI stderr envelope **`schemaVersion` `2`** with **`failureDiagnosis`** (including **`actionableFailure`**), **`verify-workflow compare`** inputs and **`RunComparisonReport`** v2 actionable aggregates, **strong** vs **eventual** consistency, Postgres session guards, and **`test:workflow-truth-contract`** / **`ci-workflow-truth-postgres-contract.test.mjs`** are specified in **[docs/execution-truth-layer.md](docs/execution-truth-layer.md)**—not duplicated here.
+Schema versions (**`schemaVersion` `9`** on emitted **`WorkflowResult`**, engine shape **`6`**, truth subtree **`schemaVersion` `4`** with **`failureAnalysis`**, **`actionableFailure`**, **`executionPathFindings`**, **`executionPathSummary`**, and **`verificationRunContext`**), **`workflowTruthReport`**, **`verificationPolicy`**, **`eventSequenceIntegrity`**, **`failureDiagnostic`**, CLI stderr envelope **`schemaVersion` `2`** with **`failureDiagnosis`** (including **`actionableFailure`**), **`verify-workflow compare`** inputs and **`RunComparisonReport`** v2 actionable aggregates, **strong** vs **eventual** consistency, Postgres session guards, and **`test:workflow-truth-contract`** / **`ci-workflow-truth-postgres-contract.test.mjs`** are specified in **[docs/execution-truth-layer.md](docs/execution-truth-layer.md)**—not duplicated here.
 
 ## License
 

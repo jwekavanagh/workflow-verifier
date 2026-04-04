@@ -166,6 +166,9 @@ describe("buildExecutionTraceView", () => {
         modelTurnEvents: [],
         toolSkippedEvents: [],
         toolObservedIngestIndexBySeq: { "0": 0 },
+        firstToolObservedIngestIndex: 0,
+        hasRunCompletedControl: false,
+        lastRunEvent: { ingestIndex: 0, type: "tool_observed" },
       },
       steps: [
         {

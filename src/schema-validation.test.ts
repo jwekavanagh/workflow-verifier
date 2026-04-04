@@ -320,7 +320,7 @@ describe("JSON Schemas (SSOT)", () => {
     expect(v(v5only)).toBe(false);
   });
 
-  it("workflow-result-compare-input accepts v6 engine and v8 emitted", () => {
+  it("workflow-result-compare-input accepts v6 engine and v9 emitted", () => {
     const vCmp = loadSchemaValidator("workflow-result-compare-input");
     const engine: WorkflowEngineResult = {
       schemaVersion: 6,

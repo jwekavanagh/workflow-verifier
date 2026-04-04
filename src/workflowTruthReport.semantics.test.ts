@@ -5,7 +5,12 @@ import {
   formatVerificationTargetSummary,
 } from "./verificationDiagnostics.js";
 import type { StepOutcome, WorkflowEngineResult } from "./types.js";
-import { STEP_STATUS_TRUTH_LABELS, TRUST_LINE_UNCERTAIN_WITHIN_WINDOW, buildWorkflowTruthReport } from "./workflowTruthReport.js";
+import { buildExecutionPathSummary } from "./executionPathFindings.js";
+import {
+  STEP_STATUS_TRUTH_LABELS,
+  TRUST_LINE_UNCERTAIN_WITHIN_WINDOW,
+  buildWorkflowTruthReport,
+} from "./workflowTruthReport.js";
 import { loadSchemaValidator } from "./schemaLoad.js";
 import { createEmptyVerificationRunContext } from "./verificationRunContext.js";
 
@@ -51,8 +56,12 @@ describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
       steps: [verifiedStep(0, "t1")],
     };
     const truth = buildWorkflowTruthReport(engine);
-    expect(truth.schemaVersion).toBe(3);
+    expect(truth.schemaVersion).toBe(4);
     expect(truth.failureAnalysis).toBeNull();
+    expect(truth.executionPathFindings).toEqual([]);
+    expect(truth.executionPathSummary).toBe(
+      buildExecutionPathSummary([], emptyCtx.maxWireSchemaVersion),
+    );
     expect(truth.workflowId).toBe("w");
     expect(truth.workflowStatus).toBe("complete");
     expect(truth.trustSummary).toBe(
@@ -136,6 +145,8 @@ describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
     expect(truth.runLevelIssues[0]!.category).toBe(
       failureDiagnosticForRunLevelCode("NO_STEPS_FOR_WORKFLOW"),
     );
+    expect(truth.executionPathFindings.some((f) => f.code === "RUN_LEVEL_INGEST_ISSUES")).toBe(true);
+    expect(truth.executionPathSummary.startsWith("execution_path_concerns=")).toBe(true);
   });
 
   it("uncertain-only incomplete: dedicated trust summary", () => {

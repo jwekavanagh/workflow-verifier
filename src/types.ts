@@ -178,6 +178,13 @@ export type EventSequenceIntegrity =
   | { kind: "normal" }
   | { kind: "irregular"; reasons: Reason[] };
 
+/** Summary of the last run event in capture order (for execution-path completeness signals). */
+export type VerificationRunContextLastEvent = {
+  ingestIndex: number;
+  type: RunEvent["type"];
+  modelTurnStatus?: ModelTurnRunEvent["status"];
+};
+
 /** Digest of v2 run graph + tool_observed positions; built at verify time from `runEvents`. */
 export type VerificationRunContext = {
   maxWireSchemaVersion: 1 | 2;
@@ -186,6 +193,7 @@ export type VerificationRunContext = {
     runEventId: string | null;
     source: string;
     status: "ok" | "empty" | "error";
+    hitCount?: number;
   }>;
   controlEvents: Array<{
     ingestIndex: number;
@@ -206,6 +214,12 @@ export type VerificationRunContext = {
   }>;
   /** Last capture-order ingest index per tool_observed seq (string keys in JSON). */
   toolObservedIngestIndexBySeq: Record<string, number>;
+  /** Minimum ingest index among `tool_observed` events; null if none. */
+  firstToolObservedIngestIndex: number | null;
+  /** True if any v2 `control` event has `controlKind === "run_completed"`. */
+  hasRunCompletedControl: boolean;
+  /** Last event in capture order; null if `runEvents` was empty. */
+  lastRunEvent: VerificationRunContextLastEvent | null;
 };
 
 export type FailureConfidence = "high" | "medium" | "low";
@@ -293,6 +307,34 @@ export type WorkflowTruthEffect = {
   reasons: Reason[];
 };
 
+export type PathConcernCategory =
+  | "context_quality"
+  | "decision_execution"
+  | "tool_selection_execution"
+  | "action_inputs_invalid"
+  | "workflow_completeness"
+  | "capture_integrity";
+
+export type PathFindingSeverity = "high" | "medium" | "low";
+
+export type ExecutionPathEvidenceItem = {
+  scope: "run_context" | "run_level" | "event_sequence" | "step";
+  codes?: string[];
+  ingestIndex?: number;
+  seq?: number;
+  toolId?: string;
+  source?: string;
+  runEventId?: string | null;
+};
+
+export type ExecutionPathFinding = {
+  code: string;
+  severity: PathFindingSeverity;
+  concernCategory: PathConcernCategory;
+  message: string;
+  evidence: ExecutionPathEvidenceItem;
+};
+
 export type WorkflowTruthStep = {
   seq: number;
   toolId: string;
@@ -312,7 +354,7 @@ export type WorkflowTruthStep = {
 };
 
 export type WorkflowTruthReport = {
-  schemaVersion: 3;
+  schemaVersion: 4;
   workflowId: string;
   workflowStatus: WorkflowStatus;
   trustSummary: string;
@@ -323,11 +365,13 @@ export type WorkflowTruthReport = {
   steps: WorkflowTruthStep[];
   /** JSON `null` when workflow is complete; object when incomplete or inconsistent. */
   failureAnalysis: FailureAnalysis | null;
+  executionPathFindings: ExecutionPathFinding[];
+  executionPathSummary: string;
 };
 
-/** Emitted verification result on stdout / public API (`schemaVersion` 8). */
+/** Emitted verification result on stdout / public API (`schemaVersion` 9). */
 export type WorkflowResult = Omit<WorkflowEngineResult, "schemaVersion"> & {
-  schemaVersion: 8;
+  schemaVersion: 9;
   workflowTruthReport: WorkflowTruthReport;
 };
 
