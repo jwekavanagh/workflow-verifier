@@ -41,6 +41,28 @@ export function runLevelIssue(code: keyof typeof RUN_LEVEL_MESSAGES): Reason {
   return { code, message: RUN_LEVEL_MESSAGES[code] };
 }
 
+/** SSOT for WorkflowResult.eventSequenceIntegrity.reasons (machine codes + messages). */
+export const EVENT_SEQUENCE_MESSAGES = {
+  CAPTURE_ORDER_NOT_MONOTONIC_IN_SEQ:
+    "Capture order was not non-decreasing in seq; planning and verification used seq-sorted order, not arrival order.",
+} as const;
+
+export type EventSequenceIssueCode = keyof typeof EVENT_SEQUENCE_MESSAGES;
+
+export function eventSequenceIssue(code: EventSequenceIssueCode): Reason {
+  return { code, message: EVENT_SEQUENCE_MESSAGES[code] };
+}
+
+const TIMESTAMP_NOT_MONOTONIC_CODE = "TIMESTAMP_NOT_MONOTONIC_WITH_SEQ_SORT_ORDER" as const;
+
+/** First adjacent pair in seq-sorted order with decreasing parsed timestamps (seq values from those events). */
+export function eventSequenceTimestampNotMonotonicReason(seqBefore: number, seqAfter: number): Reason {
+  return {
+    code: TIMESTAMP_NOT_MONOTONIC_CODE,
+    message: `In seq-sorted order, timestamp decreased between seq ${seqBefore} and seq ${seqAfter}.`,
+  };
+}
+
 export function formatOperationalMessage(raw: string): string {
   let s = raw.replace(/\t|\r|\n/g, " ");
   s = s.replace(/ +/g, " ").trim();

@@ -1,7 +1,8 @@
 workflow_id: wf_multi_partial
 workflow_status: inconsistent
-trust: NOT_TRUSTED: At least one step failed verification against the database (determinate failure).
+trust: NOT TRUSTED: At least one step failed verification against the database (determinate failure).
 run_level: (none)
+event_sequence: normal
 steps:
   - seq=0 tool=demo.multi_contact status=PARTIALLY_VERIFIED
     observations: evaluated=1 of 1 in_capture_order

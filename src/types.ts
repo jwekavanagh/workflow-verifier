@@ -94,19 +94,25 @@ export type StepOutcome = {
 
 export type WorkflowStatus = "complete" | "incomplete" | "inconsistent";
 
+export type EventSequenceIntegrity =
+  | { kind: "normal" }
+  | { kind: "irregular"; reasons: Reason[] };
+
 export type WorkflowResult = {
-  schemaVersion: 3;
+  schemaVersion: 4;
   workflowId: string;
   status: WorkflowStatus;
   runLevelCodes: string[];
   runLevelReasons: Reason[];
   verificationPolicy: VerificationPolicy;
+  eventSequenceIntegrity: EventSequenceIntegrity;
   steps: StepOutcome[];
 };
 
 export type LoadEventsResult = {
   events: ToolObservedEvent[];
   runLevelReasons: Reason[];
+  eventSequenceIntegrity: EventSequenceIntegrity;
 };
 
 /** Batch / CLI verification target (`verifyWorkflow`). In-process hook remains SQLite `dbPath` only. */

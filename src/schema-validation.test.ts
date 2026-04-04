@@ -40,7 +40,7 @@ describe("JSON Schemas (SSOT)", () => {
   it("validates workflow result shape from golden pipeline output", () => {
     const v = loadSchemaValidator("workflow-result");
     const result = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "wf_complete",
       status: "complete",
       runLevelCodes: [],
@@ -50,6 +50,7 @@ describe("JSON Schemas (SSOT)", () => {
         verificationWindowMs: 0,
         pollIntervalMs: 0,
       },
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [
         {
           seq: 0,
@@ -76,7 +77,7 @@ describe("JSON Schemas (SSOT)", () => {
   it("validates multi-effect workflow result (sql_effects + evidenceSummary.effects)", () => {
     const v = loadSchemaValidator("workflow-result");
     const result = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "wf_multi",
       status: "inconsistent",
       runLevelCodes: [],
@@ -86,6 +87,7 @@ describe("JSON Schemas (SSOT)", () => {
         verificationWindowMs: 0,
         pollIntervalMs: 0,
       },
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [
         {
           seq: 0,
@@ -142,7 +144,7 @@ describe("JSON Schemas (SSOT)", () => {
   it("rejects single-effect step evidenceSummary with effectCount", () => {
     const v = loadSchemaValidator("workflow-result");
     const bad = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "w",
       status: "complete",
       runLevelCodes: [],
@@ -152,6 +154,7 @@ describe("JSON Schemas (SSOT)", () => {
         verificationWindowMs: 0,
         pollIntervalMs: 0,
       },
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [
         {
           seq: 0,
@@ -195,7 +198,7 @@ describe("JSON Schemas (SSOT)", () => {
       evaluatedObservationOrdinal: 1,
     });
     const r0: WorkflowResult = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "w",
       status: "complete",
       runLevelCodes: [],
@@ -205,6 +208,7 @@ describe("JSON Schemas (SSOT)", () => {
         verificationWindowMs: 0,
         pollIntervalMs: 0,
       },
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [step(0, "a", true)],
     };
     const r1: WorkflowResult = { ...r0, steps: [step(0, "a", true)] };

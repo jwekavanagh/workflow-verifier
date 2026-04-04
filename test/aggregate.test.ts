@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { aggregateWorkflow } from "../src/aggregate.js";
-import type { StepOutcome, VerificationPolicy } from "../src/types.js";
+import type { EventSequenceIntegrity, StepOutcome, VerificationPolicy } from "../src/types.js";
+import { eventSequenceIssue } from "../src/failureCatalog.js";
 
 const strongPolicy: VerificationPolicy = {
   consistencyMode: "strong",
   verificationWindowMs: 0,
   pollIntervalMs: 0,
 };
+
+const eventSeqNormal: EventSequenceIntegrity = { kind: "normal" };
 
 function step(partial: Partial<StepOutcome> & Pick<StepOutcome, "seq" | "toolId" | "status">): StepOutcome {
   return {
@@ -27,9 +30,11 @@ describe("WorkflowAggregator precedence", () => {
       [step({ seq: 0, toolId: "t", status: "verified" })],
       [],
       strongPolicy,
+      eventSeqNormal,
     );
     expect(r.status).toBe("complete");
-    expect(r.schemaVersion).toBe(3);
+    expect(r.schemaVersion).toBe(4);
+    expect(r.eventSequenceIntegrity).toEqual(eventSeqNormal);
     expect(r.runLevelReasons).toEqual([]);
     expect(r.runLevelCodes).toEqual([]);
   });
@@ -40,6 +45,7 @@ describe("WorkflowAggregator precedence", () => {
       [step({ seq: 0, toolId: "t", status: "verified" })],
       [{ code: "TEST_BLOCKING_CODE", message: "blocking" }],
       strongPolicy,
+      eventSeqNormal,
     );
     expect(r.status).toBe("incomplete");
     expect(r.runLevelCodes).toEqual(["TEST_BLOCKING_CODE"]);
@@ -54,6 +60,7 @@ describe("WorkflowAggregator precedence", () => {
       ],
       [],
       strongPolicy,
+      eventSeqNormal,
     );
     expect(r.status).toBe("incomplete");
   });
@@ -64,6 +71,7 @@ describe("WorkflowAggregator precedence", () => {
       [step({ seq: 0, toolId: "t", status: "missing" })],
       [],
       strongPolicy,
+      eventSeqNormal,
     );
     expect(r.status).toBe("inconsistent");
     expect(r.runLevelReasons).toEqual([]);
@@ -75,15 +83,17 @@ describe("WorkflowAggregator precedence", () => {
       [step({ seq: 0, toolId: "t", status: "partially_verified" })],
       [],
       strongPolicy,
+      eventSeqNormal,
     );
     expect(r.status).toBe("inconsistent");
   });
 
   it("incomplete when zero steps adds NO_STEPS_FOR_WORKFLOW", () => {
-    const r = aggregateWorkflow("w", [], [], strongPolicy);
+    const r = aggregateWorkflow("w", [], [], strongPolicy, eventSeqNormal);
     expect(r.status).toBe("incomplete");
     expect(r.runLevelCodes).toEqual(["NO_STEPS_FOR_WORKFLOW"]);
     expect(r.runLevelReasons.map((x) => x.code)).toEqual(["NO_STEPS_FOR_WORKFLOW"]);
+    expect(r.eventSequenceIntegrity).toEqual(eventSeqNormal);
   });
 
   it("params.ok cannot produce complete without verified — missing stays inconsistent", () => {
@@ -92,6 +102,7 @@ describe("WorkflowAggregator precedence", () => {
       [step({ seq: 0, toolId: "t", status: "missing" })],
       [],
       strongPolicy,
+      eventSeqNormal,
     );
     expect(r.status).not.toBe("complete");
   });
@@ -105,6 +116,7 @@ describe("WorkflowAggregator precedence", () => {
       ],
       [],
       strongPolicy,
+      eventSeqNormal,
     );
     expect(r.status).toBe("incomplete");
   });
@@ -118,7 +130,24 @@ describe("WorkflowAggregator precedence", () => {
       ],
       [],
       strongPolicy,
+      eventSeqNormal,
     );
     expect(r.status).toBe("inconsistent");
+  });
+
+  it("eventSequenceIntegrity irregular does not force incomplete when steps verified", () => {
+    const irregular: EventSequenceIntegrity = {
+      kind: "irregular",
+      reasons: [eventSequenceIssue("CAPTURE_ORDER_NOT_MONOTONIC_IN_SEQ")],
+    };
+    const r = aggregateWorkflow(
+      "w",
+      [step({ seq: 0, toolId: "t", status: "verified" })],
+      [],
+      strongPolicy,
+      irregular,
+    );
+    expect(r.status).toBe("complete");
+    expect(r.eventSequenceIntegrity).toEqual(irregular);
   });
 });

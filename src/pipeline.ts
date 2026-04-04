@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "fs";
 import { aggregateWorkflow } from "./aggregate.js";
 import { loadEventsForWorkflow } from "./loadEvents.js";
+import { prepareWorkflowEvents } from "./prepareWorkflowEvents.js";
 import { planLogicalSteps, type LogicalStepPlan } from "./planLogicalSteps.js";
 import { reconcileSqlRowAsync } from "./reconciler.js";
 import { loadSchemaValidator } from "./schemaLoad.js";
@@ -320,7 +321,7 @@ export async function verifyWorkflow(options: {
   const truthReport = options.truthReport ?? defaultTruthReportToStderr;
   const verificationPolicy = resolveVerificationPolicyInput(options.verificationPolicy);
 
-  const { events, runLevelReasons } = loadEventsForWorkflow(eventsPath, workflowId);
+  const { events, runLevelReasons, eventSequenceIntegrity } = loadEventsForWorkflow(eventsPath, workflowId);
   const registry = loadToolsRegistry(registryPath);
 
   let steps: StepOutcome[];
@@ -387,7 +388,13 @@ export async function verifyWorkflow(options: {
     }
   }
 
-  const result = aggregateWorkflow(workflowId, steps, runLevelReasons, verificationPolicy);
+  const result = aggregateWorkflow(
+    workflowId,
+    steps,
+    runLevelReasons,
+    verificationPolicy,
+    eventSequenceIntegrity,
+  );
   truthReport(formatWorkflowTruthReport(result));
   return result;
 }
@@ -451,15 +458,22 @@ class WorkflowVerificationSession {
     if (!this.dbOpen) {
       throw new Error("Workflow verification buildWorkflowResult invoked after database closed");
     }
+    const { eventsSorted, eventSequenceIntegrity } = prepareWorkflowEvents(this.bufferedEvents);
     const steps = runLogicalStepsVerificationSync({
       workflowId: this.workflowId,
-      events: this.bufferedEvents,
+      events: eventsSorted,
       registry: this.registry,
       db: this.db,
       logStep: this.logStep,
       verificationPolicy: this.verificationPolicy,
     });
-    return aggregateWorkflow(this.workflowId, steps, [...this.runLevelReasons], this.verificationPolicy);
+    return aggregateWorkflow(
+      this.workflowId,
+      steps,
+      [...this.runLevelReasons],
+      this.verificationPolicy,
+      eventSequenceIntegrity,
+    );
   }
 }
 

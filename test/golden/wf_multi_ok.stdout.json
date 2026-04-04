@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "workflowId": "wf_multi_ok",
   "status": "complete",
   "runLevelCodes": [],
@@ -8,6 +8,9 @@
     "consistencyMode": "strong",
     "verificationWindowMs": 0,
     "pollIntervalMs": 0
+  },
+  "eventSequenceIntegrity": {
+    "kind": "normal"
   },
   "steps": [
     {

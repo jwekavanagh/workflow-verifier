@@ -58,7 +58,7 @@ describe("CLI verify-workflow", () => {
     const parsed = JSON.parse(stdout);
     const validateResult = loadSchemaValidator("workflow-result");
     assert.equal(validateResult(parsed), true);
-    assert.equal(stderr, formatWorkflowTruthReport(parsed));
+    assert.equal(stderr, formatWorkflowTruthReport(parsed).replace(/\r\n/g, "\n"));
   });
 
   it("--help exits 0 and prints usage to stdout", () => {
@@ -165,9 +165,10 @@ describe("CLI verify-workflow", () => {
     assert.equal(r.status, 1);
     const parsed = JSON.parse(r.stdout.trim());
     assert.equal(parsed.status, "inconsistent");
+    const errText = r.stderr.replace(/\r\n/g, "\n");
     assert.ok(
-      r.stderr.includes(
-        "trust: NOT_TRUSTED: At least one step failed verification against the database (determinate failure).",
+      errText.includes(
+        "trust: NOT TRUSTED: At least one step failed verification against the database (determinate failure).",
       ),
     );
   });

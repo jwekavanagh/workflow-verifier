@@ -22,16 +22,20 @@ export const EFFECT_STATUS_TRUTH_LABELS: Record<
 
 const TRUST_LINE_BY_STATUS: Record<WorkflowStatus, string> = {
   complete: "TRUSTED: Every step matched the database under the configured verification rules.",
-  incomplete: "NOT_TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.",
+  incomplete: "NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.",
   inconsistent:
-    "NOT_TRUSTED: At least one step failed verification against the database (determinate failure).",
+    "NOT TRUSTED: At least one step failed verification against the database (determinate failure).",
 };
 
 /** Human report trust line when the only failures are `uncertain` (eventual window exhausted). */
 export const TRUST_LINE_UNCERTAIN_WITHIN_WINDOW =
-  "NOT_TRUSTED: At least one step could not be confirmed within the verification window (row not observed; replication or processing delay is possible).";
+  "NOT TRUSTED: At least one step could not be confirmed within the verification window (row not observed; replication or processing delay is possible).";
 
-function trustLineForResult(result: WorkflowResult): string {
+/** Appended to `trust:` when `eventSequenceIntegrity.kind === "irregular"` (normative; see docs). */
+export const TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX =
+  "Event capture or timestamps were irregular; verification used seq-sorted order. See event_sequence below.";
+
+function trustLineBaseForResult(result: WorkflowResult): string {
   if (
     result.status === "incomplete" &&
     result.runLevelReasons.length === 0 &&
@@ -43,6 +47,14 @@ function trustLineForResult(result: WorkflowResult): string {
     return TRUST_LINE_UNCERTAIN_WITHIN_WINDOW;
   }
   return TRUST_LINE_BY_STATUS[result.status];
+}
+
+function trustLineForResult(result: WorkflowResult): string {
+  const base = trustLineBaseForResult(result);
+  if (result.eventSequenceIntegrity.kind === "irregular") {
+    return `${base} ${TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX}`;
+  }
+  return base;
 }
 
 function sanitizeOneLineId(value: string): string {
@@ -93,6 +105,17 @@ export function formatWorkflowTruthReport(result: WorkflowResult): string {
   } else {
     lines.push("run_level:");
     for (const r of result.runLevelReasons) {
+      const msg = r.message.trim();
+      const human = msg.length > 0 ? msg : "(no message)";
+      lines.push(`  - ${r.code}: ${human}`);
+    }
+  }
+
+  if (result.eventSequenceIntegrity.kind === "normal") {
+    lines.push("event_sequence: normal");
+  } else {
+    lines.push("event_sequence: irregular");
+    for (const r of result.eventSequenceIntegrity.reasons) {
       const msg = r.message.trim();
       const human = msg.length > 0 ? msg : "(no message)";
       lines.push(`  - ${r.code}: ${human}`);

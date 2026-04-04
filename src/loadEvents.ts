@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { CLI_OPERATIONAL_CODES, runLevelIssue } from "./failureCatalog.js";
-import type { Reason, ToolObservedEvent } from "./types.js";
+import { prepareWorkflowEvents } from "./prepareWorkflowEvents.js";
+import type { LoadEventsResult, Reason, ToolObservedEvent } from "./types.js";
 import { loadSchemaValidator } from "./schemaLoad.js";
 import { TruthLayerError } from "./truthLayerError.js";
 
@@ -9,7 +10,7 @@ const validateEvent = loadSchemaValidator("event");
 export function loadEventsForWorkflow(
   eventsFilePath: string,
   workflowId: string,
-): { events: ToolObservedEvent[]; runLevelReasons: Reason[] } {
+): LoadEventsResult {
   const runLevelReasons: Reason[] = [];
   let raw: string;
   try {
@@ -38,7 +39,7 @@ export function loadEventsForWorkflow(
     candidates.push(ev);
   }
 
-  candidates.sort((a, b) => a.seq - b.seq);
+  const { eventsSorted, eventSequenceIntegrity } = prepareWorkflowEvents(candidates);
 
-  return { events: candidates, runLevelReasons };
+  return { events: eventsSorted, runLevelReasons, eventSequenceIntegrity };
 }

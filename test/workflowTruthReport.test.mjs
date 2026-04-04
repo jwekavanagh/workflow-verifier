@@ -7,7 +7,9 @@ import {
   formatWorkflowTruthReport,
   STEP_STATUS_TRUTH_LABELS,
   TRUST_LINE_UNCERTAIN_WITHIN_WINDOW,
+  TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX,
 } from "../dist/workflowTruthReport.js";
+import { eventSequenceIssue } from "../dist/failureCatalog.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -26,6 +28,7 @@ const GOLDEN_COMPLETE = `workflow_id: wf_complete
 workflow_status: complete
 trust: TRUSTED: Every step matched the database under the configured verification rules.
 run_level: (none)
+event_sequence: normal
 steps:
   - seq=0 tool=crm.upsert_contact status=VERIFIED
     observations: evaluated=1 of 1 in_capture_order
@@ -33,8 +36,9 @@ steps:
 
 const GOLDEN_MISSING = `workflow_id: wf_missing
 workflow_status: inconsistent
-trust: NOT_TRUSTED: At least one step failed verification against the database (determinate failure).
+trust: NOT TRUSTED: At least one step failed verification against the database (determinate failure).
 run_level: (none)
+event_sequence: normal
 steps:
   - seq=0 tool=crm.upsert_contact status=FAILED_ROW_MISSING
     observations: evaluated=1 of 1 in_capture_order
@@ -43,8 +47,9 @@ steps:
 
 const GOLDEN_INCOMPLETE_UNKNOWN_TOOL = `workflow_id: wf_unknown_tool
 workflow_status: incomplete
-trust: NOT_TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
+trust: NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
 run_level: (none)
+event_sequence: normal
 steps:
   - seq=0 tool=nope.tool status=INCOMPLETE_CANNOT_VERIFY
     observations: evaluated=1 of 1 in_capture_order
@@ -57,17 +62,19 @@ const NO_STEPS_MSG = "No tool_observed events for this workflow id after filteri
 
 const GOLDEN_MALFORMED = `workflow_id: wf_complete
 workflow_status: incomplete
-trust: NOT_TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
+trust: NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
 run_level:
   - MALFORMED_EVENT_LINE: ${MALFORMED_MSG}
   - NO_STEPS_FOR_WORKFLOW: ${NO_STEPS_MSG}
+event_sequence: normal
 steps:`;
 
 const GOLDEN_EMPTY_STEPS = `workflow_id: no_such_workflow
 workflow_status: incomplete
-trust: NOT_TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
+trust: NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
 run_level:
   - NO_STEPS_FOR_WORKFLOW: ${NO_STEPS_MSG}
+event_sequence: normal
 steps:`;
 
 const GOLDEN_UNKNOWN_RUN_LEVEL = `workflow_id: w
@@ -75,6 +82,7 @@ workflow_status: complete
 trust: TRUSTED: Every step matched the database under the configured verification rules.
 run_level:
   - UNKNOWN_CODE_X: Unknown run-level code (forward compatibility).
+event_sequence: normal
 steps:
   - seq=0 tool=t status=VERIFIED
     observations: evaluated=1 of 1 in_capture_order`;
@@ -83,6 +91,7 @@ const GOLDEN_UNCERTAIN_TRUST = `workflow_id: wf_uncertain
 workflow_status: incomplete
 trust: ${TRUST_LINE_UNCERTAIN_WITHIN_WINDOW}
 run_level: (none)
+event_sequence: normal
 steps:
   - seq=0 tool=t status=UNCERTAIN_NOT_OBSERVED_WITHIN_WINDOW
     observations: evaluated=1 of 1 in_capture_order
@@ -91,12 +100,13 @@ steps:
 describe("formatWorkflowTruthReport", () => {
   it("golden complete / inconsistent missing / incomplete unknown tool", () => {
     const complete = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "wf_complete",
       status: "complete",
       runLevelCodes: [],
       runLevelReasons: [],
       verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [
         {
           seq: 0,
@@ -111,15 +121,16 @@ describe("formatWorkflowTruthReport", () => {
         },
       ],
     };
-    assert.equal(formatWorkflowTruthReport(complete), GOLDEN_COMPLETE);
+    assert.equal(normTruthText(formatWorkflowTruthReport(complete)), normTruthText(GOLDEN_COMPLETE));
 
     const missing = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "wf_missing",
       status: "inconsistent",
       runLevelCodes: [],
       runLevelReasons: [],
       verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [
         {
           seq: 0,
@@ -134,15 +145,16 @@ describe("formatWorkflowTruthReport", () => {
         },
       ],
     };
-    assert.equal(formatWorkflowTruthReport(missing), GOLDEN_MISSING);
+    assert.equal(normTruthText(formatWorkflowTruthReport(missing)), normTruthText(GOLDEN_MISSING));
 
     const unknownTool = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "wf_unknown_tool",
       status: "incomplete",
       runLevelCodes: [],
       runLevelReasons: [],
       verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [
         {
           seq: 0,
@@ -157,46 +169,25 @@ describe("formatWorkflowTruthReport", () => {
         },
       ],
     };
-    assert.equal(formatWorkflowTruthReport(unknownTool), GOLDEN_INCOMPLETE_UNKNOWN_TOOL);
+    assert.equal(
+      normTruthText(formatWorkflowTruthReport(unknownTool)),
+      normTruthText(GOLDEN_INCOMPLETE_UNKNOWN_TOOL),
+    );
   });
 
-  it("golden malformed run-level and empty steps", () => {
-    const malformed = {
-      schemaVersion: 3,
-      workflowId: "wf_complete",
-      status: "incomplete",
-      runLevelCodes: ["MALFORMED_EVENT_LINE", "NO_STEPS_FOR_WORKFLOW"],
-      runLevelReasons: [
-        { code: "MALFORMED_EVENT_LINE", message: MALFORMED_MSG },
-        { code: "NO_STEPS_FOR_WORKFLOW", message: NO_STEPS_MSG },
-      ],
-      verificationPolicy: vp,
-      steps: [],
-    };
-    assert.equal(formatWorkflowTruthReport(malformed), GOLDEN_MALFORMED);
-
-    const empty = {
-      schemaVersion: 3,
-      workflowId: "no_such_workflow",
-      status: "incomplete",
-      runLevelCodes: ["NO_STEPS_FOR_WORKFLOW"],
-      runLevelReasons: [{ code: "NO_STEPS_FOR_WORKFLOW", message: NO_STEPS_MSG }],
-      verificationPolicy: vp,
-      steps: [],
-    };
-    assert.equal(formatWorkflowTruthReport(empty), GOLDEN_EMPTY_STEPS);
-  });
-
-  it("unknown run-level code uses fallback explanation", () => {
+  it("irregular event_sequence extends trust line and lists capture reason", () => {
+    const captureReason = eventSequenceIssue("CAPTURE_ORDER_NOT_MONOTONIC_IN_SEQ");
     const r = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "w",
       status: "complete",
-      runLevelCodes: ["UNKNOWN_CODE_X"],
-      runLevelReasons: [
-        { code: "UNKNOWN_CODE_X", message: "Unknown run-level code (forward compatibility)." },
-      ],
+      runLevelCodes: [],
+      runLevelReasons: [],
       verificationPolicy: vp,
+      eventSequenceIntegrity: {
+        kind: "irregular",
+        reasons: [captureReason],
+      },
       steps: [
         {
           seq: 0,
@@ -211,17 +202,86 @@ describe("formatWorkflowTruthReport", () => {
         },
       ],
     };
-    assert.equal(formatWorkflowTruthReport(r), GOLDEN_UNKNOWN_RUN_LEVEL);
+    const out = normTruthText(formatWorkflowTruthReport(r));
+    const baseTrust =
+      "TRUSTED: Every step matched the database under the configured verification rules.";
+    assert.ok(
+      out.startsWith(
+        normTruthText(
+          `workflow_id: w\nworkflow_status: complete\ntrust: ${baseTrust} ${TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX}\n`,
+        ),
+      ),
+    );
+    assert.ok(out.includes("event_sequence: irregular\n"));
+    assert.ok(out.includes(`  - ${captureReason.code}: ${captureReason.message}`));
+  });
+
+  it("golden malformed run-level and empty steps", () => {
+    const malformed = {
+      schemaVersion: 4,
+      workflowId: "wf_complete",
+      status: "incomplete",
+      runLevelCodes: ["MALFORMED_EVENT_LINE", "NO_STEPS_FOR_WORKFLOW"],
+      runLevelReasons: [
+        { code: "MALFORMED_EVENT_LINE", message: MALFORMED_MSG },
+        { code: "NO_STEPS_FOR_WORKFLOW", message: NO_STEPS_MSG },
+      ],
+      verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
+      steps: [],
+    };
+    assert.equal(normTruthText(formatWorkflowTruthReport(malformed)), normTruthText(GOLDEN_MALFORMED));
+
+    const empty = {
+      schemaVersion: 4,
+      workflowId: "no_such_workflow",
+      status: "incomplete",
+      runLevelCodes: ["NO_STEPS_FOR_WORKFLOW"],
+      runLevelReasons: [{ code: "NO_STEPS_FOR_WORKFLOW", message: NO_STEPS_MSG }],
+      verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
+      steps: [],
+    };
+    assert.equal(normTruthText(formatWorkflowTruthReport(empty)), normTruthText(GOLDEN_EMPTY_STEPS));
+  });
+
+  it("unknown run-level code uses fallback explanation", () => {
+    const r = {
+      schemaVersion: 4,
+      workflowId: "w",
+      status: "complete",
+      runLevelCodes: ["UNKNOWN_CODE_X"],
+      runLevelReasons: [
+        { code: "UNKNOWN_CODE_X", message: "Unknown run-level code (forward compatibility)." },
+      ],
+      verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
+      steps: [
+        {
+          seq: 0,
+          toolId: "t",
+          intendedEffect: "",
+          verificationRequest: null,
+          status: "verified",
+          reasons: [],
+          evidenceSummary: {},
+          repeatObservationCount: 1,
+          evaluatedObservationOrdinal: 1,
+        },
+      ],
+    };
+    assert.equal(normTruthText(formatWorkflowTruthReport(r)), normTruthText(GOLDEN_UNKNOWN_RUN_LEVEL));
   });
 
   it("multi-step: each step line uses STEP_STATUS_TRUTH_LABELS", () => {
     const result = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "multi",
       status: "inconsistent",
       runLevelCodes: [],
       runLevelReasons: [],
       verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [
         {
           seq: 0,
@@ -273,17 +333,18 @@ describe("formatWorkflowTruthReport", () => {
     const stderrPath = join(root, "test/golden/wf_multi_partial.stderr.txt");
     const result = JSON.parse(readFileSync(stdoutPath, "utf8"));
     const expected = normTruthText(readFileSync(stderrPath, "utf8"));
-    assert.equal(normTruthText(formatWorkflowTruthReport(result)), expected);
+    assert.equal(normTruthText(formatWorkflowTruthReport(result)), normTruthText(expected));
   });
 
   it("uncertain-only step uses dedicated trust line and label", () => {
     const uncertain = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "wf_uncertain",
       status: "incomplete",
       runLevelCodes: [],
       runLevelReasons: [],
       verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [
         {
           seq: 0,
@@ -298,7 +359,7 @@ describe("formatWorkflowTruthReport", () => {
         },
       ],
     };
-    assert.equal(formatWorkflowTruthReport(uncertain), GOLDEN_UNCERTAIN_TRUST);
+    assert.equal(normTruthText(formatWorkflowTruthReport(uncertain)), normTruthText(GOLDEN_UNCERTAIN_TRUST));
   });
 
   it("all StepStatus values appear with correct status= token", () => {
@@ -323,12 +384,13 @@ describe("formatWorkflowTruthReport", () => {
       evaluatedObservationOrdinal: 1,
     }));
     const r = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "s",
       status: "incomplete",
       runLevelCodes: [],
       runLevelReasons: [],
       verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
       steps,
     };
     const out = formatWorkflowTruthReport(r);
@@ -339,23 +401,25 @@ describe("formatWorkflowTruthReport", () => {
 
   it("run-level reason message is trimmed; whitespace-only becomes (no message)", () => {
     const trimmed = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "w",
       status: "complete",
       runLevelCodes: ["X"],
       runLevelReasons: [{ code: "X", message: "  hello  " }],
       verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [],
     };
     assert.ok(formatWorkflowTruthReport(trimmed).includes("  - X: hello"));
 
     const blank = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "w",
       status: "complete",
       runLevelCodes: ["Y"],
       runLevelReasons: [{ code: "Y", message: "   \t  " }],
       verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [],
     };
     assert.ok(formatWorkflowTruthReport(blank).includes("  - Y: (no message)"));
@@ -363,12 +427,13 @@ describe("formatWorkflowTruthReport", () => {
 
   it("empty reason message renders (no message)", () => {
     const r = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "w",
       status: "incomplete",
       runLevelCodes: [],
       runLevelReasons: [],
       verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [
         {
           seq: 0,
@@ -389,12 +454,13 @@ describe("formatWorkflowTruthReport", () => {
 
   it("reason with field appends field=", () => {
     const r = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "w",
       status: "incomplete",
       runLevelCodes: [],
       runLevelReasons: [],
       verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [
         {
           seq: 0,
@@ -414,12 +480,13 @@ describe("formatWorkflowTruthReport", () => {
 
   it("newlines in toolId sanitized", () => {
     const r = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "w",
       status: "complete",
       runLevelCodes: [],
       runLevelReasons: [],
       verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [
         {
           seq: 0,
@@ -439,12 +506,13 @@ describe("formatWorkflowTruthReport", () => {
 
   it("intendedEffect newlines collapsed to single line", () => {
     const r = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       workflowId: "w",
       status: "complete",
       runLevelCodes: [],
       runLevelReasons: [],
       verificationPolicy: vp,
+      eventSequenceIntegrity: { kind: "normal" },
       steps: [
         {
           seq: 0,

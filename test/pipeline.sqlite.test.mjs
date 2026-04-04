@@ -54,9 +54,10 @@ describe("verifyWorkflow integration", () => {
     assert.equal(r.status, "complete");
     assert.equal(r.steps[0]?.status, "verified");
     assert.deepStrictEqual(r.verificationPolicy, strongPolicy);
+    assert.deepStrictEqual(r.eventSequenceIntegrity, { kind: "normal" });
   });
 
-  it("wf_complete eventual wiring → complete, schema v3 policy echoed", async () => {
+  it("wf_complete eventual wiring → complete, schema v4 policy echoed", async () => {
     const r = await verifyWorkflow({
       workflowId: "wf_complete",
       eventsPath,
@@ -70,7 +71,7 @@ describe("verifyWorkflow integration", () => {
         pollIntervalMs: 100,
       },
     });
-    assert.equal(r.schemaVersion, 3);
+    assert.equal(r.schemaVersion, 4);
     assert.equal(r.status, "complete");
     assert.equal(r.steps[0]?.status, "verified");
     assert.deepStrictEqual(r.verificationPolicy, {
@@ -161,7 +162,7 @@ describe("verifyWorkflow integration", () => {
       logStep: noopLog,
       truthReport: () => {},
     });
-    assert.equal(r.schemaVersion, 3);
+    assert.equal(r.schemaVersion, 4);
     assert.equal(r.status, "complete");
     assert.equal(r.steps.length, 1);
     assert.equal(r.steps[0]?.status, "verified");
@@ -199,6 +200,112 @@ describe("verifyWorkflow integration", () => {
     const a = await verifyWorkflow(opts);
     const b = await verifyWorkflow(opts);
     assert.equal(JSON.stringify(a), JSON.stringify(b));
+  });
+
+  it("monotonic capture permutations: swapping duplicate-seq lines yields identical WorkflowResult", async () => {
+    const lineA = `${JSON.stringify({
+      schemaVersion: 1,
+      workflowId: "wf_dup_perm",
+      seq: 0,
+      type: "tool_observed",
+      toolId: "crm.upsert_contact",
+      params: { recordId: "c_ok", fields: { name: "Alice", status: "active" } },
+    })}\n`;
+    const lineB = `${JSON.stringify({
+      schemaVersion: 1,
+      workflowId: "wf_dup_perm",
+      seq: 0,
+      type: "tool_observed",
+      toolId: "crm.upsert_contact",
+      params: { recordId: "c_ok", fields: { name: "Alice", status: "active" } },
+    })}\n`;
+    const f1 = join(dir, "dup_perm_ab.ndjson");
+    const f2 = join(dir, "dup_perm_ba.ndjson");
+    writeFileSync(f1, lineA + lineB);
+    writeFileSync(f2, lineB + lineA);
+    const opts = (p) => ({
+      workflowId: "wf_dup_perm",
+      eventsPath: p,
+      registryPath,
+      database: sqliteDb(),
+      logStep: noopLog,
+      truthReport: () => {},
+    });
+    const r1 = await verifyWorkflow(opts(f1));
+    const r2 = await verifyWorkflow(opts(f2));
+    assert.equal(JSON.stringify(r1), JSON.stringify(r2));
+    assert.equal(r1.eventSequenceIntegrity.kind, "normal");
+  });
+
+  it("irregular capture vs monotonic same multiset: same result omitting eventSequenceIntegrity", async () => {
+    const ev0 = {
+      schemaVersion: 1,
+      workflowId: "wf_omit_order",
+      seq: 0,
+      type: "tool_observed",
+      toolId: "crm.upsert_contact",
+      params: { recordId: "c_ok", fields: { name: "Alice", status: "active" } },
+    };
+    const ev1 = {
+      schemaVersion: 1,
+      workflowId: "wf_omit_order",
+      seq: 1,
+      type: "tool_observed",
+      toolId: "crm.upsert_contact",
+      params: { recordId: "c_bad", fields: { name: "Bob", status: "active" } },
+    };
+    const sortedPath = join(dir, "omit_sorted.ndjson");
+    const unsortedPath = join(dir, "omit_unsorted.ndjson");
+    writeFileSync(sortedPath, `${JSON.stringify(ev0)}\n${JSON.stringify(ev1)}\n`);
+    writeFileSync(unsortedPath, `${JSON.stringify(ev1)}\n${JSON.stringify(ev0)}\n`);
+    const base = {
+      workflowId: "wf_omit_order",
+      registryPath,
+      database: sqliteDb(),
+      logStep: noopLog,
+      truthReport: () => {},
+    };
+    const rs = await verifyWorkflow({ ...base, eventsPath: sortedPath });
+    const ru = await verifyWorkflow({ ...base, eventsPath: unsortedPath });
+    const strip = (r) => {
+      const { eventSequenceIntegrity: _x, ...rest } = r;
+      return rest;
+    };
+    assert.deepStrictEqual(strip(rs), strip(ru));
+    assert.equal(rs.eventSequenceIntegrity.kind, "normal");
+    assert.equal(ru.eventSequenceIntegrity.kind, "irregular");
+    assert.equal(ru.status, rs.status);
+  });
+
+  it("irregular capture still complete when all steps verified", async () => {
+    const evLate = {
+      schemaVersion: 1,
+      workflowId: "wf_irreg_ok",
+      seq: 1,
+      type: "tool_observed",
+      toolId: "crm.upsert_contact",
+      params: { recordId: "c_ok", fields: { name: "Alice", status: "active" } },
+    };
+    const evFirst = {
+      schemaVersion: 1,
+      workflowId: "wf_irreg_ok",
+      seq: 0,
+      type: "tool_observed",
+      toolId: "crm.upsert_contact",
+      params: { recordId: "c_ok", fields: { name: "Alice", status: "active" } },
+    };
+    const p = join(dir, "irreg_ok.ndjson");
+    writeFileSync(p, `${JSON.stringify(evLate)}\n${JSON.stringify(evFirst)}\n`);
+    const r = await verifyWorkflow({
+      workflowId: "wf_irreg_ok",
+      eventsPath: p,
+      registryPath,
+      database: sqliteDb(),
+      logStep: noopLog,
+      truthReport: () => {},
+    });
+    assert.equal(r.status, "complete");
+    assert.equal(r.eventSequenceIntegrity.kind, "irregular");
   });
 
   it("ignores params.ok — fake success still needs row", async () => {
@@ -343,7 +450,7 @@ describe("multi-effect verification (golden stdout, stderr, AJV)", () => {
         truthReport: () => {},
       });
       assert.deepStrictEqual(r, expectedObj);
-      assert.equal(normTruthText(formatWorkflowTruthReport(r)), expectedErr);
+      assert.equal(normTruthText(formatWorkflowTruthReport(r)), normTruthText(expectedErr));
       if (!validateResult(r)) {
         assert.fail(JSON.stringify(validateResult.errors ?? []));
       }

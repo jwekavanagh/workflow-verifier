@@ -18,7 +18,9 @@ This document is the authoritative specification for the MVP. The product verifi
 | `schemaLoad.ts` | AJV 2020-12 validators for event line, registry, workflow result |
 | `failureCatalog.ts` | Stable run-level literals, `formatOperationalMessage`, CLI error envelope helpers, `CLI_OPERATIONAL_CODES` |
 | `truthLayerError.ts` | `TruthLayerError` for coded I/O and registry failures |
-| `loadEvents.ts` | Read NDJSON, validate, filter `workflowId`, stable sort by `seq` |
+| `loadEvents.ts` | Read NDJSON, validate, filter `workflowId`; delegate sort + `eventSequenceIntegrity` to `prepareWorkflowEvents` |
+| `prepareWorkflowEvents.ts` | Sole ingest `stableSortEventsBySeq`; attaches `eventSequenceIntegrity` |
+| `eventSequenceIntegrity.ts` | Pure analysis of capture order vs `seq` and optional `timestamp` monotonicity (seq-sorted order) |
 | `planLogicalSteps.ts` | Stable sort, group by `seq`, canonical params equality, divergence vs last observation |
 | `resolveExpectation.ts` | Registry + params → `VerificationRequest`; `intendedEffect` template rendering (audit only) |
 | `valueVerification.ts` | Canonical display strings + `verificationScalarsEqual` (single scalar comparison table) |
@@ -27,7 +29,7 @@ This document is the authoritative specification for the MVP. The product verifi
 | `reconciler.ts` | `reconcileFromRows` (pure rule table), `reconcileSqlRow` (SQLite sync), `reconcileSqlRowAsync` (Postgres) |
 | `multiEffectRollup.ts` | `rollupMultiEffectsSync` / `rollupMultiEffectsAsync`: per-effect reconcile, UTF-16 sort by effect `id`, step rollup (`verified` / `partially_verified` / `inconsistent` / `incomplete_verification`) |
 | `aggregate.ts` | Workflow status precedence |
-| `workflowTruthReport.ts` | `formatWorkflowTruthReport`, `STEP_STATUS_TRUTH_LABELS`; fixed human report grammar |
+| `workflowTruthReport.ts` | `formatWorkflowTruthReport`, `STEP_STATUS_TRUTH_LABELS`, `TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX`; fixed human report grammar |
 | `runComparison.ts` | `buildRunComparisonReport`, `formatRunComparisonReport`, `logicalStepKeyFromStep`, `recurrenceSignature`; cross-run comparison |
 | `verificationPolicy.ts` | `VerificationPolicy` normalization/validation; `executeVerificationWithPolicySync` / `executeVerificationWithPolicyAsync` (strong vs eventual polling); `createSqlitePolicyContext` |
 | `pipeline.ts` | Orchestration: `runLogicalStepsVerification` (internal), async `verifyWorkflow`, sync `verifyToolObservedStep`, `withWorkflowVerification` (SQLite `dbPath` only); default `truthReport` / `logStep` |
@@ -92,7 +94,7 @@ node dist/cli.js --workflow-id <id> --events <path> --registry <path> --postgres
 
 **I/O order (CLI — verdict paths 0/1/2):** **`verifyWorkflow`** emits the human report via default **`truthReport`** to **stderr** first, then the CLI writes **stdout**. So: **stderr (human) → stdout (JSON)**.
 
-**stdout:** Single JSON object matching `schemas/workflow-result.schema.json` (`schemaVersion` **`3`**; required **`verificationPolicy`** `{ consistencyMode, verificationWindowMs, pollIntervalMs }`; includes required **`runLevelReasons`** alongside **`runLevelCodes`**; each step includes **`repeatObservationCount`** and **`evaluatedObservationOrdinal`**).
+**stdout:** Single JSON object matching `schemas/workflow-result.schema.json` (`schemaVersion` **`4`**; required **`verificationPolicy`** `{ consistencyMode, verificationWindowMs, pollIntervalMs }`; required **`eventSequenceIntegrity`**; includes required **`runLevelReasons`** alongside **`runLevelCodes`**; each step includes **`repeatObservationCount`** and **`evaluatedObservationOrdinal`**).
 
 **Verification policy (CLI):** Default is **`strong`** (single read per check). For **`eventual`**, pass **`--consistency eventual`** plus required **`--verification-window-ms`** and **`--poll-interval-ms`** (integers ≥ 1, **`pollIntervalMs` ≤ `verificationWindowMs`**). With **`strong`**, do not pass the millisecond flags. See [Verification policy (normative)](#verification-policy-normative).
 
@@ -130,9 +132,10 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
    - `workflow_status: ` + exactly `complete`, `incomplete`, or `inconsistent`.
    - `trust: ` + exactly one of:
      - `TRUSTED: Every step matched the database under the configured verification rules.` when status is `complete`.
-     - `NOT_TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.` when status is `incomplete`, **except** when the narrower rule below applies.
-     - `NOT_TRUSTED: At least one step could not be confirmed within the verification window (row not observed; replication or processing delay is possible).` when status is `incomplete`, **`runLevelReasons` is empty**, at least one step has **`uncertain`**, and **no** step has status in **`{ missing, inconsistent, partially_verified, incomplete_verification }`**.
-     - `NOT_TRUSTED: At least one step failed verification against the database (determinate failure).` when status is `inconsistent`.
+     - `NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.` when status is `incomplete`, **except** when the narrower rule below applies.
+     - `NOT TRUSTED: At least one step could not be confirmed within the verification window (row not observed; replication or processing delay is possible).` when status is `incomplete`, **`runLevelReasons` is empty**, at least one step has **`uncertain`**, and **no** step has status in **`{ missing, inconsistent, partially_verified, incomplete_verification }`**.
+     - `NOT TRUSTED: At least one step failed verification against the database (determinate failure).` when status is `inconsistent`.
+     - When **`eventSequenceIntegrity.kind`** is **`irregular`**, append **exactly** one ASCII space and this exact suffix to the trust sentence chosen above: `Event capture or timestamps were irregular; verification used seq-sorted order. See event_sequence below.` (same string as **`TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX`** in `workflowTruthReport.ts`).
 
 2. **Run-level**
    - If `runLevelReasons` is empty: line exactly `run_level: (none)`.
@@ -140,7 +143,12 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
    - `runLevelCodes[i]` always equals `runLevelReasons[i].code` (derived from `runLevelReasons` at aggregation). When there are no matching events for the workflow id, the library appends **`NO_STEPS_FOR_WORKFLOW`** with message `No tool_observed events for this workflow id after filtering.`
    - Catalog literal for **`MALFORMED_EVENT_LINE`**: `Event line was missing, invalid JSON, or failed schema validation for a tool observation.`
 
-3. **Steps**
+3. **Event sequence integrity**
+   - Immediately after the **run-level** block: if **`eventSequenceIntegrity.kind`** is **`normal`**, line exactly `event_sequence: normal`.
+   - If **`kind`** is **`irregular`**: line `event_sequence: irregular`, then one line per entry in **`eventSequenceIntegrity.reasons`** in array order, each `  - ` + `reason.code` + `: ` + `reason.message` (trimmed), matching the same formatting as run-level reason lines.
+   - **Codes and messages** for these reasons are defined in **`EVENT_SEQUENCE_MESSAGES`** and **`eventSequenceTimestampNotMonotonicReason`** in `failureCatalog.ts` (SSOT for wire `message` strings).
+
+4. **Steps**
    - Line exactly `steps:`.
    - For each step in array order: one line `  - seq=` + decimal seq + ` tool=` + toolId + ` status=` + label, where label is from **`STEP_STATUS_TRUTH_LABELS`** (defensive: `\r`/`\n` in toolId → `_`). Status → label mapping:
 
@@ -163,12 +171,23 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 ### Operator
 
 - **Reading logs:** Treat **stderr** as the human verdict for a verification run; **stdout** (CLI) is the machine-readable `WorkflowResult`. Correlate them by process / timestamp in your log stack.
-- **`trust:` line:** Treat as **trusted** only when it is the `TRUSTED:` sentence **and** `workflow_status: complete`. Any `NOT_TRUSTED:` means the workflow must not be treated as fully verified—investigate `steps:` and `run_level:`.
+- **`trust:` line:** Treat as **trusted** only when it is the `TRUSTED:` sentence **and** `workflow_status: complete`. Any line starting with `NOT TRUSTED:` means the workflow must not be treated as fully verified—investigate `steps:`, `run_level:`, and **`event_sequence:`**.
 - **Exit codes:** 0 = `complete`, 1 = `inconsistent`, 2 = `incomplete`, 3 = operational failure ([CLI operational errors](#cli-operational-errors)); **`--help`** exits **0**.
 - DB user should be **read-only** in production (Postgres: **SELECT-only** role; the product also sets **session read-only** via `applyPostgresVerificationSessionGuards`).
 - **`npm test`** requires Postgres 16+ and env **`POSTGRES_ADMIN_URL`** (superuser, runs [`scripts/pg-ci-init.mjs`](../scripts/pg-ci-init.mjs)) and **`POSTGRES_VERIFICATION_URL`** (role `verifier_ro` / SELECT-only on seeded tables). CI sets both; locally use the README Docker one-liner and export the same URLs.
 - SQLite file must exist when `readOnly: true` is used (Node `DatabaseSync`).
 - Redact secrets from `params` before writing events if logs are retained; **redact params in retained logs** when those logs leave the trust boundary. The human report can include **`intended:`** text from the registry template—apply the same redaction policy if that text can contain secrets.
+
+## Event capture order and delayed delivery (normative)
+
+- **Capture order (batch):** Order of successfully parsed, schema-valid NDJSON lines for a given `workflowId` after filtering. Malformed lines do not produce events and do not consume a capture slot (they still emit **`MALFORMED_EVENT_LINE`** on `runLevelReasons`).
+- **Capture order (in-process):** Order of **`observeStep`** calls that enqueue an event for the session `workflowId`.
+- **Planning order:** Always **`stableSortEventsBySeq`** (stable by `seq`, ties by capture order). Only **`prepareWorkflowEvents.ts`** performs this sort on ingest; `planLogicalSteps` may sort again (idempotent).
+- **`timestamp`:** Optional on events; **never** used to sort events or to choose the evaluated observation per `seq` (still the last observation in capture order within each `seq`).
+- **Delayed / out-of-order (in scope):** Events may arrive with `seq` not non-decreasing in capture order, or late in wall time, as long as they are present **before** verification runs (**end of NDJSON read** or **`buildWorkflowResult`** after `run` completes). The product is deterministic: same multiset + capture order → same `WorkflowResult` except **`eventSequenceIntegrity`** per its rules.
+- **Out of scope:** Events after **`buildWorkflowResult`** / closed session (**`observeStep`** throws); cross-invocation queuing; mid-run partial verification; SQL timing beyond **`VerificationPolicy`**.
+
+Reason codes for **`eventSequenceIntegrity`** (wire **`message`** strings) are SSOT in **`failureCatalog.ts`** (`EVENT_SEQUENCE_MESSAGES`, **`eventSequenceTimestampNotMonotonicReason`**). JSON shape is SSOT in **`schemas/workflow-result.schema.json`**. Human report templates for **`event_sequence:`** and the irregular **`trust:`** suffix are SSOT in this section and **`workflowTruthReport.ts`**.
 
 ## Event line schema
 
@@ -366,7 +385,7 @@ Step statuses: `verified` | `missing` | `inconsistent` | `incomplete_verificatio
 
 **PRD mapping:** PRD §4 “Failed” (determinate bad outcome) ↔ `inconsistent`. §4 “Incomplete” (cannot confirm) ↔ `incomplete`. §6 three bullets ↔ these three strings. **Multi-effect:** step-level “partial success” is `partially_verified`; the workflow is still **`inconsistent`** until every step is `verified`.
 
-**Compatibility:** `WorkflowResult.schemaVersion` is **3**; required **`verificationPolicy`**; consumers must allow step `status` **`uncertain`** (see [`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json)).
+**Compatibility:** `WorkflowResult.schemaVersion` is **4**; required **`verificationPolicy`** and **`eventSequenceIntegrity`**; consumers must allow step `status` **`uncertain`** (see [`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json)).
 
 ## Cross-run comparison (normative)
 

@@ -3,7 +3,7 @@
  */
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -106,6 +106,44 @@ describe("withWorkflowVerification", () => {
       );
       assert.deepStrictEqual(wrapperResult, batchResult);
     }
+  });
+
+  it("out-of-order observeStep matches verifyWorkflow on same capture-ordered NDJSON", async () => {
+    const evLate = {
+      schemaVersion: 1,
+      workflowId: "wf_wrap_order",
+      seq: 1,
+      type: "tool_observed",
+      toolId: "crm.upsert_contact",
+      params: { recordId: "c_bad", fields: { name: "Bob", status: "active" } },
+    };
+    const evFirst = {
+      schemaVersion: 1,
+      workflowId: "wf_wrap_order",
+      seq: 0,
+      type: "tool_observed",
+      toolId: "crm.upsert_contact",
+      params: { recordId: "c_ok", fields: { name: "Alice", status: "active" } },
+    };
+    const nd = join(dir, "wrap_order.ndjson");
+    writeFileSync(nd, `${JSON.stringify(evLate)}\n${JSON.stringify(evFirst)}\n`);
+    const batchResult = await verifyWorkflow({
+      workflowId: "wf_wrap_order",
+      eventsPath: nd,
+      registryPath,
+      database: { kind: "sqlite", path: dbPath },
+      logStep: noopLog,
+      truthReport: () => {},
+    });
+    const wrapperResult = await withWorkflowVerification(
+      { workflowId: "wf_wrap_order", registryPath, dbPath, logStep: noopLog, truthReport: () => {} },
+      async (observeStep) => {
+        observeStep(evLate);
+        observeStep(evFirst);
+      },
+    );
+    assert.deepStrictEqual(wrapperResult, batchResult);
+    assert.equal(wrapperResult.eventSequenceIntegrity.kind, "irregular");
   });
 
   it("non-object observeStep → MALFORMED_EVENT_LINE, incomplete, no steps", async () => {

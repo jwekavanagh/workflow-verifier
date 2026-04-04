@@ -10,10 +10,11 @@
     "steps",
     "runLevelCodes",
     "runLevelReasons",
-    "verificationPolicy"
+    "verificationPolicy",
+    "eventSequenceIntegrity"
   ],
   "properties": {
-    "schemaVersion": { "const": 3 },
+    "schemaVersion": { "const": 4 },
     "workflowId": { "type": "string" },
     "status": {
       "type": "string",
@@ -40,6 +41,31 @@
     "steps": {
       "type": "array",
       "items": { "$ref": "#/$defs/step" }
+    },
+    "eventSequenceIntegrity": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "normal" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "reasons"],
+          "properties": {
+            "kind": { "const": "irregular" },
+            "reasons": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/reason" }
+            }
+          }
+        }
+      ]
     }
   },
   "$defs": {

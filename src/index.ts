@@ -8,6 +8,8 @@ export {
   cliErrorEnvelope,
   CLI_ERROR_KIND,
   CLI_ERROR_SCHEMA_VERSION,
+  eventSequenceIssue,
+  EVENT_SEQUENCE_MESSAGES,
 } from "./failureCatalog.js";
 export {
   resolveVerificationRequest,
@@ -26,6 +28,7 @@ export {
   formatWorkflowTruthReport,
   STEP_STATUS_TRUTH_LABELS,
   TRUST_LINE_UNCERTAIN_WITHIN_WINDOW,
+  TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX,
 } from "./workflowTruthReport.js";
 export {
   DEFAULT_VERIFICATION_POLICY,
@@ -48,6 +51,7 @@ export type {
   VerificationPolicy,
   WorkflowResult,
   StepOutcome,
+  EventSequenceIntegrity,
 } from "./types.js";
 export type { BucketAEntry, RunComparisonReport } from "./runComparison.js";
 export type { SqlReadBackend } from "./sqlReadBackend.js";

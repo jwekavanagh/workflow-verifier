@@ -44,7 +44,7 @@ describe("verifyWorkflow Postgres integration", () => {
     });
     assert.equal(r.status, "complete");
     assert.equal(r.steps[0]?.status, "verified");
-    assert.equal(r.schemaVersion, 3);
+    assert.equal(r.schemaVersion, 4);
     assert.deepStrictEqual(r.verificationPolicy, {
       consistencyMode: "strong",
       verificationWindowMs: 0,

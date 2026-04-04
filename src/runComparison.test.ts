@@ -45,7 +45,7 @@ function sqlRowStep(
 function wf(steps: StepOutcome[], id = "wf_cmp"): WorkflowResult {
   const bad = steps.some((s) => s.status !== "verified");
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     workflowId: id,
     status: bad ? "inconsistent" : "complete",
     runLevelCodes: [],
@@ -55,6 +55,7 @@ function wf(steps: StepOutcome[], id = "wf_cmp"): WorkflowResult {
       verificationWindowMs: 0,
       pollIntervalMs: 0,
     },
+    eventSequenceIntegrity: { kind: "normal" },
     steps,
   };
 }
