@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "workflowId": "wf_multi_partial",
   "status": "inconsistent",
   "runLevelCodes": [],
@@ -85,5 +85,53 @@
       "evaluatedObservationOrdinal": 1,
       "failureDiagnostic": "workflow_execution"
     }
-  ]
+  ],
+  "workflowTruthReport": {
+    "schemaVersion": 1,
+    "workflowId": "wf_multi_partial",
+    "workflowStatus": "inconsistent",
+    "trustSummary": "NOT TRUSTED: At least one step failed verification against the database (determinate failure).",
+    "runLevelIssues": [],
+    "eventSequence": {
+      "kind": "normal"
+    },
+    "steps": [
+      {
+        "seq": 0,
+        "toolId": "demo.multi_contact",
+        "outcomeLabel": "PARTIALLY_VERIFIED",
+        "observations": {
+          "evaluatedOrdinal": 1,
+          "repeatCount": 1
+        },
+        "reasons": [
+          {
+            "code": "MULTI_EFFECT_PARTIAL",
+            "message": "Verified 1 of 2 effects; not verified: secondary"
+          }
+        ],
+        "intendedEffect": "Multi \"c_ok\" \"c_partial\"",
+        "verifyTarget": "sql_effects count=2 primary:contacts.id=c_ok; secondary:contacts.id=c_partial",
+        "failureCategory": "workflow_execution",
+        "effects": [
+          {
+            "id": "primary",
+            "outcomeLabel": "VERIFIED",
+            "reasons": []
+          },
+          {
+            "id": "secondary",
+            "outcomeLabel": "FAILED_VALUE_MISMATCH",
+            "reasons": [
+              {
+                "code": "VALUE_MISMATCH",
+                "message": "Expected \"Alice\" but found null for field name (table=contacts id=c_partial)",
+                "field": "name"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 }

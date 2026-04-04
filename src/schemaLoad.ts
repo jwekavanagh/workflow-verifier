@@ -23,38 +23,22 @@ function getAjv(): InstanceType<typeof Ajv2020> {
   return ajvInstance;
 }
 
-const validatorCache: Partial<
-  Record<
-    | "event"
-    | "tools-registry"
-    | "workflow-result"
-    | "run-comparison-report"
-    | "registry-validation-result",
-    ValidateFunction
-  >
-> = {};
+export type SchemaValidatorName =
+  | "event"
+  | "tools-registry"
+  | "workflow-engine-result"
+  | "workflow-truth-report"
+  | "workflow-result"
+  | "workflow-result-compare-input"
+  | "run-comparison-report"
+  | "registry-validation-result";
 
-export function loadSchemaValidator(
-  name:
-    | "event"
-    | "tools-registry"
-    | "workflow-result"
-    | "run-comparison-report"
-    | "registry-validation-result",
-): ValidateFunction {
+const validatorCache: Partial<Record<SchemaValidatorName, ValidateFunction>> = {};
+
+function compileSchemaFile(name: SchemaValidatorName, file: string): ValidateFunction {
   const cached = validatorCache[name];
   if (cached) return cached;
 
-  const file =
-    name === "event"
-      ? "event.schema.json"
-      : name === "tools-registry"
-        ? "tools-registry.schema.json"
-        : name === "workflow-result"
-          ? "workflow-result.schema.json"
-          : name === "run-comparison-report"
-            ? "run-comparison-report.schema.json"
-            : "registry-validation-result.schema.json";
   const raw = readFileSync(path.join(schemasDir(), file), "utf8");
   const schema = JSON.parse(raw) as object & { $id?: string };
   const ajv = getAjv();
@@ -68,5 +52,44 @@ export function loadSchemaValidator(
       ajv.removeSchema(id);
     }
     throw e;
+  }
+}
+
+/** Ensures engine + truth schemas are registered before emitted `workflow-result` (cross-`$ref`). */
+function ensureWorkflowEmittedDependencies(): void {
+  compileSchemaFile("workflow-engine-result", "workflow-engine-result.schema.json");
+  compileSchemaFile("workflow-truth-report", "workflow-truth-report.schema.json");
+}
+
+/** Ensures all branches of compare-input are registered before compiling compare-input. */
+function ensureCompareInputDependencies(): void {
+  ensureWorkflowEmittedDependencies();
+  compileSchemaFile("workflow-result", "workflow-result.schema.json");
+}
+
+export function loadSchemaValidator(name: SchemaValidatorName): ValidateFunction {
+  switch (name) {
+    case "workflow-engine-result":
+      return compileSchemaFile(name, "workflow-engine-result.schema.json");
+    case "workflow-truth-report":
+      return compileSchemaFile(name, "workflow-truth-report.schema.json");
+    case "workflow-result":
+      ensureWorkflowEmittedDependencies();
+      return compileSchemaFile(name, "workflow-result.schema.json");
+    case "workflow-result-compare-input":
+      ensureCompareInputDependencies();
+      return compileSchemaFile(name, "workflow-result-compare-input.schema.json");
+    case "event":
+      return compileSchemaFile(name, "event.schema.json");
+    case "tools-registry":
+      return compileSchemaFile(name, "tools-registry.schema.json");
+    case "run-comparison-report":
+      return compileSchemaFile(name, "run-comparison-report.schema.json");
+    case "registry-validation-result":
+      return compileSchemaFile(name, "registry-validation-result.schema.json");
+    default: {
+      const _exhaustive: never = name;
+      return _exhaustive;
+    }
   }
 }

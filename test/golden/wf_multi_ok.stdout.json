@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "workflowId": "wf_multi_ok",
   "status": "complete",
   "runLevelCodes": [],
@@ -70,5 +70,41 @@
       "repeatObservationCount": 1,
       "evaluatedObservationOrdinal": 1
     }
-  ]
+  ],
+  "workflowTruthReport": {
+    "schemaVersion": 1,
+    "workflowId": "wf_multi_ok",
+    "workflowStatus": "complete",
+    "trustSummary": "TRUSTED: Every step matched the database under the configured verification rules.",
+    "runLevelIssues": [],
+    "eventSequence": {
+      "kind": "normal"
+    },
+    "steps": [
+      {
+        "seq": 0,
+        "toolId": "demo.multi_contact",
+        "outcomeLabel": "VERIFIED",
+        "observations": {
+          "evaluatedOrdinal": 1,
+          "repeatCount": 1
+        },
+        "reasons": [],
+        "intendedEffect": "Multi \"c_ok\" \"c_side\"",
+        "verifyTarget": "sql_effects count=2 primary:contacts.id=c_ok; secondary:contacts.id=c_side",
+        "effects": [
+          {
+            "id": "primary",
+            "outcomeLabel": "VERIFIED",
+            "reasons": []
+          },
+          {
+            "id": "secondary",
+            "outcomeLabel": "VERIFIED",
+            "reasons": []
+          }
+        ]
+      }
+    ]
+  }
 }

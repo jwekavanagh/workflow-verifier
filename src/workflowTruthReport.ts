@@ -4,7 +4,18 @@ import {
   failureDiagnosticForStep,
   formatVerificationTargetSummary,
 } from "./verificationDiagnostics.js";
-import type { Reason, StepStatus, WorkflowResult, WorkflowStatus } from "./types.js";
+import type {
+  FailureDiagnostic,
+  Reason,
+  StepOutcome,
+  StepStatus,
+  WorkflowEngineResult,
+  WorkflowResult,
+  WorkflowStatus,
+  WorkflowTruthEffect,
+  WorkflowTruthReport,
+  WorkflowTruthStep,
+} from "./types.js";
 
 export const STEP_STATUS_TRUTH_LABELS: Record<StepStatus, string> = {
   verified: "VERIFIED",
@@ -41,23 +52,23 @@ export const TRUST_LINE_UNCERTAIN_WITHIN_WINDOW =
 export const TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX =
   "Event capture or timestamps were irregular; verification used seq-sorted order. See event_sequence below.";
 
-function trustLineBaseForResult(result: WorkflowResult): string {
+function trustLineBaseForEngine(engine: WorkflowEngineResult): string {
   if (
-    result.status === "incomplete" &&
-    result.runLevelReasons.length === 0 &&
-    result.steps.some((s) => s.status === "uncertain") &&
-    !result.steps.some((s) =>
+    engine.status === "incomplete" &&
+    engine.runLevelReasons.length === 0 &&
+    engine.steps.some((s) => s.status === "uncertain") &&
+    !engine.steps.some((s) =>
       ["missing", "inconsistent", "partially_verified", "incomplete_verification"].includes(s.status),
     )
   ) {
     return TRUST_LINE_UNCERTAIN_WITHIN_WINDOW;
   }
-  return TRUST_LINE_BY_STATUS[result.status];
+  return TRUST_LINE_BY_STATUS[engine.status];
 }
 
-function trustLineForResult(result: WorkflowResult): string {
-  const base = trustLineBaseForResult(result);
-  if (result.eventSequenceIntegrity.kind === "irregular") {
+function trustSummaryForEngine(engine: WorkflowEngineResult): string {
+  const base = trustLineBaseForEngine(engine);
+  if (engine.eventSequenceIntegrity.kind === "irregular") {
     return `${base} ${TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX}`;
   }
   return base;
@@ -99,51 +110,135 @@ function parseEffectEvidenceRow(v: unknown): EffectEvidenceRow | null {
   };
 }
 
-export function formatWorkflowTruthReport(result: WorkflowResult): string {
+function copyReason(r: Reason): Reason {
+  const out: Reason = { code: r.code, message: r.message };
+  if (r.field !== undefined && r.field.length > 0) out.field = r.field;
+  return out;
+}
+
+function buildTruthStep(s: StepOutcome): WorkflowTruthStep {
+  const label = STEP_STATUS_TRUTH_LABELS[s.status] as WorkflowTruthStep["outcomeLabel"];
+  const vt = formatVerificationTargetSummary(s.verificationRequest);
+  const intended = singleLineIntended(s.intendedEffect);
+  const base: WorkflowTruthStep = {
+    seq: s.seq,
+    toolId: s.toolId,
+    outcomeLabel: label,
+    observations: {
+      evaluatedOrdinal: s.evaluatedObservationOrdinal,
+      repeatCount: s.repeatObservationCount,
+    },
+    reasons: s.reasons.map(copyReason),
+    intendedEffect: intended,
+    verifyTarget: vt === null ? null : vt,
+  };
+  if (s.status !== "verified") {
+    const cat = (s.failureDiagnostic ?? failureDiagnosticForStep(s)) as FailureDiagnostic;
+    base.failureCategory = cat;
+  }
+  const rawEffects = s.evidenceSummary.effects;
+  const effects: WorkflowTruthEffect[] = [];
+  if (Array.isArray(rawEffects)) {
+    for (const row of rawEffects) {
+      const eff = parseEffectEvidenceRow(row);
+      if (eff === null) continue;
+      effects.push({
+        id: sanitizeOneLineId(eff.id),
+        outcomeLabel: EFFECT_STATUS_TRUTH_LABELS[eff.status] as WorkflowTruthEffect["outcomeLabel"],
+        reasons: eff.reasons.map(copyReason),
+      });
+    }
+  }
+  if (effects.length > 0) {
+    base.effects = effects;
+  }
+  return base;
+}
+
+export function buildWorkflowTruthReport(engine: WorkflowEngineResult): WorkflowTruthReport {
+  const runLevelIssues =
+    engine.runLevelReasons.length === 0
+      ? []
+      : engine.runLevelReasons.map((r) => ({
+          code: r.code,
+          message: r.message,
+          category: failureDiagnosticForRunLevelCode(r.code) as FailureDiagnostic,
+        }));
+
+  const eventSequence =
+    engine.eventSequenceIntegrity.kind === "normal"
+      ? ({ kind: "normal" } as const)
+      : ({
+          kind: "irregular",
+          issues: engine.eventSequenceIntegrity.reasons.map((r) => ({
+            code: r.code,
+            message: r.message,
+            category: failureDiagnosticForEventSequenceCode(r.code) as FailureDiagnostic,
+          })),
+        } as const);
+
+  return {
+    schemaVersion: 1,
+    workflowId: engine.workflowId,
+    workflowStatus: engine.status,
+    trustSummary: trustSummaryForEngine(engine),
+    runLevelIssues,
+    eventSequence,
+    steps: engine.steps.map(buildTruthStep),
+  };
+}
+
+export function finalizeEmittedWorkflowResult(engine: WorkflowEngineResult): WorkflowResult {
+  return {
+    ...engine,
+    schemaVersion: 6,
+    workflowTruthReport: buildWorkflowTruthReport(engine),
+  };
+}
+
+export function formatWorkflowTruthReportStruct(truth: WorkflowTruthReport): string {
   const lines: string[] = [];
 
-  lines.push(`workflow_id: ${sanitizeOneLineId(result.workflowId)}`);
-  lines.push(`workflow_status: ${result.status}`);
-  lines.push(`trust: ${trustLineForResult(result)}`);
+  lines.push(`workflow_id: ${sanitizeOneLineId(truth.workflowId)}`);
+  lines.push(`workflow_status: ${truth.workflowStatus}`);
+  lines.push(`trust: ${truth.trustSummary}`);
 
-  if (result.runLevelReasons.length === 0) {
+  if (truth.runLevelIssues.length === 0) {
     lines.push("run_level: (none)");
   } else {
     lines.push("run_level:");
-    for (const r of result.runLevelReasons) {
+    for (const r of truth.runLevelIssues) {
       const msg = r.message.trim();
       const human = msg.length > 0 ? msg : "(no message)";
       lines.push(`  - ${r.code}: ${human}`);
-      lines.push(`    category: ${failureDiagnosticForRunLevelCode(r.code)}`);
+      lines.push(`    category: ${r.category}`);
     }
   }
 
-  if (result.eventSequenceIntegrity.kind === "normal") {
+  if (truth.eventSequence.kind === "normal") {
     lines.push("event_sequence: normal");
   } else {
     lines.push("event_sequence: irregular");
-    for (const r of result.eventSequenceIntegrity.reasons) {
+    for (const r of truth.eventSequence.issues) {
       const msg = r.message.trim();
       const human = msg.length > 0 ? msg : "(no message)";
       lines.push(`  - ${r.code}: ${human}`);
-      lines.push(`    category: ${failureDiagnosticForEventSequenceCode(r.code)}`);
+      lines.push(`    category: ${r.category}`);
     }
   }
 
   lines.push("steps:");
-  for (const s of result.steps) {
+  for (const s of truth.steps) {
     const toolId = sanitizeOneLineId(s.toolId);
-    const label = STEP_STATUS_TRUTH_LABELS[s.status];
-    lines.push(`  - seq=${s.seq} tool=${toolId} status=${label}`);
+    lines.push(`  - seq=${s.seq} tool=${toolId} status=${s.outcomeLabel}`);
     lines.push(
-      `    observations: evaluated=${s.evaluatedObservationOrdinal} of ${s.repeatObservationCount} in_capture_order`,
+      `    observations: evaluated=${s.observations.evaluatedOrdinal} of ${s.observations.repeatCount} in_capture_order`,
     );
-    if (s.status !== "verified") {
-      const cat = s.failureDiagnostic ?? failureDiagnosticForStep(s);
+    if (s.outcomeLabel !== "VERIFIED") {
+      const cat = s.failureCategory!;
       lines.push(`    category: ${cat}`);
-      const vt = formatVerificationTargetSummary(s.verificationRequest);
-      if (vt !== null) {
-        lines.push(`    verify_target: ${vt}`);
+      if (s.verifyTarget !== null) {
+        lines.push(`    verify_target: ${s.verifyTarget}`);
       }
     }
     for (const r of s.reasons) {
@@ -155,19 +250,14 @@ export function formatWorkflowTruthReport(result: WorkflowResult): string {
       }
       lines.push(line);
     }
-    const intended = singleLineIntended(s.intendedEffect);
-    if (intended.length > 0) {
-      lines.push(`    intended: ${intended}`);
+    if (s.intendedEffect.length > 0) {
+      lines.push(`    intended: ${s.intendedEffect}`);
     }
 
-    const rawEffects = s.evidenceSummary.effects;
-    if (Array.isArray(rawEffects)) {
-      for (const row of rawEffects) {
-        const eff = parseEffectEvidenceRow(row);
-        if (eff === null) continue;
+    if (s.effects !== undefined) {
+      for (const eff of s.effects) {
         const eid = sanitizeOneLineId(eff.id);
-        const el = EFFECT_STATUS_TRUTH_LABELS[eff.status];
-        lines.push(`    effect: id=${eid} status=${el}`);
+        lines.push(`    effect: id=${eid} status=${eff.outcomeLabel}`);
         for (const r of eff.reasons) {
           const msg = r.message.trim();
           const human = msg.length > 0 ? msg : "(no message)";
@@ -182,4 +272,8 @@ export function formatWorkflowTruthReport(result: WorkflowResult): string {
   }
 
   return lines.join("\n");
+}
+
+export function formatWorkflowTruthReport(engine: WorkflowEngineResult): string {
+  return formatWorkflowTruthReportStruct(buildWorkflowTruthReport(engine));
 }

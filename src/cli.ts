@@ -17,8 +17,9 @@ import {
 } from "./registryValidation.js";
 import { loadSchemaValidator } from "./schemaLoad.js";
 import { TruthLayerError } from "./truthLayerError.js";
-import type { VerificationPolicy, WorkflowResult } from "./types.js";
+import type { VerificationPolicy, WorkflowEngineResult, WorkflowResult } from "./types.js";
 import { resolveVerificationPolicyInput } from "./verificationPolicy.js";
+import { normalizeToEmittedWorkflowResult } from "./workflowResultNormalize.js";
 
 function argValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
@@ -249,7 +250,7 @@ function runCompareSubcommand(args: string[]): void {
   }
 
   const paths = [...priors, currentPath];
-  const validateWf = loadSchemaValidator("workflow-result");
+  const validateCompareInput = loadSchemaValidator("workflow-result-compare-input");
   const results: WorkflowResult[] = [];
   const displayLabels: string[] = [];
 
@@ -271,14 +272,24 @@ function runCompareSubcommand(args: string[]): void {
       writeCliError(CLI_OPERATIONAL_CODES.COMPARE_INPUT_JSON_SYNTAX, formatOperationalMessage(msg));
       process.exit(3);
     }
-    if (!validateWf(parsed)) {
+    if (!validateCompareInput(parsed)) {
       writeCliError(
         CLI_OPERATIONAL_CODES.COMPARE_INPUT_SCHEMA_INVALID,
-        JSON.stringify(validateWf.errors ?? []),
+        JSON.stringify(validateCompareInput.errors ?? []),
       );
       process.exit(3);
     }
-    results.push(parsed as WorkflowResult);
+    try {
+      results.push(
+        normalizeToEmittedWorkflowResult(parsed as WorkflowEngineResult | WorkflowResult),
+      );
+    } catch (e) {
+      if (e instanceof TruthLayerError) {
+        writeCliError(e.code, e.message);
+        process.exit(3);
+      }
+      throw e;
+    }
   }
 
   const wf0 = results[0]!.workflowId;

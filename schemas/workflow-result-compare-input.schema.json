@@ -1,0 +1,12 @@
+{
+  "$id": "https://execution-truth-layer/schemas/workflow-result-compare-input.schema.json",
+  "title": "WorkflowResultCompareInput",
+  "oneOf": [
+    {
+      "$ref": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json"
+    },
+    {
+      "$ref": "https://execution-truth-layer/schemas/workflow-result.schema.json"
+    }
+  ]
+}

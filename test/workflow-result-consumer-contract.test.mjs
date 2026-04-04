@@ -61,10 +61,11 @@ describe("WorkflowResult consumer contract (CLI stdout)", () => {
       "runLevelReasons",
       "verificationPolicy",
       "eventSequenceIntegrity",
+      "workflowTruthReport",
     ]) {
       assert.ok(k in parsed, `missing key ${k}`);
     }
-    assert.equal(parsed.schemaVersion, 5);
+    assert.equal(parsed.schemaVersion, 6);
     assert.equal(typeof parsed.schemaVersion, "number");
     assert.equal(typeof parsed.workflowId, "string");
     assert.equal(typeof parsed.status, "string");

@@ -23,6 +23,7 @@ import type {
   ToolRegistryEntry,
   VerificationDatabase,
   VerificationPolicy,
+  WorkflowEngineResult,
   WorkflowResult,
 } from "./types.js";
 import {
@@ -31,7 +32,10 @@ import {
   runLevelIssue,
 } from "./failureCatalog.js";
 import { TruthLayerError } from "./truthLayerError.js";
-import { formatWorkflowTruthReport } from "./workflowTruthReport.js";
+import {
+  finalizeEmittedWorkflowResult,
+  formatWorkflowTruthReport,
+} from "./workflowTruthReport.js";
 import {
   createSqlitePolicyContext,
   executeVerificationWithPolicyAsync,
@@ -379,15 +383,15 @@ export async function verifyWorkflow(options: {
     }
   }
 
-  const result = aggregateWorkflow(
+  const engine = aggregateWorkflow(
     workflowId,
     steps,
     runLevelReasons,
     verificationPolicy,
     eventSequenceIntegrity,
   );
-  truthReport(formatWorkflowTruthReport(result));
-  return result;
+  truthReport(formatWorkflowTruthReport(engine));
+  return finalizeEmittedWorkflowResult(engine);
 }
 
 const POST_CLOSE_MSG = "Workflow verification observeStep invoked after workflow run completed";
@@ -445,7 +449,7 @@ class WorkflowVerificationSession {
     this.observeForbidden = true;
   }
 
-  buildWorkflowResult(): WorkflowResult {
+  buildWorkflowResult(): WorkflowEngineResult {
     if (!this.dbOpen) {
       throw new Error("Workflow verification buildWorkflowResult invoked after database closed");
     }
@@ -491,7 +495,7 @@ export async function withWorkflowVerification(
 
   let session: WorkflowVerificationSession | undefined;
   let runFailure: unknown;
-  let result: WorkflowResult | undefined;
+  let engine: WorkflowEngineResult | undefined;
   try {
     const registry = loadToolsRegistry(options.registryPath);
     let db: DatabaseSync;
@@ -503,7 +507,7 @@ export async function withWorkflowVerification(
     }
     session = new WorkflowVerificationSession(options.workflowId, registry, db, log, verificationPolicy);
     await Promise.resolve(run((v) => session!.observeStep(v)));
-    result = session.buildWorkflowResult();
+    engine = session.buildWorkflowResult();
   } catch (e) {
     runFailure = e;
   } finally {
@@ -512,6 +516,6 @@ export async function withWorkflowVerification(
   if (runFailure !== undefined) {
     throw runFailure;
   }
-  truthReport(formatWorkflowTruthReport(result!));
-  return result!;
+  truthReport(formatWorkflowTruthReport(engine!));
+  return finalizeEmittedWorkflowResult(engine!);
 }

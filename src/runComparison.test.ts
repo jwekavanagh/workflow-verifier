@@ -11,7 +11,9 @@ import {
   formatRunComparisonReport,
   recurrenceSignature,
 } from "./runComparison.js";
-import type { StepOutcome, WorkflowResult } from "./types.js";
+import type { StepOutcome, WorkflowEngineResult, WorkflowResult } from "./types.js";
+import { finalizeEmittedWorkflowResult } from "./workflowTruthReport.js";
+import { workflowEngineResultFromEmitted } from "./workflowResultNormalize.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -45,7 +47,7 @@ function sqlRowStep(
 
 function wf(steps: StepOutcome[], id = "wf_cmp"): WorkflowResult {
   const bad = steps.some((s) => s.status !== "verified");
-  return {
+  const engine: WorkflowEngineResult = {
     schemaVersion: 5,
     workflowId: id,
     status: bad ? "inconsistent" : "complete",
@@ -59,6 +61,7 @@ function wf(steps: StepOutcome[], id = "wf_cmp"): WorkflowResult {
     eventSequenceIntegrity: { kind: "normal" },
     steps,
   };
+  return finalizeEmittedWorkflowResult(engine);
 }
 
 function assertReportValid(report: ReturnType<typeof buildRunComparisonReport>): void {
@@ -300,7 +303,10 @@ describe("runComparison", () => {
     const dir = mkdtempSync(join(tmpdir(), "etl-cmp-mis-"));
     try {
       const a = JSON.parse(readFileSync(join(root, "test", "golden", "wf_multi_ok.stdout.json"), "utf8")) as WorkflowResult;
-      const b = { ...a, workflowId: "other" };
+      const b = finalizeEmittedWorkflowResult({
+        ...workflowEngineResultFromEmitted(a),
+        workflowId: "other",
+      });
       const p1 = join(dir, "a.json");
       const p2 = join(dir, "b.json");
       writeFileSync(p1, JSON.stringify(a));
@@ -313,6 +319,29 @@ describe("runComparison", () => {
       expect(proc.stdout.trim()).toBe("");
       const err = JSON.parse(proc.stderr.trim());
       expect(err.code).toBe(CLI_OPERATIONAL_CODES.COMPARE_WORKFLOW_ID_MISMATCH);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("CLI compare v6 tampered workflowTruthReport: exit 3 COMPARE_WORKFLOW_TRUTH_MISMATCH", () => {
+    const dir = mkdtempSync(join(tmpdir(), "etl-cmp-tam-"));
+    try {
+      const a = JSON.parse(readFileSync(join(root, "test", "golden", "wf_multi_ok.stdout.json"), "utf8")) as WorkflowResult;
+      const b = structuredClone(a);
+      b.workflowTruthReport = { ...b.workflowTruthReport, trustSummary: "tampered" };
+      const p1 = join(dir, "a.json");
+      const p2 = join(dir, "b.json");
+      writeFileSync(p1, JSON.stringify(a));
+      writeFileSync(p2, JSON.stringify(b));
+      const proc = spawnSync(process.execPath, ["--no-warnings", cliJs, "compare", "--prior", p1, "--current", p2], {
+        encoding: "utf8",
+        cwd: root,
+      });
+      expect(proc.status).toBe(3);
+      expect(proc.stdout.trim()).toBe("");
+      const err = JSON.parse(proc.stderr.trim());
+      expect(err.code).toBe(CLI_OPERATIONAL_CODES.COMPARE_WORKFLOW_TRUTH_MISMATCH);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

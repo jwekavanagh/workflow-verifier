@@ -58,7 +58,7 @@ describe("verifyWorkflow integration", () => {
     assert.deepStrictEqual(r.eventSequenceIntegrity, { kind: "normal" });
   });
 
-  it("wf_complete eventual wiring → complete, schema v5 policy echoed", async () => {
+  it("wf_complete eventual wiring → complete, schema v6 policy echoed", async () => {
     const r = await verifyWorkflow({
       workflowId: "wf_complete",
       eventsPath,
@@ -72,7 +72,7 @@ describe("verifyWorkflow integration", () => {
         pollIntervalMs: 100,
       },
     });
-    assert.equal(r.schemaVersion, 5);
+    assert.equal(r.schemaVersion, 6);
     assert.equal(r.status, "complete");
     assert.equal(r.steps[0]?.status, "verified");
     assert.deepStrictEqual(r.verificationPolicy, {
@@ -165,7 +165,7 @@ describe("verifyWorkflow integration", () => {
       logStep: noopLog,
       truthReport: () => {},
     });
-    assert.equal(r.schemaVersion, 5);
+    assert.equal(r.schemaVersion, 6);
     assert.equal(r.status, "complete");
     assert.equal(r.steps.length, 1);
     assert.equal(r.steps[0]?.status, "verified");
@@ -241,7 +241,7 @@ describe("verifyWorkflow integration", () => {
     assert.equal(r1.eventSequenceIntegrity.kind, "normal");
   });
 
-  it("irregular capture vs monotonic same multiset: same result omitting eventSequenceIntegrity", async () => {
+  it("irregular capture vs monotonic same multiset: same result omitting eventSequenceIntegrity and workflowTruthReport", async () => {
     const ev0 = {
       schemaVersion: 1,
       workflowId: "wf_omit_order",
@@ -272,7 +272,7 @@ describe("verifyWorkflow integration", () => {
     const rs = await verifyWorkflow({ ...base, eventsPath: sortedPath });
     const ru = await verifyWorkflow({ ...base, eventsPath: unsortedPath });
     const strip = (r) => {
-      const { eventSequenceIntegrity: _x, ...rest } = r;
+      const { eventSequenceIntegrity: _x, workflowTruthReport: _t, ...rest } = r;
       return rest;
     };
     assert.deepStrictEqual(strip(rs), strip(ru));

@@ -1,0 +1,184 @@
+{
+  "$id": "https://execution-truth-layer/schemas/workflow-truth-report.schema.json",
+  "title": "WorkflowTruthReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "workflowId",
+    "workflowStatus",
+    "trustSummary",
+    "runLevelIssues",
+    "eventSequence",
+    "steps"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "workflowId": { "type": "string" },
+    "workflowStatus": {
+      "type": "string",
+      "enum": ["complete", "incomplete", "inconsistent"]
+    },
+    "trustSummary": { "type": "string" },
+    "runLevelIssues": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/truthIssue" }
+    },
+    "eventSequence": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "normal" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "issues"],
+          "properties": {
+            "kind": { "const": "irregular" },
+            "issues": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/truthIssue" }
+            }
+          }
+        }
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/truthStep" }
+    }
+  },
+  "$defs": {
+    "truthIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "category"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "category": {
+          "type": "string",
+          "enum": [
+            "workflow_execution",
+            "verification_setup",
+            "observation_uncertainty"
+          ]
+        }
+      }
+    },
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "field": { "type": "string" }
+      }
+    },
+    "truthEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "outcomeLabel", "reasons"],
+      "properties": {
+        "id": { "type": "string" },
+        "outcomeLabel": {
+          "type": "string",
+          "enum": [
+            "VERIFIED",
+            "FAILED_ROW_MISSING",
+            "FAILED_VALUE_MISMATCH",
+            "INCOMPLETE_CANNOT_VERIFY"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reason" }
+        }
+      }
+    },
+    "truthStep": {
+      "allOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "seq",
+            "toolId",
+            "outcomeLabel",
+            "observations",
+            "reasons",
+            "intendedEffect",
+            "verifyTarget"
+          ],
+          "properties": {
+            "seq": { "type": "integer", "minimum": 0 },
+            "toolId": { "type": "string" },
+            "outcomeLabel": {
+              "type": "string",
+              "enum": [
+                "VERIFIED",
+                "FAILED_ROW_MISSING",
+                "FAILED_VALUE_MISMATCH",
+                "INCOMPLETE_CANNOT_VERIFY",
+                "PARTIALLY_VERIFIED",
+                "UNCERTAIN_NOT_OBSERVED_WITHIN_WINDOW"
+              ]
+            },
+            "observations": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["evaluatedOrdinal", "repeatCount"],
+              "properties": {
+                "evaluatedOrdinal": { "type": "integer", "minimum": 1 },
+                "repeatCount": { "type": "integer", "minimum": 1 }
+              }
+            },
+            "reasons": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/reason" }
+            },
+            "intendedEffect": { "type": "string" },
+            "failureCategory": {
+              "type": "string",
+              "enum": [
+                "workflow_execution",
+                "verification_setup",
+                "observation_uncertainty"
+              ]
+            },
+            "verifyTarget": {
+              "type": ["string", "null"]
+            },
+            "effects": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/truthEffect" }
+            }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "required": ["outcomeLabel"],
+            "properties": { "outcomeLabel": { "const": "VERIFIED" } }
+          },
+          "then": {
+            "type": "object",
+            "properties": { "failureCategory": false }
+          },
+          "else": {
+            "type": "object",
+            "required": ["failureCategory"]
+          }
+        }
+      ]
+    }
+  }
+}

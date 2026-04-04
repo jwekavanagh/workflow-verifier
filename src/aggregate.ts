@@ -5,7 +5,7 @@ import type {
   Reason,
   StepOutcome,
   VerificationPolicy,
-  WorkflowResult,
+  WorkflowEngineResult,
   WorkflowStatus,
 } from "./types.js";
 
@@ -15,7 +15,7 @@ export function aggregateWorkflow(
   runLevelReasonsIncoming: Reason[],
   verificationPolicy: VerificationPolicy,
   eventSequenceIntegrity: EventSequenceIntegrity,
-): WorkflowResult {
+): WorkflowEngineResult {
   const runLevelReasons: Reason[] = [...runLevelReasonsIncoming];
   if (steps.length === 0) {
     runLevelReasons.push(runLevelIssue("NO_STEPS_FOR_WORKFLOW"));

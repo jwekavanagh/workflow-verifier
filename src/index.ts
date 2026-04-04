@@ -38,11 +38,15 @@ export {
   recurrenceSignature,
 } from "./runComparison.js";
 export {
+  buildWorkflowTruthReport,
+  finalizeEmittedWorkflowResult,
   formatWorkflowTruthReport,
+  formatWorkflowTruthReportStruct,
   STEP_STATUS_TRUTH_LABELS,
   TRUST_LINE_UNCERTAIN_WITHIN_WINDOW,
   TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX,
 } from "./workflowTruthReport.js";
+export { workflowEngineResultFromEmitted, normalizeToEmittedWorkflowResult } from "./workflowResultNormalize.js";
 export {
   DEFAULT_VERIFICATION_POLICY,
   normalizeVerificationPolicy,
@@ -63,7 +67,10 @@ export type {
   VerificationRequest,
   VerificationDatabase,
   VerificationPolicy,
+  WorkflowEngineResult,
   WorkflowResult,
+  WorkflowTruthReport,
+  WorkflowTruthStep,
   StepOutcome,
   EventSequenceIntegrity,
 } from "./types.js";

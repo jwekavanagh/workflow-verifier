@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "workflowId": "wf_multi_all_fail",
   "status": "inconsistent",
   "runLevelCodes": [],
@@ -86,5 +86,57 @@
       "evaluatedObservationOrdinal": 1,
       "failureDiagnostic": "workflow_execution"
     }
-  ]
+  ],
+  "workflowTruthReport": {
+    "schemaVersion": 1,
+    "workflowId": "wf_multi_all_fail",
+    "workflowStatus": "inconsistent",
+    "trustSummary": "NOT TRUSTED: At least one step failed verification against the database (determinate failure).",
+    "runLevelIssues": [],
+    "eventSequence": {
+      "kind": "normal"
+    },
+    "steps": [
+      {
+        "seq": 0,
+        "toolId": "demo.multi_contact",
+        "outcomeLabel": "FAILED_VALUE_MISMATCH",
+        "observations": {
+          "evaluatedOrdinal": 1,
+          "repeatCount": 1
+        },
+        "reasons": [
+          {
+            "code": "MULTI_EFFECT_ALL_FAILED",
+            "message": "All 2 effects failed: primary, secondary"
+          }
+        ],
+        "intendedEffect": "Multi \"missing_one\" \"missing_two\"",
+        "verifyTarget": "sql_effects count=2 primary:contacts.id=missing_one; secondary:contacts.id=missing_two",
+        "failureCategory": "workflow_execution",
+        "effects": [
+          {
+            "id": "primary",
+            "outcomeLabel": "FAILED_ROW_MISSING",
+            "reasons": [
+              {
+                "code": "ROW_ABSENT",
+                "message": "No row matched key (table=contacts id=missing_one)"
+              }
+            ]
+          },
+          {
+            "id": "secondary",
+            "outcomeLabel": "FAILED_ROW_MISSING",
+            "reasons": [
+              {
+                "code": "ROW_ABSENT",
+                "message": "No row matched key (table=contacts id=missing_two)"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 }

@@ -106,7 +106,8 @@ export type EventSequenceIntegrity =
   | { kind: "normal" }
   | { kind: "irregular"; reasons: Reason[] };
 
-export type WorkflowResult = {
+/** Aggregated engine payload before truth report attachment (`schemaVersion` 5). */
+export type WorkflowEngineResult = {
   schemaVersion: 5;
   workflowId: string;
   status: WorkflowStatus;
@@ -115,6 +116,58 @@ export type WorkflowResult = {
   verificationPolicy: VerificationPolicy;
   eventSequenceIntegrity: EventSequenceIntegrity;
   steps: StepOutcome[];
+};
+
+export type WorkflowTruthIssue = {
+  code: string;
+  message: string;
+  category: FailureDiagnostic;
+};
+
+export type WorkflowTruthEffect = {
+  id: string;
+  outcomeLabel:
+    | "VERIFIED"
+    | "FAILED_ROW_MISSING"
+    | "FAILED_VALUE_MISMATCH"
+    | "INCOMPLETE_CANNOT_VERIFY";
+  reasons: Reason[];
+};
+
+export type WorkflowTruthStep = {
+  seq: number;
+  toolId: string;
+  outcomeLabel:
+    | "VERIFIED"
+    | "FAILED_ROW_MISSING"
+    | "FAILED_VALUE_MISMATCH"
+    | "INCOMPLETE_CANNOT_VERIFY"
+    | "PARTIALLY_VERIFIED"
+    | "UNCERTAIN_NOT_OBSERVED_WITHIN_WINDOW";
+  observations: { evaluatedOrdinal: number; repeatCount: number };
+  reasons: Reason[];
+  intendedEffect: string;
+  failureCategory?: FailureDiagnostic;
+  verifyTarget: string | null;
+  effects?: WorkflowTruthEffect[];
+};
+
+export type WorkflowTruthReport = {
+  schemaVersion: 1;
+  workflowId: string;
+  workflowStatus: WorkflowStatus;
+  trustSummary: string;
+  runLevelIssues: WorkflowTruthIssue[];
+  eventSequence:
+    | { kind: "normal" }
+    | { kind: "irregular"; issues: WorkflowTruthIssue[] };
+  steps: WorkflowTruthStep[];
+};
+
+/** Emitted verification result on stdout / public API (`schemaVersion` 6). */
+export type WorkflowResult = Omit<WorkflowEngineResult, "schemaVersion"> & {
+  schemaVersion: 6;
+  workflowTruthReport: WorkflowTruthReport;
 };
 
 export type LoadEventsResult = {

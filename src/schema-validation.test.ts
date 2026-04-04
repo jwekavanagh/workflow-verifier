@@ -4,7 +4,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { buildRunComparisonReport } from "./runComparison.js";
 import { loadSchemaValidator } from "./schemaLoad.js";
-import type { StepOutcome, WorkflowResult } from "./types.js";
+import type { StepOutcome, WorkflowEngineResult, WorkflowResult } from "./types.js";
+import { finalizeEmittedWorkflowResult } from "./workflowTruthReport.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -39,7 +40,7 @@ describe("JSON Schemas (SSOT)", () => {
 
   it("validates workflow result shape from golden pipeline output", () => {
     const v = loadSchemaValidator("workflow-result");
-    const result = {
+    const engine: WorkflowEngineResult = {
       schemaVersion: 5,
       workflowId: "wf_complete",
       status: "complete",
@@ -71,12 +72,12 @@ describe("JSON Schemas (SSOT)", () => {
         },
       ],
     };
-    expect(v(result)).toBe(true);
+    expect(v(finalizeEmittedWorkflowResult(engine))).toBe(true);
   });
 
   it("validates multi-effect workflow result (sql_effects + evidenceSummary.effects)", () => {
     const v = loadSchemaValidator("workflow-result");
-    const result = {
+    const engine: WorkflowEngineResult = {
       schemaVersion: 5,
       workflowId: "wf_multi",
       status: "inconsistent",
@@ -144,11 +145,11 @@ describe("JSON Schemas (SSOT)", () => {
         },
       ],
     };
-    expect(v(result)).toBe(true);
+    expect(v(finalizeEmittedWorkflowResult(engine))).toBe(true);
   });
 
   it("rejects single-effect step evidenceSummary with effectCount", () => {
-    const v = loadSchemaValidator("workflow-result");
+    const v = loadSchemaValidator("workflow-engine-result");
     const bad = {
       schemaVersion: 5,
       workflowId: "w",
@@ -204,7 +205,7 @@ describe("JSON Schemas (SSOT)", () => {
       evaluatedObservationOrdinal: 1,
       ...(ok ? {} : { failureDiagnostic: "workflow_execution" as const }),
     });
-    const r0: WorkflowResult = {
+    const engine0: WorkflowEngineResult = {
       schemaVersion: 5,
       workflowId: "w",
       status: "complete",
@@ -218,9 +219,110 @@ describe("JSON Schemas (SSOT)", () => {
       eventSequenceIntegrity: { kind: "normal" },
       steps: [step(0, "a", true)],
     };
-    const r1: WorkflowResult = { ...r0, steps: [step(0, "a", true)] };
+    const r0: WorkflowResult = finalizeEmittedWorkflowResult(engine0);
+    const r1: WorkflowResult = finalizeEmittedWorkflowResult({
+      ...engine0,
+      steps: [step(0, "a", true)],
+    });
     const report = buildRunComparisonReport([r0, r1], ["x", "y"]);
     expect(v(report)).toBe(true);
+  });
+
+  it("validates workflow-truth-report subtree from finalized engine", () => {
+    const vTruth = loadSchemaValidator("workflow-truth-report");
+    const vResult = loadSchemaValidator("workflow-result");
+    const engine: WorkflowEngineResult = {
+      schemaVersion: 5,
+      workflowId: "wf_complete",
+      status: "complete",
+      runLevelCodes: [],
+      runLevelReasons: [],
+      verificationPolicy: {
+        consistencyMode: "strong",
+        verificationWindowMs: 0,
+        pollIntervalMs: 0,
+      },
+      eventSequenceIntegrity: { kind: "normal" },
+      steps: [
+        {
+          seq: 0,
+          toolId: "t",
+          intendedEffect: "x",
+          verificationRequest: {
+            kind: "sql_row",
+            table: "contacts",
+            keyColumn: "id",
+            keyValue: "1",
+            requiredFields: {},
+          },
+          status: "verified",
+          reasons: [],
+          evidenceSummary: {},
+          repeatObservationCount: 1,
+          evaluatedObservationOrdinal: 1,
+        },
+      ],
+    };
+    const emitted = finalizeEmittedWorkflowResult(engine);
+    expect(vTruth(emitted.workflowTruthReport)).toBe(true);
+    expect(vResult(emitted)).toBe(true);
+  });
+
+  it("workflow-result (emitted) rejects v5-only document without workflowTruthReport", () => {
+    const v = loadSchemaValidator("workflow-result");
+    const v5only = {
+      schemaVersion: 5,
+      workflowId: "w",
+      status: "complete",
+      runLevelCodes: [],
+      runLevelReasons: [],
+      verificationPolicy: {
+        consistencyMode: "strong",
+        verificationWindowMs: 0,
+        pollIntervalMs: 0,
+      },
+      eventSequenceIntegrity: { kind: "normal" },
+      steps: [],
+    };
+    expect(v(v5only)).toBe(false);
+  });
+
+  it("workflow-result-compare-input accepts v5 engine and v6 emitted", () => {
+    const vCmp = loadSchemaValidator("workflow-result-compare-input");
+    const engine: WorkflowEngineResult = {
+      schemaVersion: 5,
+      workflowId: "w",
+      status: "complete",
+      runLevelCodes: [],
+      runLevelReasons: [],
+      verificationPolicy: {
+        consistencyMode: "strong",
+        verificationWindowMs: 0,
+        pollIntervalMs: 0,
+      },
+      eventSequenceIntegrity: { kind: "normal" },
+      steps: [
+        {
+          seq: 0,
+          toolId: "t",
+          intendedEffect: "",
+          verificationRequest: {
+            kind: "sql_row",
+            table: "c",
+            keyColumn: "id",
+            keyValue: "1",
+            requiredFields: {},
+          },
+          status: "verified",
+          reasons: [],
+          evidenceSummary: {},
+          repeatObservationCount: 1,
+          evaluatedObservationOrdinal: 1,
+        },
+      ],
+    };
+    expect(vCmp(engine)).toBe(true);
+    expect(vCmp(finalizeEmittedWorkflowResult(engine))).toBe(true);
   });
 
   it("validates registry-validation-result (golden objects)", () => {

@@ -1,8 +1,10 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "workflowId": "no_such_workflow",
   "status": "incomplete",
-  "runLevelCodes": ["NO_STEPS_FOR_WORKFLOW"],
+  "runLevelCodes": [
+    "NO_STEPS_FOR_WORKFLOW"
+  ],
   "runLevelReasons": [
     {
       "code": "NO_STEPS_FOR_WORKFLOW",
@@ -17,5 +19,22 @@
   "eventSequenceIntegrity": {
     "kind": "normal"
   },
-  "steps": []
+  "steps": [],
+  "workflowTruthReport": {
+    "schemaVersion": 1,
+    "workflowId": "no_such_workflow",
+    "workflowStatus": "incomplete",
+    "trustSummary": "NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.",
+    "runLevelIssues": [
+      {
+        "code": "NO_STEPS_FOR_WORKFLOW",
+        "message": "No tool_observed events for this workflow id after filtering.",
+        "category": "workflow_execution"
+      }
+    ],
+    "eventSequence": {
+      "kind": "normal"
+    },
+    "steps": []
+  }
 }

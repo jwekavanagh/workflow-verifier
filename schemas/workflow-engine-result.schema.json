@@ -1,0 +1,267 @@
+{
+  "$id": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json",
+  "title": "WorkflowEngineResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "workflowId",
+    "status",
+    "steps",
+    "runLevelCodes",
+    "runLevelReasons",
+    "verificationPolicy",
+    "eventSequenceIntegrity"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 5 },
+    "workflowId": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["complete", "incomplete", "inconsistent"]
+    },
+    "runLevelCodes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "runLevelReasons": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/reason" }
+    },
+    "verificationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["consistencyMode", "verificationWindowMs", "pollIntervalMs"],
+      "properties": {
+        "consistencyMode": { "type": "string", "enum": ["strong", "eventual"] },
+        "verificationWindowMs": { "type": "integer", "minimum": 0 },
+        "pollIntervalMs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "eventSequenceIntegrity": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "normal" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "reasons"],
+          "properties": {
+            "kind": { "const": "irregular" },
+            "reasons": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/reason" }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "field": { "type": "string" }
+      }
+    },
+    "requiredFieldsMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "null"]
+      }
+    },
+    "verificationRequestSqlRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "table", "keyColumn", "keyValue", "requiredFields"],
+      "properties": {
+        "kind": { "const": "sql_row" },
+        "table": { "type": "string" },
+        "keyColumn": { "type": "string" },
+        "keyValue": { "type": "string" },
+        "requiredFields": { "$ref": "#/$defs/requiredFieldsMap" }
+      }
+    },
+    "verificationRequestSqlEffects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "effects"],
+      "properties": {
+        "kind": { "const": "sql_effects" },
+        "effects": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "table", "keyColumn", "keyValue", "requiredFields"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "kind": { "const": "sql_row" },
+              "table": { "type": "string" },
+              "keyColumn": { "type": "string" },
+              "keyValue": { "type": "string" },
+              "requiredFields": { "$ref": "#/$defs/requiredFieldsMap" }
+            }
+          }
+        }
+      }
+    },
+    "effectOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "reasons", "evidenceSummary"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "status": {
+          "type": "string",
+          "enum": ["verified", "missing", "inconsistent", "incomplete_verification"]
+        },
+        "reasons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reason" }
+        },
+        "evidenceSummary": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "step": {
+      "allOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "seq",
+            "toolId",
+            "intendedEffect",
+            "verificationRequest",
+            "status",
+            "reasons",
+            "evidenceSummary",
+            "repeatObservationCount",
+            "evaluatedObservationOrdinal"
+          ],
+          "properties": {
+            "seq": { "type": "integer", "minimum": 0 },
+            "toolId": { "type": "string" },
+            "intendedEffect": { "type": "string" },
+            "verificationRequest": {
+              "oneOf": [
+                { "type": "null" },
+                { "$ref": "#/$defs/verificationRequestSqlRow" },
+                { "$ref": "#/$defs/verificationRequestSqlEffects" }
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "verified",
+                "missing",
+                "inconsistent",
+                "incomplete_verification",
+                "partially_verified",
+                "uncertain"
+              ]
+            },
+            "reasons": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/reason" }
+            },
+            "evidenceSummary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "repeatObservationCount": { "type": "integer", "minimum": 1 },
+            "evaluatedObservationOrdinal": { "type": "integer", "minimum": 1 },
+            "failureDiagnostic": {
+              "type": "string",
+              "enum": [
+                "workflow_execution",
+                "verification_setup",
+                "observation_uncertainty"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "required": ["status"],
+            "properties": { "status": { "const": "verified" } }
+          },
+          "then": {
+            "type": "object",
+            "properties": { "failureDiagnostic": false }
+          },
+          "else": {
+            "type": "object",
+            "required": ["failureDiagnostic"]
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "required": ["verificationRequest"],
+            "properties": {
+              "verificationRequest": {
+                "type": "object",
+                "required": ["kind"],
+                "properties": { "kind": { "const": "sql_effects" } }
+              }
+            }
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "evidenceSummary": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["effectCount", "effects"],
+                "properties": {
+                  "effectCount": { "type": "integer", "minimum": 2 },
+                  "effects": {
+                    "type": "array",
+                    "minItems": 2,
+                    "items": { "$ref": "#/$defs/effectOutcome" }
+                  },
+                  "attempts": { "type": "integer", "minimum": 1 },
+                  "elapsedMs": { "type": "integer", "minimum": 0 },
+                  "verificationWindowMs": { "type": "integer", "minimum": 1 },
+                  "pollIntervalMs": { "type": "integer", "minimum": 1 }
+                }
+              }
+            }
+          },
+          "else": {
+            "type": "object",
+            "properties": {
+              "evidenceSummary": {
+                "type": "object",
+                "propertyNames": {
+                  "not": { "enum": ["effectCount", "effects"] }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
