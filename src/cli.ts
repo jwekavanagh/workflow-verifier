@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from "fs";
+import { readFileSync, statSync } from "fs";
 import path from "path";
 import {
   CLI_OPERATIONAL_CODES,
@@ -22,6 +22,12 @@ import { TruthLayerError } from "./truthLayerError.js";
 import type { VerificationPolicy, WorkflowEngineResult, WorkflowResult } from "./types.js";
 import { resolveVerificationPolicyInput } from "./verificationPolicy.js";
 import { normalizeToEmittedWorkflowResult } from "./workflowResultNormalize.js";
+import {
+  debugServerEntryUrl,
+  loadCorpusBundle,
+  logCorpusLoadErrors,
+  startDebugServerOnPort,
+} from "./debugServer.js";
 
 function argValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
@@ -75,6 +81,9 @@ Exit codes:
 
   verify-workflow execution-trace --workflow-id <id> --events <path> [--workflow-result <path>] [--format json|text]
   Emit ExecutionTraceView JSON or text (see docs/execution-truth-layer.md).
+
+  verify-workflow debug --corpus <dir> [--port <n>]
+  Local Debug Console on 127.0.0.1 (see docs/execution-truth-layer.md — Debug Console).
 
   --help, -h  print this message and exit 0`;
 }
@@ -496,8 +505,74 @@ function runCompareSubcommand(args: string[]): void {
   process.exit(0);
 }
 
+function usageDebug(): string {
+  return `Usage:
+  verify-workflow debug --corpus <dir> [--port <n>]
+
+Serves the Debug Console on 127.0.0.1 only. Each run is a subfolder of the corpus
+with workflow-result.json and events.ndjson (see docs/execution-truth-layer.md).
+
+Exit: Ctrl+C ends the server (exit 0). Port in use or bad corpus → exit 3.
+
+  --help, -h  print this message and exit 0`;
+}
+
+async function runDebugSubcommand(args: string[]): Promise<void> {
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(usageDebug());
+    process.exit(0);
+  }
+  const corpus = argValue(args, "--corpus");
+  const portRaw = argValue(args, "--port");
+  const port = portRaw === undefined ? 8787 : Number(portRaw);
+  if (!corpus) {
+    writeCliError(CLI_OPERATIONAL_CODES.CLI_USAGE, "debug requires --corpus <dir>.");
+    process.exit(3);
+  }
+  if (!Number.isFinite(port) || port < 0 || port > 65535 || !Number.isInteger(port)) {
+    writeCliError(CLI_OPERATIONAL_CODES.CLI_USAGE, "Invalid --port; use an integer 0–65535 (0 = ephemeral).");
+    process.exit(3);
+  }
+  let st;
+  try {
+    st = statSync(corpus);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    writeCliError(CLI_OPERATIONAL_CODES.CLI_USAGE, formatOperationalMessage(msg));
+    process.exit(3);
+  }
+  if (!st.isDirectory()) {
+    writeCliError(CLI_OPERATIONAL_CODES.CLI_USAGE, "--corpus must be a directory.");
+    process.exit(3);
+  }
+  const resolved = path.resolve(corpus);
+  const bundle = loadCorpusBundle(resolved);
+  logCorpusLoadErrors(bundle.outcomes);
+  let srv;
+  try {
+    srv = await startDebugServerOnPort(resolved, port);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(msg));
+    process.exit(3);
+  }
+  const url = debugServerEntryUrl(srv.port);
+  process.stdout.write(`Debug Console ${url}\n`);
+  process.stdout.write(`Corpus ${resolved} (${bundle.outcomes.length} run folders)\n`);
+  const onSig = () => {
+    void srv.close().then(() => process.exit(0));
+  };
+  process.on("SIGINT", onSig);
+  process.on("SIGTERM", onSig);
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
+  if (args[0] === "debug") {
+    await runDebugSubcommand(args.slice(1));
+    return;
+  }
+
   if (args[0] === "compare") {
     runCompareSubcommand(args.slice(1));
     return;

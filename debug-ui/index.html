@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Execution Truth Layer — Debug Console</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Debug Console</h1>
+      <p class="sub">Local corpus triage (127.0.0.1 only). API provides focus targets; no duplicated linking logic in the browser.</p>
+    </header>
+
+    <nav class="tabs">
+      <button type="button" class="tab active" data-tab="runs">Runs</button>
+      <button type="button" class="tab" data-tab="patterns">Patterns</button>
+      <button type="button" class="tab" data-tab="compare">Compare</button>
+    </nav>
+
+    <section id="panel-runs" class="panel active">
+      <form id="filters" class="filters">
+        <label>loadStatus <select name="loadStatus"><option value="">(any)</option><option value="ok">ok</option><option value="error">error</option></select></label>
+        <label>workflowId <input name="workflowId" type="text" placeholder="exact" /></label>
+        <label>status <select name="status"><option value="">(any)</option><option value="complete">complete</option><option value="incomplete">incomplete</option><option value="inconsistent">inconsistent</option></select></label>
+        <label>failureCategory <input name="failureCategory" type="text" /></label>
+        <label>reasonCode <input name="reasonCode" type="text" /></label>
+        <label>toolId <input name="toolId" type="text" /></label>
+        <label>customerId <input name="customerId" type="text" placeholder="__unspecified__" /></label>
+        <label>timeFrom (ms) <input name="timeFrom" type="number" /></label>
+        <label>timeTo (ms) <input name="timeTo" type="number" /></label>
+        <label class="check"><input name="includeLoadErrors" type="checkbox" checked /> includeLoadErrors</label>
+        <button type="submit">Apply</button>
+        <button type="button" id="clear-filters">Clear</button>
+      </form>
+      <p id="runs-meta" class="meta"></p>
+      <table class="runs">
+        <thead>
+          <tr>
+            <th></th>
+            <th>runId</th>
+            <th>load</th>
+            <th>workflowId</th>
+            <th>status</th>
+            <th>category</th>
+            <th>customer</th>
+            <th>codes</th>
+          </tr>
+        </thead>
+        <tbody id="runs-body"></tbody>
+      </table>
+      <p><button type="button" id="load-more" hidden>Next page</button></p>
+    </section>
+
+    <section id="panel-patterns" class="panel">
+      <p class="meta">Uses current filter semantics from the Runs tab (re-query when you change filters).</p>
+      <button type="button" id="refresh-patterns">Load corpus patterns</button>
+      <pre id="patterns-out" class="json-out"></pre>
+    </section>
+
+    <section id="panel-compare" class="panel">
+      <p>Select runs in the table (checkbox), then:</p>
+      <button type="button" id="run-compare" disabled>Compare selected</button>
+      <pre id="compare-out" class="json-out"></pre>
+    </section>
+
+    <section id="detail-drawer" class="drawer hidden">
+      <div class="drawer-head">
+        <h2 id="detail-title">Run</h2>
+        <button type="button" id="close-detail">Close</button>
+      </div>
+      <div id="detail-body"></div>
+    </section>
+
+    <script src="app.js"></script>
+  </body>
+</html>

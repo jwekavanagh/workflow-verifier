@@ -37,7 +37,13 @@ This document is the authoritative specification for the MVP. The product verifi
 | `verificationPolicy.ts` | `VerificationPolicy` normalization/validation; `executeVerificationWithPolicySync` / `executeVerificationWithPolicyAsync` (strong vs eventual polling); `createSqlitePolicyContext` |
 | `executionTrace.ts` | `assertValidRunEventParentGraph`, `buildExecutionTraceView`, `formatExecutionTraceText`; `traceStepKind` derivation and `backwardPaths` |
 | `pipeline.ts` | Orchestration: `runLogicalStepsVerification` (internal), async `verifyWorkflow`, sync `verifyToolObservedStep`, `withWorkflowVerification` (SQLite `dbPath` only); default `truthReport` / `logStep` |
-| `cli.ts` | CLI entry: legacy verify + `compare` + `execution-trace` + `validate-registry` subcommands |
+| `cli.ts` | CLI entry: verify + `compare` + `execution-trace` + `validate-registry` + **`debug`** subcommands |
+| `debugCorpus.ts` | Debug Console corpus layout: enumerate `<corpusRoot>/<runId>/`, load outcomes (**`ok`** / **`error`**), path safety, optional **`meta.json`** |
+| `debugFocus.ts` | Pure **`buildFocusTargets`**: maps **`workflowTruthReport.failureAnalysis.evidence`** to trace navigation targets (tested golden vectors) |
+| `debugPatterns.ts` | **`buildCorpusPatterns`**: histograms + **`recurrenceSignature`** aggregation; optional pairwise recurrence when **`workflowId`** filter set (cap **50** runs) |
+| `debugRunFilters.ts` | Server-side **`GET /api/runs`** query parsing, pagination cursor, **`includeLoadErrors`** default **true** |
+| `debugRunIndex.ts` | **`RunListItem`** facets for filters; customer sentinel **`__unspecified__`** when **`meta.json`** omits **`customerId`** |
+| `debugServer.ts` | Local HTTP on **127.0.0.1** only: JSON APIs + static **`debug-ui/`** (copied to **`dist/debug-ui/`** on build) |
 
 ### Engineer note: shared step core
 
@@ -609,6 +615,58 @@ Step statuses: `verified` | `missing` | `inconsistent` | `incomplete_verificatio
 **PRD mapping:** PRD §4 “Failed” (determinate bad outcome) ↔ `inconsistent`. §4 “Incomplete” (cannot confirm) ↔ `incomplete`. §6 three bullets ↔ these three strings. **Multi-effect:** step-level “partial success” is `partially_verified`; the workflow is still **`inconsistent`** until every step is `verified`.
 
 **Compatibility:** Emitted **`WorkflowResult.schemaVersion`** is **8** with required **`workflowTruthReport`** and **`verificationRunContext`**. The engine-only JSON (`schemaVersion` **6**) is defined by [`schemas/workflow-engine-result.schema.json`](../schemas/workflow-engine-result.schema.json). Required **`verificationPolicy`** and **`eventSequenceIntegrity`**; non-**`verified`** steps require **`failureDiagnostic`**; consumers must allow step `status` **`uncertain`** (see [`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json)).
+
+## Debug Console (normative)
+
+On-call **interactive debugging** is supported by a **local-only** web UI served by the CLI subcommand **`verify-workflow debug --corpus <dir> [--port <n>]`**. The server binds **127.0.0.1** only (no LAN exposure in this MVP). **`npm run build`** copies static assets from **`debug-ui/`** to **`dist/debug-ui/`** next to **`dist/cli.js`**.
+
+### Debug Console audiences
+
+- **Integrator:** Export each run as a **child directory** of the corpus root: **`<corpusRoot>/<runId>/workflow-result.json`** and **`<corpusRoot>/<runId>/events.ndjson`** (same filenames for every run). Optional **`<corpusRoot>/<runId>/meta.json`**: JSON object with optional string **`customerId`**, optional string **`capturedAt`** (ISO-8601). No other **`meta.json`** fields are required in v1.
+- **Operator:** Run **`verify-workflow debug --corpus <path>`**, open the printed **http://127.0.0.1:…/** URL. Use **Runs** (filters + pagination), **Patterns** (corpus-wide aggregates), **Compare** (multi-select). Load-failed artifacts appear as **first-class rows** (not omitted).
+- **Engineer:** Implementation modules are listed in the Engineer table under [Audiences](#audiences) (`debugCorpus.ts`, `debugFocus.ts`, `debugPatterns.ts`, `debugRunFilters.ts`, `debugRunIndex.ts`, `debugServer.ts`). **`recurrenceSignature`** for pattern aggregation is reused from **`runComparison.ts`**.
+
+### Corpus load outcomes (normative)
+
+Every immediate child directory of **`corpusRoot`** with a safe **`runId`** (no path separators, not **`.`** or **`..`**) is enumerated. For each **`runId`**, the loader produces either **`loadStatus: "ok"`** or **`loadStatus: "error"`**. **Silent omission is forbidden.** Resolved paths must stay under the corpus root; otherwise **`PATH_ESCAPE`**. Error codes include **`MISSING_WORKFLOW_RESULT`**, **`MISSING_EVENTS`**, **`WORKFLOW_RESULT_JSON`**, **`WORKFLOW_RESULT_INVALID`**, **`META_INVALID`**, **`EVENTS_LOAD_FAILED`**.
+
+**stderr:** On server start, the CLI prints one line per load error: **`[debug] corpus run "<runId>" load error <code>: <message>`** (mirrors UI-visible failures).
+
+### `capturedAtEffective` (normative)
+
+If **`meta.capturedAt`** parses as a valid date, use that instant. **Otherwise** use **`mtimeMs`** of **`workflow-result.json`** only (no fallback to **`events.ndjson`** mtime).
+
+### HTTP API (normative)
+
+**`GET /api/health`** → **`{ ok: true }`**.
+
+**`GET /api/runs`** — **server-side filters only** (no full-corpus dump to the client). Query parameters (AND semantics; all optional except as noted):
+
+| Param | Meaning |
+|--------|---------|
+| **`loadStatus`** | **`ok`** \| **`error`** \| omit = both |
+| **`workflowId`** | Exact match on **`loadStatus=ok`** rows only. **`loadStatus=error`** rows remain eligible when **`includeLoadErrors=true`** (default), so broken artifacts stay visible when scoping. |
+| **`status`** | **`complete`** \| **`incomplete`** \| **`inconsistent`** (ok rows only) |
+| **`failureCategory`** | Actionable category string (ok rows only) |
+| **`reasonCode`** | Exact token match against run-level codes and step reason codes on the row |
+| **`toolId`** | Ok row has a step with this **`toolId`** |
+| **`customerId`** | Exact match; use literal **`__unspecified__`** to match runs with no **`meta.customerId`** |
+| **`timeFrom` / `timeTo`** | Inclusive range on **`capturedAtEffective`** (milliseconds since epoch) |
+| **`includeLoadErrors`** | Default **true**; if **`false`**, error rows are excluded from the listing |
+
+**Pagination:** **`limit`** default **100**, max **500**; **`cursor`** opaque (base64url JSON **`{ offset }`**). Response: **`items`**, **`nextCursor`**, **`totalMatched`**, **`filterEcho`**. Sort: **`runId`** ascending.
+
+**`GET /api/runs/:runId`** — **`200`** always for a known **`runId`**. **`ok`:** **`workflowResult`**, schema-valid **`executionTrace`**, paths, **`meta`**, **`capturedAtEffectiveMs`**. **`error`:** **`error`**, **`pathsTried`**, optional **`rawPreview`** (first ≤ 8KiB UTF-8 of the failing file when readable).
+
+**`GET /api/runs/:runId/focus`** — **`200`** with **`{ targets: [{ kind, value, rationale }] }`** from **`buildFocusTargets`** for ok runs; **`409`** **`FOCUS_NOT_AVAILABLE`** for error rows. The browser UI must not reimplement this mapping.
+
+**`POST /api/compare`** — body **`{ runIds: string[] }`** (length ≥ 2). **400** if any run is not loaded ok, or **`COMPARE_WORKFLOW_ID_MISMATCH`**. Response: **`RunComparisonReport`** JSON + **`humanSummary`** text (**`formatRunComparisonReport`**).
+
+**`GET /api/corpus-patterns`** — same filter query subset as **`/api/runs`** (no pagination). If more than **10_000** load-ok rows match → **413** JSON **`code: CORPUS_TOO_LARGE`**. If **`workflowId`** is set and more than **50** ok runs match that id → **413** **`PATTERNS_COMPARE_TOO_MANY`**. Otherwise **`200`** body **`schemaVersion: 1`** with **`actionableCategoryHistogram`**, **`topRunLevelCodes`**, **`topStepReasonCodes`**, **`recurrenceCandidates`** (signature **`hitRuns`** across the filtered corpus), and optional **`pairwiseRecurrence`** when **`workflowId`** filter is set and count ≤ 50.
+
+### Example corpus
+
+**`examples/debug-corpus/`** ships **four** runs: one **`ok`**, three **`error`** (bad JSON, missing events, schema-invalid **`{}`**) for CI and manual smoke.
 
 ## Cross-run comparison (normative)
 

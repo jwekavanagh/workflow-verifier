@@ -127,6 +127,22 @@ const REQUIRED = [
   "EXECUTION_TRACE_USAGE",
   "TRACE_UNKNOWN_PARENT_RUN_EVENT_ID",
   "TRACE_PARENT_FORWARD_REFERENCE",
+  "## Debug Console (normative)",
+  "verify-workflow debug",
+  "CORPUS_TOO_LARGE",
+  "MISSING_EVENTS",
+  "PATH_ESCAPE",
+  "WORKFLOW_RESULT_JSON",
+  "debugCorpus.ts",
+  "debugServer.ts",
+  "debugFocus.ts",
+  "debugPatterns.ts",
+  "GET /api/corpus-patterns",
+  "includeLoadErrors",
+  "__unspecified__",
+  "PATTERNS_COMPARE_TOO_MANY",
+  "buildFocusTargets",
+  "examples/debug-corpus/",
 ];
 
 describe("docs contract (SSOT + README)", () => {

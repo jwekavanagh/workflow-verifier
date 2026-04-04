@@ -10,7 +10,7 @@
   },
   "scripts": {
     "prepare": "npm run build",
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-debug-ui.mjs",
     "start": "npm run first-run",
     "first-run": "npm run build && node scripts/first-run.mjs",
     "test:vitest": "vitest run",
