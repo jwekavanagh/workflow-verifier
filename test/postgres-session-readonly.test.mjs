@@ -96,7 +96,10 @@ describe("Postgres session read-only (applyPostgresVerificationSessionGuards)", 
     });
     assert.equal(out.status, "inconsistent");
     assert.equal(out.reasons[0]?.code, "VALUE_MISMATCH");
-    assert.match(out.reasons[0]?.message, /^Expected .+ but found .+ for field qty$/);
+    assert.match(
+      out.reasons[0]?.message,
+      /^Expected .+ but found .+ for field qty \(table=contacts id=c_ok\)$/,
+    );
     assert.equal(out.evidenceSummary.expected, "1");
     assert.equal(out.evidenceSummary.actual, "0");
     try {
