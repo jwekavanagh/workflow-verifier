@@ -1,0 +1,1 @@
+{"schemaVersion":1,"workflowId":"wf_complete","seq":0,"type":"tool_observed","toolId":"crm.upsert_contact","params":{"recordId":"c_ok","fields":{"name":"Alice","status":"active"}}}

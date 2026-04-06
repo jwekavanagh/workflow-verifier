@@ -53,11 +53,20 @@ export {
 } from "./actionableFailure.js";
 export {
   buildRunComparisonReport,
+  COMPARE_HIGHLIGHTS_MAX,
+  actionableTrend,
   formatRunComparisonReport,
   logicalStepKeyFromStep,
   perRunActionableFromWorkflowResult,
   recurrenceSignature,
 } from "./runComparison.js";
+export {
+  EXECUTION_PATH_EMPTY,
+  VERIFICATION_BASIS_LINE,
+  formatSqlEvidenceDetailForTrustPanel,
+  renderComparePanelHtml,
+  renderRunTrustPanelHtml,
+} from "./debugPanels.js";
 export {
   buildWorkflowTruthReport,
   buildWorkflowVerdictSurface,
@@ -118,7 +127,15 @@ export type {
   IntendedEffect,
   ObservedExecution,
 } from "./types.js";
-export type { BucketAEntry, RunComparisonReport } from "./runComparison.js";
+export type {
+  BucketAEntry,
+  CompareHighlights,
+  PairwiseBucketB,
+  RecurrencePattern,
+  ReliabilityAssessment,
+  ReliabilityTrend,
+  RunComparisonReport,
+} from "./runComparison.js";
 export type { SqlReadBackend } from "./sqlReadBackend.js";
 export {
   buildAgentRunRecordForBundle,

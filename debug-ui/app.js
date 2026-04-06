@@ -158,7 +158,12 @@ async function openDetail(runId) {
         (runEvKey && focusSet.has(runEvKey));
       return `<div class="trace-step ${hit ? "focus-hit" : ""}" data-idx="${i}">${escapeHtml(JSON.stringify(n))}</div>`;
     });
+    const trustHtml =
+      typeof data.runTrustPanelHtml === "string"
+        ? `<div class="run-trust-panel">${data.runTrustPanelHtml}</div>`
+        : "";
     body.innerHTML = `
+      ${trustHtml}
       ${verdictHtml}
       ${focusHtml}
       <h3>Trace nodes</h3>
@@ -219,9 +224,14 @@ document.getElementById("run-compare").addEventListener("click", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ runIds: ids }),
     });
-    out.textContent = JSON.stringify({ humanSummary: data.humanSummary, report: data.report }, null, 2);
+    if (typeof data.comparePanelHtml === "string") {
+      out.innerHTML = data.comparePanelHtml;
+    } else {
+      out.textContent = "comparePanelHtml missing in response.";
+    }
   } catch (e) {
-    out.textContent = JSON.stringify(e.data || { message: e.message }, null, 2);
+    out.textContent = "";
+    out.appendChild(document.createTextNode(JSON.stringify(e.data || { message: e.message }, null, 2)));
   }
 });
 

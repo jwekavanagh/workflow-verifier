@@ -62,6 +62,58 @@ This subsection maps **workflow-level verdict** and **auditable run records** ac
 
 **Proof in repo:** `src/agentRunBundle.test.ts` (round-trip, empty events, integrity negative), `src/workflowVerdictSurface.test.ts`, `src/withWorkflowVerification.persistBundle.test.ts`, `src/debugServer.test.ts` (**`workflowVerdictSurface`** on run detail).
 
+## Slice 6 — Compare runs + independent verification
+
+This subsection maps **multi-run compare**, **reliability/read highlights**, and **independent SQL trust** acceptance criteria to emitted artifacts and the Debug Console. **Structural SSOT** for compare stdout is [`schemas/run-comparison-report.schema.json`](../schemas/run-comparison-report.schema.json) (**`schemaVersion` `3`**). **No** second compare JSON view-model is defined for Debug UI: compare and trust panels are **HTML strings** only on HTTP success paths.
+
+| Acceptance theme | Where it appears in the product |
+|------------------|----------------------------------|
+| **9.1** Multiple workflow results in one compare | `buildRunComparisonReport` over ordered normalized **`WorkflowResult[]`** (length ≥ 2); CLI **`compare`**; **`POST /api/compare`**. Proof: `src/slice6.compare.ac.test.ts` **`AC_9_1_multi_run_compare_emits_schema_v3`**. |
+| **9.2** Introduced / resolved / recurring highlights | Required **`compareHighlights`** on **`RunComparisonReport` v3**; HTML lists derived only in **`renderComparePanelHtml`**. Proof: **`AC_9_2_compareHighlights_match_fixture`**. |
+| **9.3** Review differences in UI | Compare tab assigns **`comparePanelHtml`** to **`innerHTML`** (no browser-side recompute). Proof: `test/debug-ui/ac-9-3.spec.ts` **`AC_9_3_compare_panel_markup`**. |
+| **9.4** Reliability headline when window vs pairwise diverge | Required **`reliabilityAssessment`** ( **`headlineVerdict`**, **`headlineRationale`** ); pinned golden `test/fixtures/debug-ui-slice6/headline-ac-9-4.json`. Proof: **`AC_9_4_headlineVerdict_window_pairwise_divergence`**. |
+| **10.1–10.2** Trust from read-only SQL, not model narrative | `verifyWorkflow` + registry + DB for **`wf_missing`**: **`ROW_ABSENT`**, **`FAILED_ROW_MISSING`**, zero rows. Proof: `src/verificationAgainstSystemState.requirements.test.ts` **`AC_10_1_AC_10_2_independent_sql_evidence_not_execution_narrative`**. |
+| **10.3** SQL evidence column in trust table | **`formatSqlEvidenceDetailForTrustPanel`** → **`td[data-etl-field="sql-evidence"]`**; substring drift guard `test/fixtures/debug-ui-slice6/expected-strings.json`. Proof: `test/debug-ui/ac-10-3.spec.ts`. |
+| **10.4** Execution-path findings vs empty | **`renderRunTrustPanelHtml`**: **`li[data-etl-finding-code]`** vs **`p[data-etl-execution-path-empty]`** (exact copy in **`expected-strings.json`**). Proof: `test/debug-ui/ac-10-4.spec.ts` **`AC_10_4_execution_path`**. |
+
+### Debug API (normative success shapes)
+
+On **`200`** success, JSON bodies **must not** include keys outside the sets below (enforced by `src/debugServer.test.ts`: **`debug_api_POST_compare_200_json_has_exact_keys`**, **`debug_api_GET_run_detail_ok_json_has_exact_keys`**; key order in tests uses `localeCompare` UTF-16 sort).
+
+**`POST /api/compare`** — keys **exactly** (UTF-16 sort order):
+
+`comparePanelHtml`, `humanSummary`, `report`
+
+Types: **`comparePanelHtml`** non-empty string (server HTML from **`renderComparePanelHtml`**), **`humanSummary`** string (**`formatRunComparisonReport`**), **`report`** object (**`RunComparisonReport` v3**, AJV **`run-comparison-report`**).
+
+**`GET /api/runs/:runId`** when **`loadStatus === "ok"`** — keys **exactly** (UTF-16 sort order):
+
+`agentRunRecord`, `capturedAtEffectiveMs`, `executionTrace`, `loadStatus`, `malformedEventLineCount`, `meta`, `paths`, `runId`, `runTrustPanelHtml`, `workflowResult`, `workflowVerdictSurface`
+
+Types: **`runTrustPanelHtml`** non-empty string (from **`renderRunTrustPanelHtml`**). Error loads keep the prior smaller shape (no trust HTML).
+
+### HTML hooks (compare + trust panels)
+
+| Hook | Meaning |
+|------|---------|
+| **`section[data-etl-section="compare-result"]`** | Compare panel root |
+| **`p[data-etl-headline]`** | One line: **`headlineVerdict`** then **`headlineRationale`** (see renderer) |
+| **`p[data-etl-window-trend]`**, **`p[data-etl-pairwise-trend]`**, **`p[data-etl-recurrence]`** | Reliability lines |
+| **`ul[data-etl-list="introduced\|resolved\|recurring"]`** | Compare highlight lists (may be empty; no placeholder **`li`**) |
+| **`section[data-etl-section="run-trust"]`** | Trust panel root |
+| **`p[data-etl-verification-basis]`** | Fixed operator line: independent SQL basis |
+| **`table[data-etl-table="verify-evidence"]`**, **`tr[data-etl-seq]`**, **`td[data-etl-field="sql-evidence"]`** | Step alignment + SQL evidence column |
+| **`tr[data-etl-alignment-warning="true"]`** | Truth/engine seq misalignment |
+| **`section[data-etl-section="execution-path"]`**, **`p[data-etl-execution-path-empty]`**, **`p[data-etl-execution-path-summary]`**, **`ol[data-etl-list="execution-findings"]`**, **`li[data-etl-finding-code]`** | Execution-path rollup |
+
+### Slice 6 — Engineer
+
+- **`debugPanels.ts`**: **`renderComparePanelHtml`**, **`renderRunTrustPanelHtml`**, **`formatSqlEvidenceDetailForTrustPanel`** — sole producers of compare/trust HTML for Debug UI.
+- **`runComparison.ts`**: **`buildRunComparisonReport`**, **`formatRunComparisonReport`** (v3 **`reliabilityAssessment`**, **`compareHighlights`**).
+- **`debug-ui/app.js`**: assigns **`comparePanelHtml`** / **`runTrustPanelHtml`** to **`innerHTML`** only.
+
+**Drift guard:** `test/fixtures/debug-ui-slice6/expected-strings.json` is the only source for Playwright substring assertions (and matching Vitest checks).
+
 ## Audiences
 
 ### Engineer
@@ -107,6 +159,7 @@ This subsection maps **workflow-level verdict** and **auditable run records** ac
 | `debugRunFilters.ts` | Server-side **`GET /api/runs`** query parsing, pagination cursor, **`includeLoadErrors`** default **true**, **`hasPathFindings`** filter |
 | `debugRunIndex.ts` | **`RunListItem`** facets for filters (**`pathFindingCodes`** from truth report); customer sentinel **`__unspecified__`** when **`agent-run.json`** omits **`customerId`** (ok rows) or on load errors |
 | `debugServer.ts` | Local HTTP on **127.0.0.1** only: JSON APIs + static **`debug-ui/`** (copied to **`dist/debug-ui/`** on build) |
+| `debugPanels.ts` | **`renderComparePanelHtml`**, **`renderRunTrustPanelHtml`**, **`formatSqlEvidenceDetailForTrustPanel`** — server-only HTML for Slice 6 compare/trust panels |
 | `agentRunRecord.ts` | **`buildAgentRunRecordForBundle`**, **`sha256Hex`**; types aligned with [`schemas/agent-run-record.schema.json`](../schemas/agent-run-record.schema.json) |
 
 ### Integrator (stdout JSON)
@@ -294,7 +347,7 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 
 **Normative sources (only two):**
 
-1. JSON Schema enums: **`actionableFailure.category`** and **`actionableFailure.severity`** on **`workflowTruthReport.failureAnalysis`** ([`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json)), the same category/severity on CLI **`failureDiagnosis.actionableFailure`** ([`schemas/cli-error-envelope.schema.json`](../schemas/cli-error-envelope.schema.json)), and compare report fields **`perRunActionableFailures`**, **`categoryHistogram`**, **`actionableCategoryRecurrence`** ([`schemas/run-comparison-report.schema.json`](../schemas/run-comparison-report.schema.json); report **`schemaVersion` 2**).
+1. JSON Schema enums: **`actionableFailure.category`** and **`actionableFailure.severity`** on **`workflowTruthReport.failureAnalysis`** ([`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json)), the same category/severity on CLI **`failureDiagnosis.actionableFailure`** ([`schemas/cli-error-envelope.schema.json`](../schemas/cli-error-envelope.schema.json)), and compare report fields **`perRunActionableFailures`**, **`categoryHistogram`**, **`actionableCategoryRecurrence`**, **`reliabilityAssessment`**, **`compareHighlights`** ([`schemas/run-comparison-report.schema.json`](../schemas/run-comparison-report.schema.json); report **`schemaVersion` `3`**).
 2. Implementation **`actionableFailure.ts`**: P-CAT-1–4 precedence, workflow severity S-1–S4, **`OPERATIONAL_CODE_TO_SEVERITY`**, and step-code partition consumed by **`productionStepReasonCodeToActionableCategory`** (exhaustiveness over **`PRODUCTION_STEP_REASON_CODES`** is tested in **`actionableFailure.partitionExhaustive.test.ts`**).
 
 **Non-normative:** Prose in this section beyond the two bullets above is explanatory; it must not introduce a third mapping authority.
@@ -795,11 +848,11 @@ If **`agentRunRecord.capturedAt`** parses as a valid date, use that instant. **E
 
 **Pagination:** **`limit`** default **100**, max **500**; **`cursor`** opaque (base64url JSON **`{ offset }`**). Response: **`items`**, **`nextCursor`**, **`totalMatched`**, **`filterEcho`**. Sort: **`runId`** ascending.
 
-**`GET /api/runs/:runId`** — **`200`** always for a known **`runId`**. **`ok`:** **`workflowResult`**, **`agentRunRecord`**, schema-valid **`executionTrace`**, paths (**`workflowResult`**, **`events`**, **`agentRun`**), list facets **`meta`** (derived from the manifest), **`capturedAtEffectiveMs`**. **`error`:** **`error`**, **`pathsTried`**, optional **`rawPreview`** (first ≤ 8KiB UTF-8 of the failing file when readable), empty **`meta`** in JSON.
+**`GET /api/runs/:runId`** — **`200`** always for a known **`runId`**. **`ok`:** success body keys are **exactly** the eleven keys listed under [Debug API (normative success shapes)](#debug-api-normative-success-shapes) (**`runTrustPanelHtml`** included). **`error`:** **`error`**, **`pathsTried`**, optional **`rawPreview`** (first ≤ 8KiB UTF-8 of the failing file when readable), empty **`meta`** in JSON.
 
 **`GET /api/runs/:runId/focus`** — **`200`** with **`{ targets: [{ kind, value, rationale }] }`** from **`buildFocusTargets`** for ok runs; **`409`** **`FOCUS_NOT_AVAILABLE`** for error rows. The browser UI must not reimplement this mapping.
 
-**`POST /api/compare`** — body **`{ runIds: string[] }`** (length ≥ 2). **400** if any run is not loaded ok, or **`COMPARE_WORKFLOW_ID_MISMATCH`**. Response: **`RunComparisonReport`** JSON + **`humanSummary`** text (**`formatRunComparisonReport`**).
+**`POST /api/compare`** — body **`{ runIds: string[] }`** (length ≥ 2). **400** if any run is not loaded ok, or **`COMPARE_WORKFLOW_ID_MISMATCH`**. **`200`** success body keys are **exactly** **`comparePanelHtml`**, **`humanSummary`**, **`report`** (see [Debug API (normative success shapes)](#debug-api-normative-success-shapes)); compare tab uses **`comparePanelHtml`** only for markup.
 
 **`GET /api/corpus-patterns`** — same filter query subset as **`/api/runs`** (no pagination). If more than **10_000** load-ok rows match → **413** JSON **`code: CORPUS_TOO_LARGE`**. If **`workflowId`** is set and more than **50** ok runs match that id → **413** **`PATTERNS_COMPARE_TOO_MANY`**. Otherwise **`200`** body **`schemaVersion: 1`** with **`actionableCategoryHistogram`**, **`topRunLevelCodes`**, **`topStepReasonCodes`**, **`recurrenceCandidates`** (signature **`hitRuns`** across the filtered corpus), and optional **`pairwiseRecurrence`** when **`workflowId`** filter is set and count ≤ 50.
 
@@ -809,7 +862,7 @@ If **`agentRunRecord.capturedAt`** parses as a valid date, use that instant. **E
 
 ## Cross-run comparison (normative)
 
-This section defines **cross-run comparison**: comparing saved workflow artifacts locally (no hosted backend). **Inputs** are validated with **`schemas/workflow-result-compare-input.schema.json`**: each file is exactly one of **`WorkflowEngineResult`** (**`schemaVersion` 7**, or legacy **5** upgraded with empty **`verificationRunContext`**), **frozen v9** **`WorkflowResult`** ([`schemas/workflow-result-v9.schema.json`](../schemas/workflow-result-v9.schema.json); requires **`runLevelCodes`** + **`runLevelReasons`** with per-index alignment), or emitted stdout **`WorkflowResult`** (**`schemaVersion` 11**, or legacy **6–8** upgraded). The **`oneOf`** order in the schema is **engine v7 → frozen v9 → stdout v11**. Before AJV, v9-shaped inputs must pass the same **`runLevelCodes` / `runLevelReasons`** index rule; failure → exit **3**, **`COMPARE_INPUT_RUN_LEVEL_INCONSISTENT`**, **`message`** **`Compare input workflow result: runLevelCodes and runLevelReasons are inconsistent.`** The CLI normalizes each input to emitted v10 (`finalizeEmittedWorkflowResult`; legacy inputs upgraded as in [Failure analysis](#failure-analysis-normative) and [Actionable failure classification](#actionable-failure-classification-normative)). For **`workflowTruthReport.schemaVersion` ≥ **3**, recomputed truth must match the file (**`util.isDeepStrictEqual`**) — mismatch → exit **3**, **`COMPARE_WORKFLOW_TRUTH_MISMATCH`**). The machine output is **`RunComparisonReport`** (`schemas/run-comparison-report.schema.json`, **`schemaVersion` 2**), including **`perRunActionableFailures`**, **`categoryHistogram`**, and **`actionableCategoryRecurrence`**; behavioral semantics below are authoritative—the schema is structural only (see [`$comment`](../schemas/run-comparison-report.schema.json)).
+This section defines **cross-run comparison**: comparing saved workflow artifacts locally (no hosted backend). **Inputs** are validated with **`schemas/workflow-result-compare-input.schema.json`**: each file is exactly one of **`WorkflowEngineResult`** (**`schemaVersion` 7**, or legacy **5** upgraded with empty **`verificationRunContext`**), **frozen v9** **`WorkflowResult`** ([`schemas/workflow-result-v9.schema.json`](../schemas/workflow-result-v9.schema.json); requires **`runLevelCodes`** + **`runLevelReasons`** with per-index alignment), or emitted stdout **`WorkflowResult`** (**`schemaVersion` 11**, or legacy **6–8** upgraded). The **`oneOf`** order in the schema is **engine v7 → frozen v9 → stdout v11**. Before AJV, v9-shaped inputs must pass the same **`runLevelCodes` / `runLevelReasons`** index rule; failure → exit **3**, **`COMPARE_INPUT_RUN_LEVEL_INCONSISTENT`**, **`message`** **`Compare input workflow result: runLevelCodes and runLevelReasons are inconsistent.`** The CLI normalizes each input to emitted v10 (`finalizeEmittedWorkflowResult`; legacy inputs upgraded as in [Failure analysis](#failure-analysis-normative) and [Actionable failure classification](#actionable-failure-classification-normative)). For **`workflowTruthReport.schemaVersion` ≥ **3**, recomputed truth must match the file (**`util.isDeepStrictEqual`**) — mismatch → exit **3**, **`COMPARE_WORKFLOW_TRUTH_MISMATCH`**). The machine output is **`RunComparisonReport`** (`schemas/run-comparison-report.schema.json`, **`schemaVersion` `3`**), including prior aggregates (**`perRunActionableFailures`**, **`categoryHistogram`**, **`actionableCategoryRecurrence`**) plus required **`reliabilityAssessment`** and **`compareHighlights`**. **Breaking:** saved compare **stdout** files with **`schemaVersion` `2`** are not valid v3 output; re-run compare or upgrade tooling. Behavioral semantics below are authoritative—the schema is structural only (see [`$comment`](../schemas/run-comparison-report.schema.json)).
 
 ### `logicalStepKey`
 

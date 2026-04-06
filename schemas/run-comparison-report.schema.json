@@ -12,10 +12,12 @@
     "categoryHistogram",
     "actionableCategoryRecurrence",
     "pairwise",
-    "recurrence"
+    "recurrence",
+    "reliabilityAssessment",
+    "compareHighlights"
   ],
   "properties": {
-    "schemaVersion": { "const": 2 },
+    "schemaVersion": { "const": 3 },
     "workflowId": { "type": "string" },
     "runs": {
       "type": "array",
@@ -184,6 +186,116 @@
               }
             }
           }
+        }
+      }
+    },
+    "reliabilityAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "windowTrend",
+        "pairwiseTrend",
+        "recurrenceBurden",
+        "headlineVerdict",
+        "headlineRationale"
+      ],
+      "properties": {
+        "windowTrend": {
+          "type": "string",
+          "enum": ["improving", "worsening", "unchanged", "mixed"]
+        },
+        "pairwiseTrend": {
+          "type": "string",
+          "enum": ["improving", "worsening", "unchanged", "mixed"]
+        },
+        "recurrenceBurden": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["patternCount", "maxRunsHitCount", "crossRunFailure", "rationale"],
+          "properties": {
+            "patternCount": { "type": "integer", "minimum": 0 },
+            "maxRunsHitCount": { "type": "integer", "minimum": 0 },
+            "crossRunFailure": { "type": "boolean" },
+            "rationale": { "type": "string" }
+          }
+        },
+        "headlineVerdict": {
+          "type": "string",
+          "enum": ["improving", "worsening", "unchanged", "mixed"]
+        },
+        "headlineRationale": { "type": "string" }
+      }
+    },
+    "compareHighlights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "introducedLogicalStepKeys",
+        "resolvedLogicalStepKeys",
+        "bothFailingChurn",
+        "bucketBIntroducedSignatures",
+        "bucketBResolvedSignatures",
+        "recurringSignatures"
+      ],
+      "properties": {
+        "introducedLogicalStepKeys": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "resolvedLogicalStepKeys": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "bothFailingChurn": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "logicalStepKey",
+              "introducedStepReasonCodes",
+              "resolvedStepReasonCodes"
+            ],
+            "properties": {
+              "logicalStepKey": { "type": "string" },
+              "introducedStepReasonCodes": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "resolvedStepReasonCodes": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "bucketBIntroducedSignatures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["signature", "count"],
+            "properties": {
+              "signature": { "type": "string" },
+              "count": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "bucketBResolvedSignatures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["signature", "count"],
+            "properties": {
+              "signature": { "type": "string" },
+              "count": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "recurringSignatures": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       }
     },

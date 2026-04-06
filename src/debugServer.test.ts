@@ -11,6 +11,26 @@ import type { WorkflowResult } from "./types.js";
 const root = join(fileURLToPath(import.meta.url), "..", "..");
 const exampleCorpus = join(root, "examples", "debug-corpus");
 const negativeCorpus = join(root, "test", "fixtures", "corpus-negative");
+const slice6Corpus = join(root, "test", "fixtures", "debug-ui-slice6");
+
+function sortedKeys(obj: object): string[] {
+  return Object.keys(obj).sort((a, b) => a.localeCompare(b));
+}
+
+const DEBUG_API_COMPARE_200_KEYS = ["comparePanelHtml", "humanSummary", "report"];
+const DEBUG_API_RUN_DETAIL_OK_KEYS = [
+  "agentRunRecord",
+  "capturedAtEffectiveMs",
+  "executionTrace",
+  "loadStatus",
+  "malformedEventLineCount",
+  "meta",
+  "paths",
+  "runId",
+  "runTrustPanelHtml",
+  "workflowResult",
+  "workflowVerdictSurface",
+];
 
 describe("debugServer HTTP", () => {
   it("GET /api/runs returns one item for examples corpus", async () => {
@@ -64,7 +84,10 @@ describe("debugServer HTTP", () => {
           stepStatusCounts: Record<string, number>;
         };
         agentRunRecord: { workflowId: string };
+        runTrustPanelHtml: string;
       };
+      expect(sortedKeys(data)).toEqual(DEBUG_API_RUN_DETAIL_OK_KEYS);
+      expect(data.runTrustPanelHtml.length).toBeGreaterThan(0);
       expect(data.loadStatus).toBe("ok");
       expect(data.workflowResult.workflowId).toBe("wf_complete");
       expect(data.agentRunRecord.workflowId).toBe("wf_complete");
@@ -163,6 +186,40 @@ describe("debugServer HTTP", () => {
       }
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("debug_api_POST_compare_200_json_has_exact_keys", async () => {
+    const srv = await startDebugServerOnPort(slice6Corpus, 0);
+    try {
+      const res = await fetch(`http://127.0.0.1:${srv.port}/api/compare`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ runIds: ["run_a", "run_b"] }),
+      });
+      expect(res.ok).toBe(true);
+      const data = (await res.json()) as {
+        comparePanelHtml: string;
+        humanSummary: string;
+        report: { schemaVersion: number };
+      };
+      expect(sortedKeys(data)).toEqual(DEBUG_API_COMPARE_200_KEYS);
+      expect(data.comparePanelHtml.length).toBeGreaterThan(0);
+      expect(data.report.schemaVersion).toBe(3);
+    } finally {
+      await srv.close();
+    }
+  });
+
+  it("debug_api_GET_run_detail_ok_json_has_exact_keys", async () => {
+    const srv = await startDebugServerOnPort(slice6Corpus, 0);
+    try {
+      const res = await fetch(`http://127.0.0.1:${srv.port}/api/runs/run_a`);
+      expect(res.ok).toBe(true);
+      const data = await res.json();
+      expect(sortedKeys(data)).toEqual(DEBUG_API_RUN_DETAIL_OK_KEYS);
+    } finally {
+      await srv.close();
     }
   });
 });

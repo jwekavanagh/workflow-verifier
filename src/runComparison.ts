@@ -7,6 +7,60 @@ import {
 import { compareUtf16Id } from "./resolveExpectation.js";
 import type { Reason, StepOutcome, StepStatus, WorkflowResult } from "./types.js";
 
+/** Max keys / signatures per compareHighlights list (normative cap). */
+export const COMPARE_HIGHLIGHTS_MAX = 20;
+
+export type ReliabilityTrend = "improving" | "worsening" | "unchanged" | "mixed";
+
+export type RecurrenceBurden = {
+  patternCount: number;
+  maxRunsHitCount: number;
+  crossRunFailure: boolean;
+  rationale: string;
+};
+
+export type ReliabilityAssessment = {
+  windowTrend: ReliabilityTrend;
+  pairwiseTrend: ReliabilityTrend;
+  recurrenceBurden: RecurrenceBurden;
+  headlineVerdict: ReliabilityTrend;
+  headlineRationale: string;
+};
+
+export type CompareHighlights = {
+  introducedLogicalStepKeys: string[];
+  resolvedLogicalStepKeys: string[];
+  bothFailingChurn: Array<{
+    logicalStepKey: string;
+    introducedStepReasonCodes: string[];
+    resolvedStepReasonCodes: string[];
+  }>;
+  bucketBIntroducedSignatures: Array<{ signature: string; count: number }>;
+  bucketBResolvedSignatures: Array<{ signature: string; count: number }>;
+  recurringSignatures: string[];
+};
+
+function severityRank(s: "high" | "medium" | "low"): number {
+  if (s === "high") return 0;
+  if (s === "medium") return 1;
+  return 2;
+}
+
+/** Trend from first run → last run actionable posture (higher severity rank = better). */
+export function actionableTrend(first: PerRunActionable, last: PerRunActionable): ReliabilityTrend {
+  const fc = first.category;
+  const lc = last.category;
+  if (fc === "complete" && lc === "complete") return "unchanged";
+  if (fc !== "complete" && lc === "complete") return "improving";
+  if (fc === "complete" && lc !== "complete") return "worsening";
+  if (fc !== lc) return "mixed";
+  const fr = severityRank(first.severity as "high" | "medium" | "low");
+  const lr = severityRank(last.severity as "high" | "medium" | "low");
+  if (lr > fr) return "improving";
+  if (lr < fr) return "worsening";
+  return "unchanged";
+}
+
 /** Per compared run: actionable rollup (`complete` + low severity when workflow is trusted). */
 export function perRunActionableFromWorkflowResult(r: WorkflowResult, runIndex: number): PerRunActionable {
   const fa = r.workflowTruthReport.failureAnalysis;
@@ -19,43 +73,6 @@ export function perRunActionableFromWorkflowResult(r: WorkflowResult, runIndex: 
     severity: fa.actionableFailure.severity,
   };
 }
-
-/** JSON report shape; validate with `schemas/run-comparison-report.schema.json`. */
-export type RunComparisonReport = {
-  schemaVersion: 2;
-  workflowId: string;
-  runs: Array<{ runIndex: number; displayLabel: string }>;
-  perRunActionableFailures: PerRunActionable[];
-  categoryHistogram: Array<{ category: string; count: number }>;
-  actionableCategoryRecurrence: ActionableCategoryRecurrenceRow[];
-  pairwise: {
-    priorRunIndex: number;
-    currentRunIndex: number;
-    runLevel: {
-      introducedRunLevelCodes: string[];
-      resolvedRunLevelCodes: string[];
-    };
-    ambiguousLogicalKeyResolutions: Array<{
-      logicalStepKey: string;
-      chosenSeq: number;
-      droppedSeq: number;
-    }>;
-    bucketA: BucketAEntry[];
-    bucketB: {
-      introducedFailureSignatures: Array<{ signature: string; count: number }>;
-      resolvedFailureSignatures: Array<{ signature: string; count: number }>;
-      unchangedFailureInstanceCounts: Array<{ signature: string; matchedCount: number }>;
-    };
-  };
-  recurrence: {
-    patterns: Array<{
-      signature: string;
-      runIndices: number[];
-      runsHitCount: number;
-      exemplars: Array<{ runIndex: number; seq: number; toolId: string }>;
-    }>;
-  };
-};
 
 export type BucketAEntry =
   | {
@@ -117,6 +134,164 @@ export type BucketAEffectDelta = {
   statusPrior: StepStatus | null;
   statusCurrent: StepStatus | null;
 };
+
+export type PairwiseBucketB = {
+  introducedFailureSignatures: Array<{ signature: string; count: number }>;
+  resolvedFailureSignatures: Array<{ signature: string; count: number }>;
+  unchangedFailureInstanceCounts: Array<{ signature: string; matchedCount: number }>;
+};
+
+export type RecurrencePattern = {
+  signature: string;
+  runIndices: number[];
+  runsHitCount: number;
+  exemplars: Array<{ runIndex: number; seq: number; toolId: string }>;
+};
+
+/** JSON report shape; validate with `schemas/run-comparison-report.schema.json`. */
+export type RunComparisonReport = {
+  schemaVersion: 3;
+  workflowId: string;
+  runs: Array<{ runIndex: number; displayLabel: string }>;
+  perRunActionableFailures: PerRunActionable[];
+  categoryHistogram: Array<{ category: string; count: number }>;
+  actionableCategoryRecurrence: ActionableCategoryRecurrenceRow[];
+  pairwise: {
+    priorRunIndex: number;
+    currentRunIndex: number;
+    runLevel: {
+      introducedRunLevelCodes: string[];
+      resolvedRunLevelCodes: string[];
+    };
+    ambiguousLogicalKeyResolutions: Array<{
+      logicalStepKey: string;
+      chosenSeq: number;
+      droppedSeq: number;
+    }>;
+    bucketA: BucketAEntry[];
+    bucketB: PairwiseBucketB;
+  };
+  recurrence: {
+    patterns: RecurrencePattern[];
+  };
+  reliabilityAssessment: ReliabilityAssessment;
+  compareHighlights: CompareHighlights;
+};
+
+function buildRecurrenceBurden(patterns: RecurrencePattern[]): RecurrenceBurden {
+  const patternCount = patterns.length;
+  const maxRunsHitCount =
+    patternCount === 0 ? 0 : Math.max(...patterns.map((p) => p.runsHitCount));
+  const crossRunFailure = patternCount > 0;
+  let rationale: string;
+  if (patternCount === 0) {
+    rationale = "No failure signature appears in two or more distinct runs in this window.";
+  } else {
+    rationale = `${patternCount} failure signature(s) appear in two or more distinct runs in this window (max runs hit per signature: ${maxRunsHitCount}).`;
+  }
+  return { patternCount, maxRunsHitCount, crossRunFailure, rationale };
+}
+
+function buildReliabilityAssessment(
+  perRun: PerRunActionable[],
+  priorRunIndex: number,
+  currentRunIndex: number,
+  patterns: RecurrencePattern[],
+): ReliabilityAssessment {
+  const first = perRun[0]!;
+  const last = perRun[perRun.length - 1]!;
+  const windowTrend = actionableTrend(first, last);
+  const priorA = perRun[priorRunIndex]!;
+  const currentA = perRun[currentRunIndex]!;
+  const pairwiseTrend = actionableTrend(priorA, currentA);
+  const recurrenceBurden = buildRecurrenceBurden(patterns);
+
+  let headlineVerdict: ReliabilityTrend;
+  let headlineRationale: string;
+
+  if (windowTrend === "worsening") {
+    headlineVerdict = "worsening";
+    headlineRationale = `First run actionable ${first.category}/${first.severity} vs last run ${last.category}/${last.severity}: overall window worsened.`;
+    if (recurrenceBurden.crossRunFailure) {
+      headlineRationale += ` ${recurrenceBurden.rationale}`;
+    }
+  } else if (windowTrend === "improving") {
+    headlineVerdict = "improving";
+    headlineRationale = `First run actionable ${first.category}/${first.severity} vs last run ${last.category}/${last.severity}: overall window improved.`;
+    if (pairwiseTrend === "worsening") {
+      headlineRationale +=
+        " Latest step backslid vs prior run (pairwise trend worsening) despite window-level improvement.";
+    }
+  } else if (windowTrend === "mixed") {
+    headlineVerdict = "mixed";
+    headlineRationale = `Window trend mixed: first vs last actionable categories differ (${first.category} vs ${last.category}) without a single ordering rule.`;
+  } else {
+    if (pairwiseTrend !== "unchanged") {
+      headlineVerdict = pairwiseTrend;
+      headlineRationale = `Window actionable unchanged (${last.category}/${last.severity}); immediate prior→current hop is ${pairwiseTrend}.`;
+    } else if (recurrenceBurden.crossRunFailure) {
+      headlineVerdict = "mixed";
+      headlineRationale = `Window and pairwise actionable unchanged, but recurring failure patterns exist. ${recurrenceBurden.rationale}`;
+    } else {
+      headlineVerdict = "unchanged";
+      headlineRationale = `Window and pairwise actionable posture unchanged; no cross-run recurring failure signatures.`;
+    }
+  }
+
+  return {
+    windowTrend,
+    pairwiseTrend,
+    recurrenceBurden,
+    headlineVerdict,
+    headlineRationale,
+  };
+}
+
+function capSortKeys(keys: string[]): string[] {
+  return [...keys].sort(compareUtf16Id).slice(0, COMPARE_HIGHLIGHTS_MAX);
+}
+
+function buildCompareHighlights(
+  bucketA: BucketAEntry[],
+  bucketB: PairwiseBucketB,
+  patterns: RecurrencePattern[],
+): CompareHighlights {
+  const introduced: string[] = [];
+  const resolved: string[] = [];
+  const bothChurn: CompareHighlights["bothFailingChurn"] = [];
+  for (const e of bucketA) {
+    if (e.kind === "introducedFailure") introduced.push(e.logicalStepKey);
+    else if (e.kind === "resolvedFailure") resolved.push(e.logicalStepKey);
+    else if (e.kind === "bothFailing") {
+      if (e.introducedStepReasonCodes.length > 0 || e.resolvedStepReasonCodes.length > 0) {
+        bothChurn.push({
+          logicalStepKey: e.logicalStepKey,
+          introducedStepReasonCodes: [...e.introducedStepReasonCodes],
+          resolvedStepReasonCodes: [...e.resolvedStepReasonCodes],
+        });
+      }
+    }
+  }
+  const recurring = capSortKeys(patterns.map((p) => p.signature));
+  const bIntro = bucketB.introducedFailureSignatures
+    .slice()
+    .sort((a, b) => compareUtf16Id(a.signature, b.signature))
+    .slice(0, COMPARE_HIGHLIGHTS_MAX);
+  const bReso = bucketB.resolvedFailureSignatures
+    .slice()
+    .sort((a, b) => compareUtf16Id(a.signature, b.signature))
+    .slice(0, COMPARE_HIGHLIGHTS_MAX);
+  return {
+    introducedLogicalStepKeys: capSortKeys(introduced),
+    resolvedLogicalStepKeys: capSortKeys(resolved),
+    bothFailingChurn: bothChurn
+      .sort((a, b) => compareUtf16Id(a.logicalStepKey, b.logicalStepKey))
+      .slice(0, COMPARE_HIGHLIGHTS_MAX),
+    bucketBIntroducedSignatures: bIntro,
+    bucketBResolvedSignatures: bReso,
+    recurringSignatures: recurring,
+  };
+}
 
 function isFailing(status: StepStatus): boolean {
   return status !== "verified";
@@ -520,9 +695,17 @@ export function buildRunComparisonReport(
   const perRunActionableFailures = results.map((r, i) => perRunActionableFromWorkflowResult(r, i));
   const categoryHistogram = buildCategoryHistogram(perRunActionableFailures);
   const actionableCategoryRecurrence = buildActionableCategoryRecurrence(perRunActionableFailures);
+  const recurrence = buildRecurrence(results);
+  const reliabilityAssessment = buildReliabilityAssessment(
+    perRunActionableFailures,
+    n - 2,
+    n - 1,
+    recurrence.patterns,
+  );
+  const compareHighlights = buildCompareHighlights(bucketA, bucketB, recurrence.patterns);
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     workflowId: wf,
     runs: results.map((_, i) => ({
       runIndex: i,
@@ -546,7 +729,9 @@ export function buildRunComparisonReport(
       bucketA,
       bucketB,
     },
-    recurrence: buildRecurrence(results),
+    recurrence,
+    reliabilityAssessment,
+    compareHighlights,
   };
 }
 
@@ -637,6 +822,26 @@ export function formatRunComparisonReport(report: RunComparisonReport): string {
       }
     }
   }
+
+  const ra = report.reliabilityAssessment;
+  lines.push(`  reliability_assessment:`);
+  lines.push(`    window_trend: ${ra.windowTrend}`);
+  lines.push(`    pairwise_trend: ${ra.pairwiseTrend}`);
+  lines.push(`    recurrence_pattern_count: ${ra.recurrenceBurden.patternCount}`);
+  lines.push(`    recurrence_max_runs_hit: ${ra.recurrenceBurden.maxRunsHitCount}`);
+  lines.push(`    recurrence_cross_run_failure: ${ra.recurrenceBurden.crossRunFailure}`);
+  lines.push(`    recurrence_rationale: ${ra.recurrenceBurden.rationale}`);
+  lines.push(`    headline_verdict: ${ra.headlineVerdict}`);
+  lines.push(`    headline_rationale: ${ra.headlineRationale}`);
+
+  const ch = report.compareHighlights;
+  lines.push(`  compare_highlights:`);
+  lines.push(`    introduced_keys: ${ch.introducedLogicalStepKeys.join("; ") || "(none)"}`);
+  lines.push(`    resolved_keys: ${ch.resolvedLogicalStepKeys.join("; ") || "(none)"}`);
+  lines.push(`    both_failing_churn_count: ${ch.bothFailingChurn.length}`);
+  lines.push(`    bucket_b_introduced: ${ch.bucketBIntroducedSignatures.map((x) => `${x.signature}×${x.count}`).join("; ") || "(none)"}`);
+  lines.push(`    bucket_b_resolved: ${ch.bucketBResolvedSignatures.map((x) => `${x.signature}×${x.count}`).join("; ") || "(none)"}`);
+  lines.push(`    recurring_signatures: ${ch.recurringSignatures.join("; ") || "(none)"}`);
 
   return lines.join("\n");
 }

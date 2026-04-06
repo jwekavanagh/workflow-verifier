@@ -109,6 +109,10 @@ node dist/cli.js --workflow-id wf_complete --events examples/events.ndjson --reg
 
 **Cross-run comparison:** `node dist/cli.js compare --prior earlier.json --current latest.json` — [Cross-run comparison (normative)](docs/execution-truth-layer.md#cross-run-comparison-normative).
 
+## Slice 6 — Compare and trust surfaces
+
+Compare **stdout** is **`RunComparisonReport`** with **`schemaVersion` `3`** only (see [Cross-run comparison (normative)](docs/execution-truth-layer.md#cross-run-comparison-normative) for breaking change from saved v2 compare outputs). The Debug Console serves **server-rendered HTML** for the compare panel and run-trust panel (`comparePanelHtml`, `runTrustPanelHtml`); success response key sets are specified in [Slice 6 — Compare runs + independent verification](docs/execution-truth-layer.md#slice-6--compare-runs--independent-verification) in the SSOT. End-to-end UI coverage: **`npm run test:debug-ui`** (Playwright; **`npm run test:ci`** installs Chromium and runs it last).
+
 **Validate registry (no database):** `node dist/cli.js validate-registry --registry examples/tools.json` — [Registry validation (`validate-registry`) — normative](docs/execution-truth-layer.md#registry-validation-validate-registry--normative).
 
 ## Local validation (no Postgres)
@@ -132,7 +136,7 @@ npm run test:ci
 
 ## Advanced topics (normative detail only in SSOT)
 
-Schema versions (**`schemaVersion` `11`** on emitted **`WorkflowResult`** without **`runLevelCodes`**, engine shape **`7`**, truth subtree **`schemaVersion` `5`** with **`failureAnalysis`**, **`actionableFailure`**, **`executionPathFindings`**, **`executionPathSummary`**, and **`verificationRunContext`**), **`workflowTruthReport`**, **`verificationPolicy`**, **`eventSequenceIntegrity`**, **`failureDiagnostic`**, CLI stderr envelope **`schemaVersion` `2`** with **`failureDiagnosis`** (including **`actionableFailure`**), **`verify-workflow compare`** inputs (**`workflow-result-compare-input.schema.json`**: engine v7 / frozen v9 / stdout v11) and **`RunComparisonReport`** v2 actionable aggregates, **strong** vs **eventual** consistency, Postgres session guards, and **`test:workflow-truth-contract`** / **`ci-workflow-truth-postgres-contract.test.mjs`** are specified in **[docs/execution-truth-layer.md](docs/execution-truth-layer.md)**—not duplicated here.
+Schema versions (**`schemaVersion` `11`** on emitted **`WorkflowResult`** without **`runLevelCodes`**, engine shape **`7`**, truth subtree **`schemaVersion` `5`** with **`failureAnalysis`**, **`actionableFailure`**, **`executionPathFindings`**, **`executionPathSummary`**, and **`verificationRunContext`**), **`workflowTruthReport`**, **`verificationPolicy`**, **`eventSequenceIntegrity`**, **`failureDiagnostic`**, CLI stderr envelope **`schemaVersion` `2`** with **`failureDiagnosis`** (including **`actionableFailure`**), **`verify-workflow compare`** inputs (**`workflow-result-compare-input.schema.json`**: engine v7 / frozen v9 / stdout v11) and **`RunComparisonReport`** v3 (**`reliabilityAssessment`**, **`compareHighlights`**, plus prior aggregates), **strong** vs **eventual** consistency, Postgres session guards, and **`test:workflow-truth-contract`** / **`ci-workflow-truth-postgres-contract.test.mjs`** are specified in **[docs/execution-truth-layer.md](docs/execution-truth-layer.md)**—not duplicated here.
 
 ## License
 

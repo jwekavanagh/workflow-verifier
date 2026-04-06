@@ -67,6 +67,21 @@ describe("Slice 2–3: verification against system state (requirements)", () => 
     expect(r.workflowTruthReport.steps[0]?.outcomeLabel).toBe("FAILED_ROW_MISSING");
   });
 
+  it("AC_10_1_AC_10_2_independent_sql_evidence_not_execution_narrative", async () => {
+    const r = await verifyWorkflow({
+      workflowId: "wf_missing",
+      eventsPath,
+      registryPath,
+      database: sqliteDb(),
+      logStep: noop,
+      truthReport: noop,
+    });
+    expect(r.steps[0]?.status).toBe("missing");
+    expect(r.steps[0]?.reasons[0]?.code).toBe("ROW_ABSENT");
+    expect(r.steps[0]?.evidenceSummary?.rowCount).toBe(0);
+    expect(r.workflowTruthReport.steps[0]?.outcomeLabel).toBe("FAILED_ROW_MISSING");
+  });
+
   it("C: success-shaped params do not imply verified without row", async () => {
     const p = join(dir, "slice2_fake_ok.ndjson");
     writeFileSync(

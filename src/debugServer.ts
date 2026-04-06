@@ -18,6 +18,7 @@ import {
   parseLimitCursor,
   parseRunListQuery,
 } from "./debugRunFilters.js";
+import { renderComparePanelHtml, renderRunTrustPanelHtml } from "./debugPanels.js";
 import {
   buildRunComparisonReport,
   formatRunComparisonReport,
@@ -195,17 +196,19 @@ async function handleRequest(
         });
         return;
       }
+      const runTrustPanelHtml = renderRunTrustPanelHtml(o.workflowResult);
       json(res, 200, {
-        loadStatus: "ok",
-        runId: o.runId,
-        workflowResult: o.workflowResult,
-        workflowVerdictSurface: buildWorkflowVerdictSurface(o.workflowResult),
         agentRunRecord: o.agentRunRecord,
+        capturedAtEffectiveMs: o.capturedAtEffectiveMs,
         executionTrace: trace,
+        loadStatus: "ok",
         malformedEventLineCount: load.malformedEventLineCount,
         meta: o.meta,
-        capturedAtEffectiveMs: o.capturedAtEffectiveMs,
         paths: o.paths,
+        runId: o.runId,
+        runTrustPanelHtml,
+        workflowResult: o.workflowResult,
+        workflowVerdictSurface: buildWorkflowVerdictSurface(o.workflowResult),
       });
       return;
     }
@@ -314,9 +317,12 @@ async function handleRequest(
         });
         return;
       }
+      const humanSummary = formatRunComparisonReport(report);
+      const comparePanelHtml = renderComparePanelHtml(report);
       json(res, 200, {
+        comparePanelHtml,
+        humanSummary,
         report,
-        humanSummary: formatRunComparisonReport(report),
       });
       return;
     }

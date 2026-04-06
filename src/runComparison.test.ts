@@ -258,6 +258,9 @@ describe("runComparison", () => {
     expect(text).toContain("per_run_actionable:");
     expect(text).toContain("actionable_category_recurrence:");
     expect(text).toContain("recurrence_patterns:");
+    expect(text).toContain("reliability_assessment:");
+    expect(text).toContain("headline_verdict:");
+    expect(text).toContain("compare_highlights:");
   });
 
   it("actionableCategoryRecurrence: streaks and indices along compare order", () => {
@@ -346,7 +349,7 @@ describe("runComparison", () => {
       const out = proc.stdout.trim();
       expect(out.length).toBeGreaterThan(0);
       const parsed = JSON.parse(out) as { schemaVersion: number };
-      expect(parsed.schemaVersion).toBe(2);
+      expect(parsed.schemaVersion).toBe(3);
       const v = loadSchemaValidator("run-comparison-report");
       expect(v(JSON.parse(out))).toBe(true);
       expect(proc.stderr).toContain("cross_run_comparison:");
