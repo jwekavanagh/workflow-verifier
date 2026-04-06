@@ -30,8 +30,18 @@ import {
   startDebugServerOnPort,
 } from "./debugServer.js";
 import { writeAgentRunBundle } from "./agentRunBundle.js";
+import {
+  assertPlanPathInsideRepo,
+  buildPlanTransitionEventsNdjson,
+  buildPlanTransitionWorkflowResult,
+  resolveCommitSha,
+  sha256HexOfFile,
+} from "./planTransition.js";
+import { PLAN_TRANSITION_WORKFLOW_ID } from "./planTransitionConstants.js";
 import { COMPARE_INPUT_RUN_LEVEL_INCONSISTENT_MESSAGE } from "./runLevelDriftMessages.js";
 import { isV9RunLevelCodesInconsistent } from "./workflowRunLevelConsistency.js";
+import { formatWorkflowTruthReport } from "./workflowTruthReport.js";
+import { workflowEngineResultFromEmitted } from "./workflowResultNormalize.js";
 
 function argValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
@@ -89,6 +99,9 @@ Exit codes:
 
   verify-workflow debug --corpus <dir> [--port <n>]
   Local Debug Console on 127.0.0.1 (see docs/execution-truth-layer.md — Debug Console).
+
+  verify-workflow plan-transition --repo <dir> --before <ref> --after <ref> --plan <Plan.md>
+  Validate git Before..After against planValidation rules in Plan.md YAML front matter (Git >= 2.30.0; see docs).
 
   --help, -h  print this message and exit 0`;
 }
@@ -587,8 +600,119 @@ async function runDebugSubcommand(args: string[]): Promise<void> {
   process.on("SIGTERM", onSig);
 }
 
+function usagePlanTransition(): string {
+  return `Usage:
+  verify-workflow plan-transition --repo <dir> --before <ref> --after <ref> --plan <path>
+
+Optional:
+  --workflow-id <id>   (default ${PLAN_TRANSITION_WORKFLOW_ID})
+  --no-truth-report
+  --write-run-bundle <dir>
+
+Requires Git >= 2.30.0. Plan.md must start with YAML front matter containing planValidation (see docs).
+
+Exit codes:
+  0  workflow status complete
+  1  workflow status inconsistent
+  2  workflow status incomplete
+  3  operational failure (see stderr JSON)
+
+  --help, -h  print this message and exit 0`;
+}
+
+function runPlanTransitionSubcommand(args: string[]): void {
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(usagePlanTransition());
+    process.exit(0);
+  }
+  const repo = argValue(args, "--repo");
+  const beforeRef = argValue(args, "--before");
+  const afterRef = argValue(args, "--after");
+  const planPath = argValue(args, "--plan");
+  if (!repo || !beforeRef || !afterRef || !planPath) {
+    writeCliError(
+      CLI_OPERATIONAL_CODES.PLAN_TRANSITION_USAGE,
+      "plan-transition requires --repo, --before, --after, and --plan.",
+    );
+    process.exit(3);
+  }
+  const workflowId = argValue(args, "--workflow-id") ?? PLAN_TRANSITION_WORKFLOW_ID;
+  const noTruthReport = args.includes("--no-truth-report");
+  const writeRunBundleDir = argValue(args, "--write-run-bundle");
+
+  let result: WorkflowResult;
+  try {
+    result = buildPlanTransitionWorkflowResult({
+      repoRoot: repo,
+      beforeRef,
+      afterRef,
+      planPath,
+      workflowId,
+    });
+  } catch (e) {
+    if (e instanceof TruthLayerError) {
+      writeCliError(e.code, e.message);
+      process.exit(3);
+    }
+    throw e;
+  }
+
+  const validateResult = loadSchemaValidator("workflow-result");
+  if (!validateResult(result)) {
+    writeCliError(
+      CLI_OPERATIONAL_CODES.WORKFLOW_RESULT_SCHEMA_INVALID,
+      JSON.stringify(validateResult.errors ?? []),
+    );
+    process.exit(3);
+  }
+
+  if (!noTruthReport) {
+    const engine = workflowEngineResultFromEmitted(result);
+    process.stderr.write(`${formatWorkflowTruthReport(engine)}\n`);
+  }
+
+  if (writeRunBundleDir !== undefined) {
+    try {
+      const repoResolved = path.resolve(repo);
+      const planReal = assertPlanPathInsideRepo(repoResolved, planPath);
+      const beforeSha = resolveCommitSha(repoResolved, beforeRef);
+      const afterSha = resolveCommitSha(repoResolved, afterRef);
+      const planSha = sha256HexOfFile(planReal);
+      const eventsNdjson = buildPlanTransitionEventsNdjson({
+        workflowId,
+        beforeRef,
+        afterRef,
+        beforeCommitSha: beforeSha,
+        afterCommitSha: afterSha,
+        planResolvedPath: planReal,
+        planSha256: planSha,
+      });
+      writeAgentRunBundle({
+        outDir: writeRunBundleDir,
+        eventsNdjson,
+        workflowResult: result,
+        producer: readPackageIdentity(),
+        verifiedAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(msg));
+      process.exit(3);
+    }
+  }
+
+  console.log(JSON.stringify(result));
+  if (result.status === "complete") process.exit(0);
+  if (result.status === "inconsistent") process.exit(1);
+  process.exit(2);
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
+  if (args[0] === "plan-transition") {
+    runPlanTransitionSubcommand(args.slice(1));
+    return;
+  }
   if (args[0] === "debug") {
     await runDebugSubcommand(args.slice(1));
     return;

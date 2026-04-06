@@ -13,6 +13,31 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const emptyCtx = createEmptyVerificationRunContext();
 
 describe("JSON Schemas (SSOT)", () => {
+  it("validates plan-validation front matter document", () => {
+    const v = loadSchemaValidator("plan-validation-frontmatter");
+    const doc = {
+      name: "ignored",
+      planValidation: {
+        schemaVersion: 1,
+        rules: [
+          {
+            id: "r1",
+            kind: "forbidMatchingRows",
+            pattern: "secret.env",
+          },
+          {
+            id: "r2",
+            kind: "requireRenameFromTo",
+            fromPattern: "a",
+            toPattern: "b",
+            includeCopy: false,
+          },
+        ],
+      },
+    };
+    expect(v(doc)).toBe(true);
+  });
+
   it("validates tool_observed event lines", () => {
     const v = loadSchemaValidator("event");
     const line = JSON.parse(

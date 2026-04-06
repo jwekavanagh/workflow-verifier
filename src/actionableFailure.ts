@@ -71,6 +71,12 @@ const STEP_CODE_TO_CATEGORY: Record<string, ActionableFailureCategory> = {
   [SQL_VERIFICATION_OUTCOME_CODE.MULTI_EFFECT_INCOMPLETE]: "bad_input",
   [STEP_NO_REASON_CODE]: "control_flow_problem",
   [TEST_BLOCKING_CODE]: "control_flow_problem",
+
+  PLAN_RULE_ROW_KIND_MISMATCH: "state_inconsistency",
+  PLAN_RULE_FORBIDDEN_ROW: "state_inconsistency",
+  PLAN_RULE_REQUIRED_ROW_MISSING: "state_inconsistency",
+  PLAN_RULE_ALLOWLIST_VIOLATION: "state_inconsistency",
+  PLAN_RULE_RENAME_MISMATCH: "state_inconsistency",
 };
 
 for (const c of Object.values(REGISTRY_RESOLVER_CODE)) {

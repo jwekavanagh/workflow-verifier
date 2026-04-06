@@ -4,6 +4,7 @@ import {
   buildExecutionPathSummary,
 } from "./executionPathFindings.js";
 import { buildFailureAnalysis } from "./failureAnalysis.js";
+import { PLAN_TRANSITION_WORKFLOW_ID } from "./planTransitionConstants.js";
 import {
   failureDiagnosticForEventSequenceCode,
   failureDiagnosticForRunLevelCode,
@@ -34,6 +35,18 @@ export const HUMAN_REPORT_RESULT_PHRASE: Record<WorkflowTruthStep["outcomeLabel"
   PARTIALLY_VERIFIED: "Some intended database effects matched; others did not.",
   UNCERTAIN_NOT_OBSERVED_WITHIN_WINDOW:
     "The expected row did not appear within the verification window.",
+};
+
+/** Human `result=` lines when `workflowId` is plan-transition (git + Plan.md rules, not SQL). */
+export const HUMAN_REPORT_PLAN_TRANSITION_PHRASE: Record<WorkflowTruthStep["outcomeLabel"], string> = {
+  VERIFIED: "Matched declared plan rules for the git transition.",
+  FAILED_ROW_MISSING: "Expected git change implied by the plan rule was not observed in the diff.",
+  FAILED_VALUE_MISMATCH: "A plan-validation rule failed against the git diff.",
+  INCOMPLETE_CANNOT_VERIFY:
+    "This step could not be fully verified (plan or git diff processing issue).",
+  PARTIALLY_VERIFIED: "Some plan rules matched; others did not.",
+  UNCERTAIN_NOT_OBSERVED_WITHIN_WINDOW:
+    "The git transition could not be fully confirmed within the configured window.",
 };
 
 const HUMAN_REPORT_EFFECT_RESULT_PHRASE: Record<WorkflowTruthEffect["outcomeLabel"], string> = {
@@ -70,6 +83,13 @@ const TRUST_LINE_BY_STATUS: Record<WorkflowStatus, string> = {
     "NOT TRUSTED: At least one step failed verification against the database (determinate failure).",
 };
 
+const TRUST_LINE_BY_STATUS_PLAN_TRANSITION: Record<WorkflowStatus, string> = {
+  complete: "TRUSTED: Every plan-validation rule passed against the git diff.",
+  incomplete: "NOT TRUSTED: Plan validation is incomplete; the transition cannot be fully confirmed.",
+  inconsistent:
+    "NOT TRUSTED: At least one plan-validation rule failed against the git diff (determinate failure).",
+};
+
 /** Human report trust line when the only failures are `uncertain` (eventual window exhausted). */
 export const TRUST_LINE_UNCERTAIN_WITHIN_WINDOW =
   "NOT TRUSTED: At least one step could not be confirmed within the verification window (row not observed; replication or processing delay is possible).";
@@ -79,6 +99,19 @@ export const TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX =
   "Event capture or timestamps were irregular; verification used seq-sorted order. See event_sequence below.";
 
 function trustLineBaseForEngine(engine: WorkflowEngineResult): string {
+  if (engine.workflowId === PLAN_TRANSITION_WORKFLOW_ID) {
+    if (
+      engine.status === "incomplete" &&
+      engine.runLevelReasons.length === 0 &&
+      engine.steps.some((s) => s.status === "uncertain") &&
+      !engine.steps.some((s) =>
+        ["missing", "inconsistent", "partially_verified", "incomplete_verification"].includes(s.status),
+      )
+    ) {
+      return TRUST_LINE_UNCERTAIN_WITHIN_WINDOW;
+    }
+    return TRUST_LINE_BY_STATUS_PLAN_TRANSITION[engine.status];
+  }
   if (
     engine.status === "incomplete" &&
     engine.runLevelReasons.length === 0 &&
@@ -361,10 +394,15 @@ export function formatWorkflowTruthReportStruct(truth: WorkflowTruthReport): str
     }
   }
 
+  const stepPhraseMap =
+    truth.workflowId === PLAN_TRANSITION_WORKFLOW_ID
+      ? HUMAN_REPORT_PLAN_TRANSITION_PHRASE
+      : HUMAN_REPORT_RESULT_PHRASE;
+
   lines.push("steps:");
   for (const s of truth.steps) {
     const toolId = sanitizeOneLineId(s.toolId);
-    const resultPhrase = HUMAN_REPORT_RESULT_PHRASE[s.outcomeLabel];
+    const resultPhrase = stepPhraseMap[s.outcomeLabel];
     lines.push(`  - seq=${s.seq} tool=${toolId} result=${resultPhrase}`);
     lines.push(
       `    observations: evaluated=${s.observations.evaluatedOrdinal} of ${s.observations.repeatCount} in_capture_order`,

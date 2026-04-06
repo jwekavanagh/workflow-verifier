@@ -35,7 +35,8 @@ export type SchemaValidatorName =
   | "workflow-result-compare-input"
   | "run-comparison-report"
   | "registry-validation-result"
-  | "cli-error-envelope";
+  | "cli-error-envelope"
+  | "plan-validation-frontmatter";
 
 const validatorCache: Partial<Record<SchemaValidatorName, ValidateFunction>> = {};
 
@@ -107,6 +108,8 @@ export function loadSchemaValidator(name: SchemaValidatorName): ValidateFunction
       return compileSchemaFile(name, "run-comparison-report.schema.json");
     case "registry-validation-result":
       return compileSchemaFile(name, "registry-validation-result.schema.json");
+    case "plan-validation-frontmatter":
+      return compileSchemaFile(name, "plan-validation-frontmatter.schema.json");
     default: {
       const _exhaustive: never = name;
       return _exhaustive;

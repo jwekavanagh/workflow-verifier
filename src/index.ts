@@ -62,6 +62,7 @@ export {
 } from "./runComparison.js";
 export {
   EXECUTION_PATH_EMPTY,
+  PLAN_TRANSITION_VERIFICATION_BASIS_LINE,
   VERIFICATION_BASIS_LINE,
   formatSqlEvidenceDetailForTrustPanel,
   renderComparePanelHtml,
@@ -73,12 +74,25 @@ export {
   finalizeEmittedWorkflowResult,
   formatWorkflowTruthReport,
   formatWorkflowTruthReportStruct,
+  HUMAN_REPORT_PLAN_TRANSITION_PHRASE,
   HUMAN_REPORT_RESULT_PHRASE,
   STEP_STATUS_TRUTH_LABELS,
   TRUST_LINE_UNCERTAIN_WITHIN_WINDOW,
   TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX,
 } from "./workflowTruthReport.js";
 export type { WorkflowVerdictSurface } from "./workflowTruthReport.js";
+export {
+  assertGitVersionAtLeast_2_30,
+  buildPlanTransitionEventsNdjson,
+  buildPlanTransitionWorkflowResult,
+  evaluatePlanRules,
+  parseGitNameStatusZ,
+  parseGitVersionTriple,
+  PLAN_RULE_CODES,
+  preflightPatternString,
+} from "./planTransition.js";
+export type { PlanDiffRow, PlanDiffRowKind } from "./planTransition.js";
+export { PLAN_TRANSITION_WORKFLOW_ID } from "./planTransitionConstants.js";
 export { writeAgentRunBundle } from "./agentRunBundle.js";
 export type { WriteAgentRunBundleOptions } from "./agentRunBundle.js";
 export { workflowEngineResultFromEmitted, normalizeToEmittedWorkflowResult } from "./workflowResultNormalize.js";

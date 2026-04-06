@@ -1,4 +1,5 @@
 import type { RunComparisonReport } from "./runComparison.js";
+import { PLAN_TRANSITION_WORKFLOW_ID } from "./planTransitionConstants.js";
 import type { StepOutcome, WorkflowResult } from "./types.js";
 
 function escapeHtml(s: string): string {
@@ -9,8 +10,18 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Single formatter for trust panel SQL evidence column (Slice 6). */
+function formatPlanTransitionEvidenceSummary(ev: Record<string, unknown>): string {
+  const { planTransition: _pt, ...rest } = ev;
+  const json = JSON.stringify(rest);
+  const max = 500;
+  return json.length <= max ? json : `${json.slice(0, max - 3)}...`;
+}
+
+/** Single formatter for trust panel SQL evidence column (Slice 6); plan-transition uses git diff evidence. */
 export function formatSqlEvidenceDetailForTrustPanel(step: StepOutcome): string {
+  if (step.evidenceSummary && (step.evidenceSummary as { planTransition?: boolean }).planTransition === true) {
+    return formatPlanTransitionEvidenceSummary(step.evidenceSummary as Record<string, unknown>);
+  }
   if (step.verificationRequest === null) {
     return "No SQL verification request (registry resolution or unknown tool).";
   }
@@ -31,6 +42,9 @@ export function formatSqlEvidenceDetailForTrustPanel(step: StepOutcome): string 
 
 const VERIFICATION_BASIS_LINE =
   "Verification outcomes below are from read-only SQL reconciliation against the workflow registry and observed tool parameters—not from model-reported success.";
+
+const PLAN_TRANSITION_VERIFICATION_BASIS_LINE =
+  "Verification outcomes below are from git diff (name-status) and machine-declared planValidation rules in Plan.md front matter—not from model-reported success.";
 
 const EXECUTION_PATH_EMPTY = "No execution-path concerns recorded for this run.";
 
@@ -120,9 +134,12 @@ export function renderRunTrustPanelHtml(wf: WorkflowResult): string {
       `<ol data-etl-list="execution-findings">${lis}</ol>`;
   }
 
+  const basisLine =
+    wf.workflowId === PLAN_TRANSITION_WORKFLOW_ID ? PLAN_TRANSITION_VERIFICATION_BASIS_LINE : VERIFICATION_BASIS_LINE;
+
   return [
     `<section data-etl-section="run-trust">`,
-    `<p data-etl-verification-basis>${escapeHtml(VERIFICATION_BASIS_LINE)}</p>`,
+    `<p data-etl-verification-basis>${escapeHtml(basisLine)}</p>`,
     `<table data-etl-table="verify-evidence"><thead><tr><th>seq</th><th>toolId</th><th>outcome</th><th>verifyTarget</th><th>sql evidence</th></tr></thead><tbody>`,
     ...rows,
     `</tbody></table>`,
@@ -133,4 +150,4 @@ export function renderRunTrustPanelHtml(wf: WorkflowResult): string {
   ].join("");
 }
 
-export { VERIFICATION_BASIS_LINE, EXECUTION_PATH_EMPTY };
+export { VERIFICATION_BASIS_LINE, PLAN_TRANSITION_VERIFICATION_BASIS_LINE, EXECUTION_PATH_EMPTY };

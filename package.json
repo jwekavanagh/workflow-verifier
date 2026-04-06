@@ -30,12 +30,15 @@
     "@playwright/test": "^1.51.0",
     "@types/node": "^22.10.2",
     "@types/pg": "^8.20.0",
+    "@types/picomatch": "^4.0.3",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "typescript": "^5.7.2",
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "picomatch": "^4.0.4",
+    "yaml": "^2.8.3"
   }
 }

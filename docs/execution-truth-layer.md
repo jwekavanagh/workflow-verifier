@@ -101,7 +101,7 @@ Types: **`runTrustPanelHtml`** non-empty string (from **`renderRunTrustPanelHtml
 | **`p[data-etl-window-trend]`**, **`p[data-etl-pairwise-trend]`**, **`p[data-etl-recurrence]`** | Reliability lines |
 | **`ul[data-etl-list="introduced\|resolved\|recurring"]`** | Compare highlight lists (may be empty; no placeholder **`li`**) |
 | **`section[data-etl-section="run-trust"]`** | Trust panel root |
-| **`p[data-etl-verification-basis]`** | Fixed operator line: independent SQL basis |
+| **`p[data-etl-verification-basis]`** | Fixed operator line: independent SQL basis (plan-transition runs: git + **`planValidation`** basis — see [Plan transition validation](#plan-transition-validation-normative)) |
 | **`table[data-etl-table="verify-evidence"]`**, **`tr[data-etl-seq]`**, **`td[data-etl-field="sql-evidence"]`** | Step alignment + SQL evidence column |
 | **`tr[data-etl-alignment-warning="true"]`** | Truth/engine seq misalignment |
 | **`section[data-etl-section="execution-path"]`**, **`p[data-etl-execution-path-empty]`**, **`p[data-etl-execution-path-summary]`**, **`ol[data-etl-list="execution-findings"]`**, **`li[data-etl-finding-code]`** | Execution-path rollup |
@@ -114,6 +114,63 @@ Types: **`runTrustPanelHtml`** non-empty string (from **`renderRunTrustPanelHtml
 
 **Drift guard:** `test/fixtures/debug-ui-slice6/expected-strings.json` is the only source for Playwright substring assertions (and matching Vitest checks).
 
+## Plan transition validation (normative)
+
+This subsection defines **`verify-workflow plan-transition`**: validate a **git** diff between two commits against **machine-declared rules** in **`Plan.md` YAML front matter**. It does **not** interpret free-form markdown or todo checkboxes; intent is only what appears under **`planValidation`** after schema validation. It does **not** use SQL or the tool registry.
+
+### Non-goals
+
+- No NLP on the markdown body.
+- No equivalence between `planLogicalSteps` (tool `seq` grouping) and a human **`Plan.md`** unless the author copies rules into **`planValidation`**.
+
+### Requirements
+
+- **Git:** minimum **2.30.0** (enforced before diff; operational code **`PLAN_TRANSITION_GIT_TOO_OLD`**).
+- **Diff:** `git -C <repo> diff --no-ext-diff -z --name-status <before>..<after>` with **both** refs resolved via `git rev-parse --verify <ref>^{commit}`.
+- **Plan file:** must start with YAML front matter (`---` … `---`); **`--plan`** must resolve under **`realpath(--repo)`** (operational **`PLAN_PATH_OUTSIDE_REPO`** if not).
+- **Schema:** [`schemas/plan-validation-frontmatter.schema.json`](../schemas/plan-validation-frontmatter.schema.json) — root document may contain other YAML keys; **`planValidation`** is required with **`schemaVersion` `1`** and **`rules`**.
+
+### Rule kinds (`planValidation.rules[]`)
+
+Each rule has **`id`** (`^[a-zA-Z0-9._-]+$`) and optional **`description`** (feeds step `intendedEffect.narrative`). Glob fields use **`picomatch`** with **`{ dot: true, nocase: false }`** (including `**`). Pattern preflight rejects `..`, leading `/`, Windows drive prefixes, and NUL (operational **`PLAN_VALIDATION_INVALID_PATTERN`**).
+
+| `kind` | Fields | Semantics |
+|--------|--------|-----------|
+| `matchingRowsMustHaveRowKinds` | `pattern`, `rowKinds` | Every diff row touching `pattern` must have `rowKind` ∈ `rowKinds`. |
+| `forbidMatchingRows` | `pattern` | No row may touch `pattern`. |
+| `requireMatchingRow` | `pattern`, `rowKinds` | At least one row touches `pattern` and has `rowKind` ∈ `rowKinds`. |
+| `allChangedPathsMustMatchAllowlist` | `allowPatterns` | Every path on every row (including **both** sides of rename/copy) must match ≥1 allowlist pattern. |
+| `requireRenameFromTo` | `fromPattern`, `toPattern`, **`includeCopy`** (boolean, **required**) | Satisfied if ∃ row: `rowKind` ∈ `{rename}` when `includeCopy === false`, else ∈ `{rename, copy}`, with old/new paths matching patterns. |
+
+Parsed diff rows map git status to `rowKind`: `A`→add, `M`→modify, `D`→delete, `R*`→rename, `C*`→copy, `T`→type_change, `U`→unmerged. Parser tests use NUL-delimited golden buffers per status class (`src/planTransition.test.ts`).
+
+### Emitted `WorkflowResult`
+
+- Default **`workflowId`:** **`wf_plan_transition`** (override with **`--workflow-id`**).
+- One **`StepOutcome` per rule**; **`toolId`:** `plan_transition.rule.<id>`; **`verificationRequest`:** `null`; **`evidenceSummary.planTransition`:** `true` plus rule evidence (capped).
+- **`aggregateWorkflow`** + **`finalizeEmittedWorkflowResult`** — same stdout **`WorkflowResult` v11** and stderr human truth report as batch verify. Trust lines and step **`result=`** phrases use git/plan wording when **`workflowId === wf_plan_transition`** (`workflowTruthReport.ts`).
+
+### Synthetic `events.ndjson` (bundle)
+
+With **`--write-run-bundle`**, **`events.ndjson`** is a **single** schema-valid **v1** `tool_observed` line, **`toolId`:** `plan_transition.meta`, **`params`:** `beforeRef`, `afterRef`, `beforeCommitSha`, `afterCommitSha`, `planResolvedPath`, `planSha256`. **`agent-run.json`** remains schema **v1** (unchanged).
+
+### Debug Console trust panel
+
+When **`workflowId === wf_plan_transition`**, **`renderRunTrustPanelHtml`** uses a **plan/git** verification-basis line (not SQL-only copy); **`formatSqlEvidenceDetailForTrustPanel`** serializes **`evidenceSummary`** for plan steps.
+
+### CLI
+
+```text
+verify-workflow plan-transition --repo <dir> --before <ref> --after <ref> --plan <path>
+  [--workflow-id <id>] [--no-truth-report] [--write-run-bundle <dir>]
+```
+
+Exit codes match batch verify (**0** / **1** / **2** / **3**). Operational codes include **`PLAN_TRANSITION_*`** and **`PLAN_VALIDATION_*`** (see **`cliOperationalCodes.ts`** / **`operationalDisposition.ts`**).
+
+### Proof in repo
+
+- `src/planTransition.ts`, `src/planTransitionConstants.ts`, `src/planTransition.test.ts` (golden NUL fixtures, rule eval, git subprocess checks, CLI smoke).
+
 ## Audiences
 
 ### Engineer
@@ -122,7 +179,7 @@ Types: **`runTrustPanelHtml`** non-empty string (from **`renderRunTrustPanelHtml
 
 | Module | Role |
 |--------|------|
-| `schemaLoad.ts` | AJV 2020-12 validators for event line, execution trace view, registry, workflow engine/result, **stdout v11** + **frozen v9** workflow result, truth report, compare-input (engine v7 / v9 / v11 **`oneOf`**), **`cli-error-envelope`**, **`run-comparison-report`**, **`agent-run-record`** |
+| `schemaLoad.ts` | AJV 2020-12 validators for event line, execution trace view, registry, workflow engine/result, **stdout v11** + **frozen v9** workflow result, truth report, compare-input (engine v7 / v9 / v11 **`oneOf`**), **`cli-error-envelope`**, **`run-comparison-report`**, **`agent-run-record`**, **`plan-validation-frontmatter`** |
 | `failureCatalog.ts` | Stable run-level literals, `formatOperationalMessage`, CLI error envelope helpers |
 | `cliOperationalCodes.ts` | Compare/corpus operational codes such as `COMPARE_INPUT_RUN_LEVEL_INCONSISTENT`, `WORKFLOW_RESULT_RUN_LEVEL_CODES_MISMATCH` |
 | `runLevelDriftMessages.ts` | Fixed `message` strings for v9 `runLevelCodes` / `runLevelReasons` drift (SSOT for CLI stderr and corpus errors) |
@@ -135,6 +192,8 @@ Types: **`runTrustPanelHtml`** non-empty string (from **`renderRunTrustPanelHtml
 | `eventSequenceIntegrity.ts` | Pure analysis of capture order vs `seq` and optional `timestamp` monotonicity (seq-sorted order) |
 | `canonicalParams.ts` | `canonicalJsonForParams` — deterministic params serialization (retry divergence + `observedExecution.paramsCanonical`) |
 | `planLogicalSteps.ts` | Stable sort, group by `seq`, canonical params equality, divergence vs last observation |
+| `planTransition.ts` | **`plan-transition`**: git version gate, `-z` name-status parse, **`planValidation`** rule eval → **`StepOutcome[]`**, **`buildPlanTransitionWorkflowResult`**, synthetic **`events.ndjson`** meta line |
+| `planTransitionConstants.ts` | **`PLAN_TRANSITION_WORKFLOW_ID`** (`wf_plan_transition`) — imported by truth report / debug panels without a cycle through `planTransition.ts` |
 | `resolveExpectation.ts` | Registry + params → `VerificationRequest`; `renderIntendedEffect` for step `intendedEffect.narrative` |
 | `valueVerification.ts` | Canonical display strings + `verificationScalarsEqual` (single scalar comparison table) |
 | `sqlConnector.ts` | SQLite parameterized read; lowercase column keys |
@@ -145,21 +204,21 @@ Types: **`runTrustPanelHtml`** non-empty string (from **`renderRunTrustPanelHtml
 | `actionableFailure.ts` | Actionable failure **`category`** / **`severity`** (workflow + operational), compare **`categoryHistogram`** / **`actionableCategoryRecurrence`**, P-CAT-1–4 and workflow S-1–S4; **`productionStepReasonCodeToActionableCategory`** + operational severity table |
 | `verificationDiagnostics.ts` | Pinned step `failureDiagnostic`; `formatVerificationTargetSummary`; run/event-sequence `category:` helpers for human report (internal; not re-exported from package entry) |
 | `agentRunBundle.ts` | `writeAgentRunBundle` — canonical three-file run directory with per-file temp+rename; used by CLI `--write-run-bundle` and optional `withWorkflowVerification` `persistBundle` |
-| `workflowTruthReport.ts` | `buildWorkflowTruthReport`, `buildWorkflowVerdictSurface`, `finalizeEmittedWorkflowResult`, `formatWorkflowTruthReportStruct`, `formatWorkflowTruthReport`, `HUMAN_REPORT_RESULT_PHRASE`, `STEP_STATUS_TRUTH_LABELS`, `TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX`; human report text is rendering of structured truth with plain `result=` / `detail:` lines |
+| `workflowTruthReport.ts` | `buildWorkflowTruthReport`, `buildWorkflowVerdictSurface`, `finalizeEmittedWorkflowResult`, `formatWorkflowTruthReportStruct`, `formatWorkflowTruthReport`, `HUMAN_REPORT_RESULT_PHRASE`, `HUMAN_REPORT_PLAN_TRANSITION_PHRASE`, `STEP_STATUS_TRUTH_LABELS`, `TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX`; human report text is rendering of structured truth with plain `result=` / `detail:` lines; plan-transition trust/result phrasing when **`workflowId === wf_plan_transition`** |
 | `executionPathFindings.ts` | `buildExecutionPathFindings`, `buildExecutionPathSummary`, `ACTION_INPUT_REASON_CODES`, `RECONCILER_STEP_REASON_CODES` — execution-path layer orthogonal to SQL reconciliation (internal; not re-exported from package entry) |
 | `workflowResultNormalize.ts` | `normalizeToEmittedWorkflowResult`, `workflowEngineResultFromEmitted` (compare ingress: engine **v7** / frozen **v9** / stdout **v11**; strip legacy **`runLevelCodes`**; inject empty **`verificationRunContext`** where needed) |
 | `runComparison.ts` | `buildRunComparisonReport`, `formatRunComparisonReport`, `logicalStepKeyFromStep`, `recurrenceSignature`; cross-run comparison |
 | `verificationPolicy.ts` | `VerificationPolicy` normalization/validation; `executeVerificationWithPolicySync` / `executeVerificationWithPolicyAsync` (strong vs eventual polling); `createSqlitePolicyContext` |
 | `executionTrace.ts` | `assertValidRunEventParentGraph`, `buildExecutionTraceView`, `formatExecutionTraceText`; `traceStepKind` derivation and `backwardPaths` |
 | `pipeline.ts` | Orchestration: `runLogicalStepsVerification` (internal), async `verifyWorkflow`, sync `verifyToolObservedStep`, `withWorkflowVerification` (SQLite `dbPath` only); default `truthReport` / `logStep` |
-| `cli.ts` | CLI entry: verify (**optional **`--write-run-bundle <dir>`**), `compare`, `execution-trace`, `validate-registry`, **`debug`** |
+| `cli.ts` | CLI entry: verify (**optional **`--write-run-bundle <dir>`**), `compare`, `execution-trace`, `validate-registry`, **`debug`**, **`plan-transition`** |
 | `debugCorpus.ts` | Debug Console corpus layout: enumerate `<corpusRoot>/<runId>/`, load outcomes (**`ok`** / **`error`**), path safety, mandatory **`agent-run.json`** manifest with SHA-256 bindings |
 | `debugFocus.ts` | Pure **`buildFocusTargets`**: maps **`workflowTruthReport.failureAnalysis.evidence`** to trace navigation targets (tested golden vectors) |
 | `debugPatterns.ts` | **`buildCorpusPatterns`**: histograms + **`recurrenceSignature`** aggregation; optional pairwise recurrence when **`workflowId`** filter set (cap **50** runs) |
 | `debugRunFilters.ts` | Server-side **`GET /api/runs`** query parsing, pagination cursor, **`includeLoadErrors`** default **true**, **`hasPathFindings`** filter |
 | `debugRunIndex.ts` | **`RunListItem`** facets for filters (**`pathFindingCodes`** from truth report); customer sentinel **`__unspecified__`** when **`agent-run.json`** omits **`customerId`** (ok rows) or on load errors |
 | `debugServer.ts` | Local HTTP on **127.0.0.1** only: JSON APIs + static **`debug-ui/`** (copied to **`dist/debug-ui/`** on build) |
-| `debugPanels.ts` | **`renderComparePanelHtml`**, **`renderRunTrustPanelHtml`**, **`formatSqlEvidenceDetailForTrustPanel`** — server-only HTML for Slice 6 compare/trust panels |
+| `debugPanels.ts` | **`renderComparePanelHtml`**, **`renderRunTrustPanelHtml`**, **`formatSqlEvidenceDetailForTrustPanel`** — server-only HTML for Slice 6 compare/trust panels; plan-transition basis line + evidence serialization when **`workflowId === wf_plan_transition`** |
 | `agentRunRecord.ts` | **`buildAgentRunRecordForBundle`**, **`sha256Hex`**; types aligned with [`schemas/agent-run-record.schema.json`](../schemas/agent-run-record.schema.json) |
 
 ### Integrator (stdout JSON)

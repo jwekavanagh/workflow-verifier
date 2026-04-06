@@ -4,11 +4,13 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   EXECUTION_PATH_EMPTY,
+  PLAN_TRANSITION_VERIFICATION_BASIS_LINE,
   VERIFICATION_BASIS_LINE,
   formatSqlEvidenceDetailForTrustPanel,
   renderComparePanelHtml,
   renderRunTrustPanelHtml,
 } from "./debugPanels.js";
+import { PLAN_TRANSITION_WORKFLOW_ID } from "./planTransitionConstants.js";
 import { buildRunComparisonReport } from "./runComparison.js";
 import type { StepOutcome, WorkflowEngineResult, WorkflowResult } from "./types.js";
 import { createEmptyVerificationRunContext } from "./verificationRunContext.js";
@@ -44,6 +46,25 @@ function wf(steps: StepOutcome[]): WorkflowResult {
   const engine: WorkflowEngineResult = {
     schemaVersion: 7,
     workflowId: "w",
+    status: bad ? "inconsistent" : "complete",
+    runLevelReasons: [],
+    verificationPolicy: {
+      consistencyMode: "strong",
+      verificationWindowMs: 0,
+      pollIntervalMs: 0,
+    },
+    eventSequenceIntegrity: { kind: "normal" },
+    verificationRunContext: createEmptyVerificationRunContext(),
+    steps,
+  };
+  return finalizeEmittedWorkflowResult(engine);
+}
+
+function wfPlanTransition(steps: StepOutcome[]): WorkflowResult {
+  const bad = steps.some((s) => s.status !== "verified");
+  const engine: WorkflowEngineResult = {
+    schemaVersion: 7,
+    workflowId: PLAN_TRANSITION_WORKFLOW_ID,
     status: bad ? "inconsistent" : "complete",
     runLevelReasons: [],
     verificationPolicy: {
@@ -122,5 +143,39 @@ describe("debugPanels", () => {
       readFileSync(join(root, "test/fixtures/debug-ui-slice6/expected-strings.json"), "utf8"),
     ) as { executionPathEmpty: string };
     expect(EXECUTION_PATH_EMPTY).toBe(exp.executionPathEmpty);
+  });
+
+  it("renderRunTrustPanelHtml uses plan-transition verification basis", () => {
+    const step: StepOutcome = {
+      seq: 1,
+      toolId: "plan_transition.rule.r1",
+      intendedEffect: { narrative: "test rule" },
+      observedExecution: { paramsCanonical: "{}" },
+      verificationRequest: null,
+      status: "verified",
+      reasons: [],
+      evidenceSummary: { planTransition: true, ruleId: "r1" },
+      repeatObservationCount: 1,
+      evaluatedObservationOrdinal: 1,
+    };
+    const html = renderRunTrustPanelHtml(wfPlanTransition([step]));
+    expect(html).toContain(PLAN_TRANSITION_VERIFICATION_BASIS_LINE);
+    expect(html).not.toContain(VERIFICATION_BASIS_LINE);
+  });
+
+  it("formatSqlEvidenceDetailForTrustPanel serializes plan-transition evidenceSummary", () => {
+    const step: StepOutcome = {
+      seq: 1,
+      toolId: "plan_transition.rule.r1",
+      intendedEffect: { narrative: "" },
+      observedExecution: { paramsCanonical: "{}" },
+      verificationRequest: null,
+      status: "verified",
+      reasons: [],
+      evidenceSummary: { planTransition: true, ruleId: "r1", rowCount: 2 },
+      repeatObservationCount: 1,
+      evaluatedObservationOrdinal: 1,
+    };
+    expect(formatSqlEvidenceDetailForTrustPanel(step)).toContain("ruleId");
   });
 });
