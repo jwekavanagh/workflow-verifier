@@ -32,7 +32,7 @@ const JOIN_KEYS = new Set([
   "expect",
 ]);
 const JOIN_INNER_KEYS = new Set(["leftColumn", "rightColumn"]);
-const EXISTS_KEYS = new Set(["checkKind", "id", "childTable", "fkColumn", "fkValue"]);
+const EXISTS_KEYS = new Set(["checkKind", "id", "childTable", "fkColumn", "fkValue", "whereEq"]);
 const EXPECT_KEYS = new Set(["op", "value"]);
 const WHERE_PLAIN_KEYS = new Set(["column", "value"]);
 const WHERE_SIDE_KEYS = new Set(["tableSide", "column", "value"]);

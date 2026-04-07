@@ -361,6 +361,94 @@ describe("sql_relational", () => {
       expect(r.code).toBe("DUPLICATE_EFFECT_ID");
     }
   });
+
+  it("related_exists resolves whereEq and sorts checks by id", () => {
+    const entry: ToolRegistryEntry = {
+      toolId: "rel",
+      effectDescriptionTemplate: "x",
+      verification: {
+        kind: "sql_relational",
+        checks: [
+          {
+            checkKind: "related_exists",
+            id: "z",
+            childTable: { const: "c" },
+            fkColumn: { const: "k" },
+            fkValue: { pointer: "/a" },
+            whereEq: [
+              { column: { const: "s" }, value: { pointer: "/b" } },
+              { column: { const: "t" }, value: { const: "2" } },
+            ],
+          },
+        ],
+      },
+    };
+    const r = resolveVerificationRequest(entry, { a: "1", b: "x" });
+    expect(r.ok).toBe(true);
+    if (r.ok && r.verificationKind === "sql_relational") {
+      expect(r.checks).toHaveLength(1);
+      const c = r.checks[0]!;
+      expect(c.checkKind).toBe("related_exists");
+      if (c.checkKind === "related_exists") {
+        expect(c.fkValue).toBe("1");
+        expect(c.whereEq).toEqual([
+          { column: "s", value: "x" },
+          { column: "t", value: "2" },
+        ]);
+      }
+    }
+  });
+
+  it("related_exists whereEq bad column identifier fails", () => {
+    const entry: ToolRegistryEntry = {
+      toolId: "rel",
+      effectDescriptionTemplate: "x",
+      verification: {
+        kind: "sql_relational",
+        checks: [
+          {
+            checkKind: "related_exists",
+            id: "x",
+            childTable: { const: "c" },
+            fkColumn: { const: "k" },
+            fkValue: { const: "1" },
+            whereEq: [{ column: { const: "bad-col" }, value: { const: "v" } }],
+          },
+        ],
+      },
+    };
+    const r = resolveVerificationRequest(entry, {});
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.code).toBe("INVALID_IDENTIFIER");
+      expect(r.message).toContain("whereEq[0].column");
+    }
+  });
+
+  it("related_exists whereEq missing pointer fails", () => {
+    const entry: ToolRegistryEntry = {
+      toolId: "rel",
+      effectDescriptionTemplate: "x",
+      verification: {
+        kind: "sql_relational",
+        checks: [
+          {
+            checkKind: "related_exists",
+            id: "x",
+            childTable: { const: "c" },
+            fkColumn: { const: "k" },
+            fkValue: { const: "1" },
+            whereEq: [{ column: { const: "s" }, value: { pointer: "/missing" } }],
+          },
+        ],
+      },
+    };
+    const r = resolveVerificationRequest(entry, {});
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.message).toContain("whereEq[0]");
+    }
+  });
 });
 
 describe("buildRegistryMap", () => {

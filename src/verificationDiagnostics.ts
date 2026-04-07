@@ -94,7 +94,12 @@ export function formatVerificationTargetSummary(req: StepVerificationRequest): s
   if (req.kind === "sql_relational") {
     const parts = [...req.checks]
       .sort((a, b) => compareUtf16Id(a.id, b.id))
-      .map((c) => `${c.id}:${sanitizeOneLine(c.checkKind)}`);
+      .map((c) => {
+        if (c.checkKind === "related_exists" && c.whereEq.length > 0) {
+          return `${c.id}:${sanitizeOneLine(c.checkKind)}:w${c.whereEq.length}`;
+        }
+        return `${c.id}:${sanitizeOneLine(c.checkKind)}`;
+      });
     const line = `sql_relational count=${req.checks.length} ` + parts.join("; ");
     const max = OPERATIONAL_MESSAGE_MAX_CHARS;
     if (line.length <= max) return line;

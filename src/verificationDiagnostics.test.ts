@@ -212,7 +212,7 @@ describe("formatVerificationTargetSummary", () => {
     const req: StepVerificationRequest = {
       kind: "sql_relational",
       checks: [
-        { checkKind: "related_exists", id: "b", childTable: "c", fkColumn: "k", fkValue: "1" },
+        { checkKind: "related_exists", id: "b", childTable: "c", fkColumn: "k", fkValue: "1", whereEq: [] },
         { checkKind: "aggregate", id: "a", table: "t", fn: "COUNT_STAR", whereEq: [], expectOp: "eq", expectValue: 0 },
       ],
     };
@@ -220,6 +220,28 @@ describe("formatVerificationTargetSummary", () => {
     expect(s).toContain("sql_relational count=2");
     expect(s).toContain("a:aggregate");
     expect(s).toContain("b:related_exists");
+    expect(s).not.toContain("b:related_exists:w");
+  });
+
+  it("sql_relational related_exists with whereEq uses wN suffix", () => {
+    const req: StepVerificationRequest = {
+      kind: "sql_relational",
+      checks: [
+        {
+          checkKind: "related_exists",
+          id: "b",
+          childTable: "c",
+          fkColumn: "k",
+          fkValue: "1",
+          whereEq: [
+            { column: "a", value: "1" },
+            { column: "b", value: "2" },
+          ],
+        },
+      ],
+    };
+    const s = formatVerificationTargetSummary(req);
+    expect(s).toContain("b:related_exists:w2");
   });
 });
 

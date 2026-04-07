@@ -8,16 +8,20 @@ function quoteIdent(id: string): string {
   return `"${id.replace(/"/g, '""')}"`;
 }
 
-/** Exported for tests: EXISTS SQL shape for `related_exists`. */
+/** Exported for tests: EXISTS SQL shape for `related_exists` (no extra `whereEq`). */
 export function buildRelatedExistsSql(
   dialect: "sqlite" | "postgres",
   childTable: string,
   fkColumn: string,
 ): { text: string } {
-  const t = quoteIdent(childTable);
-  const c = quoteIdent(fkColumn);
-  const ph = dialect === "postgres" ? "$1" : "?";
-  const text = `SELECT EXISTS (SELECT 1 FROM ${t} WHERE ${c} = ${ph} LIMIT 1) AS v`;
+  const { text } = buildRelationalScalarSql(dialect, {
+    checkKind: "related_exists",
+    id: "_",
+    childTable,
+    fkColumn,
+    fkValue: "_",
+    whereEq: [],
+  });
   return { text };
 }
 
@@ -26,8 +30,18 @@ export function buildRelationalScalarSql(
   check: ResolvedRelationalCheck,
 ): { text: string; values: string[] } {
   if (check.checkKind === "related_exists") {
-    const { text } = buildRelatedExistsSql(dialect, check.childTable, check.fkColumn);
-    return { text, values: [check.fkValue] };
+    const t = quoteIdent(check.childTable);
+    const conds: string[] = [];
+    const values: string[] = [];
+    let p = 1;
+    conds.push(`${t}.${quoteIdent(check.fkColumn)} = ${dialect === "postgres" ? `$${p++}` : "?"}`);
+    values.push(check.fkValue);
+    for (const w of check.whereEq) {
+      conds.push(`${t}.${quoteIdent(w.column)} = ${dialect === "postgres" ? `$${p++}` : "?"}`);
+      values.push(w.value);
+    }
+    const text = `SELECT EXISTS (SELECT 1 FROM ${t} WHERE ${conds.join(" AND ")} LIMIT 1) AS v`;
+    return { text, values };
   }
 
   if (check.checkKind === "aggregate") {

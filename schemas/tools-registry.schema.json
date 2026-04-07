@@ -259,7 +259,19 @@
             "id": { "type": "string", "minLength": 1 },
             "childTable": { "$ref": "#/$defs/tableSpec" },
             "fkColumn": { "$ref": "#/$defs/columnSpec" },
-            "fkValue": { "$ref": "#/$defs/scalarOrPointer" }
+            "fkValue": { "$ref": "#/$defs/scalarOrPointer" },
+            "whereEq": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["column", "value"],
+                "properties": {
+                  "column": { "$ref": "#/$defs/columnSpec" },
+                  "value": { "$ref": "#/$defs/scalarOrPointer" }
+                }
+              }
+            }
           }
         }
       ]

@@ -109,5 +109,27 @@
         }
       ]
     }
+  },
+  {
+    "toolId": "demo.rel_exists_where",
+    "effectDescriptionTemplate": "Line with sku for order {orderId}",
+    "verification": {
+      "kind": "sql_relational",
+      "checks": [
+        {
+          "checkKind": "related_exists",
+          "id": "line_sku",
+          "childTable": { "const": "rel_lines" },
+          "fkColumn": { "const": "order_id" },
+          "fkValue": { "pointer": "/orderId" },
+          "whereEq": [
+            {
+              "column": { "const": "sku" },
+              "value": { "pointer": "/sku" }
+            }
+          ]
+        }
+      ]
+    }
   }
 ]

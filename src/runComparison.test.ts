@@ -10,6 +10,7 @@ import { loadSchemaValidator } from "./schemaLoad.js";
 import {
   buildRunComparisonReport,
   formatRunComparisonReport,
+  logicalStepKeyFromStep,
   recurrenceSignature,
 } from "./runComparison.js";
 import type { StepOutcome, WorkflowEngineResult, WorkflowResult } from "./types.js";
@@ -95,6 +96,76 @@ describe("runComparison", () => {
       recommendedAction: "manual_review",
       automationSafe: false,
     });
+  });
+
+  it("logicalStepKeyFromStep: related_exists whereEq is canonical under permutation", () => {
+    const base = {
+      seq: 0,
+      toolId: "t",
+      intendedEffect: { narrative: "" },
+      observedExecution: { paramsCanonical: "{}" },
+      status: "verified" as const,
+      reasons: [] as { code: string; message: string }[],
+      evidenceSummary: {},
+      repeatObservationCount: 1,
+      evaluatedObservationOrdinal: 1,
+    };
+    const permA: StepOutcome = {
+      ...base,
+      verificationRequest: {
+        kind: "sql_relational",
+        checks: [
+          {
+            checkKind: "related_exists",
+            id: "x",
+            childTable: "c",
+            fkColumn: "k",
+            fkValue: "1",
+            whereEq: [
+              { column: "b", value: "2" },
+              { column: "a", value: "3" },
+            ],
+          },
+        ],
+      },
+    };
+    const permB: StepOutcome = {
+      ...base,
+      verificationRequest: {
+        kind: "sql_relational",
+        checks: [
+          {
+            checkKind: "related_exists",
+            id: "x",
+            childTable: "c",
+            fkColumn: "k",
+            fkValue: "1",
+            whereEq: [
+              { column: "a", value: "3" },
+              { column: "b", value: "2" },
+            ],
+          },
+        ],
+      },
+    };
+    const differentMultiset: StepOutcome = {
+      ...base,
+      verificationRequest: {
+        kind: "sql_relational",
+        checks: [
+          {
+            checkKind: "related_exists",
+            id: "x",
+            childTable: "c",
+            fkColumn: "k",
+            fkValue: "1",
+            whereEq: [{ column: "a", value: "3" }],
+          },
+        ],
+      },
+    };
+    expect(logicalStepKeyFromStep(permA)).toBe(logicalStepKeyFromStep(permB));
+    expect(logicalStepKeyFromStep(permA)).not.toBe(logicalStepKeyFromStep(differentMultiset));
   });
 
   it("P1 reorder all verified: unchangedOk per key, seq movement, no failure deltas", () => {

@@ -372,7 +372,11 @@ export function logicalStepKeyFromStep(step: StepOutcome): string | null {
     const parts = [...vr.checks].sort((a, b) => compareUtf16Id(a.id, b.id));
     const segs = parts.map((c) => {
       if (c.checkKind === "related_exists") {
-        return `id|${c.id}|related_exists|${c.childTable}|${c.fkColumn}|${c.fkValue}|`;
+        const w = [...c.whereEq]
+          .map((x) => `${x.column}=${x.value}`)
+          .sort((a, b) => compareUtf16Id(a, b))
+          .join("&");
+        return `id|${c.id}|related_exists|${c.childTable}|${c.fkColumn}|${c.fkValue}|${w}|`;
       }
       if (c.checkKind === "aggregate") {
         const w = [...c.whereEq]

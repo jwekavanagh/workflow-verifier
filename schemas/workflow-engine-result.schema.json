@@ -258,13 +258,17 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["checkKind", "id", "childTable", "fkColumn", "fkValue"],
+          "required": ["checkKind", "id", "childTable", "fkColumn", "fkValue", "whereEq"],
           "properties": {
             "checkKind": { "const": "related_exists" },
             "id": { "type": "string", "minLength": 1 },
             "childTable": { "type": "string", "minLength": 1 },
             "fkColumn": { "type": "string", "minLength": 1 },
-            "fkValue": { "type": "string" }
+            "fkValue": { "type": "string" },
+            "whereEq": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/resolvedRelationalWhereEqPlain" }
+            }
           }
         },
         {

@@ -10,8 +10,9 @@ This document is the **sole normative behavioral contract** for tools-registry v
 
 ### `related_exists`
 
-- **SQL (only allowed shape):** `SELECT EXISTS (SELECT 1 FROM "childTable" WHERE "fkColumn" = ? LIMIT 1) AS v`
-- **Bindings:** one value, string-coerced like row key resolution.
+- **SQL (only allowed shape):** `SELECT EXISTS (SELECT 1 FROM "childTable" WHERE "childTable"."fkColumn" = ? [AND "childTable"."col_i" = ? ...] LIMIT 1) AS v`
+- **Optional `whereEq`:** same equality-only `column` / `value` entries as `aggregate.whereEq` (conjunction on the **child** table). Omitted in the registry resolves to an empty conjunction (FK predicate only).
+- **Bindings (order):** `fkValue` first (string-coerced like row key resolution), then `whereEq` values in **registry array order**.
 - **Actual:** column `v` (lowercased); boolean or `0`/`1` only → normalized to `0` or `1`. Anything else → `incomplete_verification`, code **`RELATIONAL_SCALAR_UNUSABLE`**.
 - **Pass:** actual `=== 1` → `verified`.
 - **Fail:** actual `=== 0` → `missing`, code **`RELATED_ROWS_ABSENT`**.
@@ -61,7 +62,21 @@ Identical decision tree to `sql_effects` (`multiEffectRollup` lines 66–109): i
 
 Rollup and eventual codes reuse existing **`MULTI_EFFECT_*`**, **`ROW_NOT_OBSERVED_WITHIN_WINDOW`**, **`MULTI_EFFECT_UNCERTAIN_WITHIN_WINDOW`**.
 
+## Invariant cookbook (product vocabulary)
+
+Use this table to map **product** invariant names to registry **`checkKind`** shapes. JSON patterns for integrators: see [`examples/templates/registry-sql-relational.json`](../examples/templates/registry-sql-relational.json) (tools **`example.sql_relational`** and **`example.sql_relational_sum`**).
+
+| Product term | Registry (`checkKind` + fields) | Failure when condition false (step status / code) |
+|--------------|----------------------------------|-----------------------------------------------------|
+| **exists_related** | `related_exists`: `childTable`, `fkColumn`, `fkValue`, optional `whereEq` (equality on child) | `missing` / **`RELATED_ROWS_ABSENT`** |
+| **count_equals** | `aggregate`: `fn: COUNT_STAR`, `expect.op: eq`, `expect.value`, optional `whereEq` | `inconsistent` / **`RELATIONAL_EXPECTATION_MISMATCH`** |
+| **count_gte** | `aggregate`: `fn: COUNT_STAR`, `expect.op: gte`, `expect.value`, optional `whereEq` | `inconsistent` / **`RELATIONAL_EXPECTATION_MISMATCH`** |
+| **aggregate_match (SUM)** | `aggregate`: `fn: SUM`, `sumColumn`, `expect`, optional `whereEq` — see template tool **`example.sql_relational_sum`** | `inconsistent` / **`RELATIONAL_EXPECTATION_MISMATCH`** |
+| **join_cardinality** | `join_count`: `leftTable`, `rightTable`, `join`, `expect`, optional `whereEq` on `left` / `right` | `inconsistent` / **`RELATIONAL_EXPECTATION_MISMATCH`** |
+
+When a row **could** be expressed as either **`related_exists`** (including `whereEq`) or **`aggregate`** with `COUNT_STAR` and `expect.op: gte` / `eq`, prefer **`related_exists`** if you need a **missing** row interpretation (**`RELATED_ROWS_ABSENT`**) when no child row matches; use **`aggregate`** when a numeric count comparison (including zero) should yield **`RELATIONAL_EXPECTATION_MISMATCH`**.
+
 ## Non-goals
 
 - No raw SQL strings in the registry.
-- No `LEFT`/`RIGHT`/`FULL` joins, subqueries, or non-equality predicates in v1.
+- No `LEFT`/`RIGHT`/`FULL` joins or subqueries beyond the fixed shapes above. Extra predicates are **only** structured **`whereEq`** equalities on allowed columns (no `OR`, no inequality operators in `whereEq`).

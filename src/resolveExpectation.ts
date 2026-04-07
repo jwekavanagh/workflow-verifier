@@ -303,6 +303,24 @@ function resolveSqlRelationalCheck(
     if (!fkVal.ok) {
       return { ok: false, code: fkVal.code, message: `${labelPrefix}${fkVal.message}` };
     }
+    const whereEq: Array<{ column: string; value: string }> = [];
+    for (let i = 0; i < (spec.whereEq?.length ?? 0); i++) {
+      const w = spec.whereEq![i]!;
+      const col = resolveStringSpec(w.column, params, `${labelPrefix}whereEq[${i}].column`);
+      if (!col.ok) return col;
+      if (!IDENT.test(col.value)) {
+        return {
+          ok: false,
+          code: REGISTRY_RESOLVER_CODE.INVALID_IDENTIFIER,
+          message: `${labelPrefix}whereEq[${i}].column: ${col.value}`,
+        };
+      }
+      const val = resolveKeyValue(w.value, params);
+      if (!val.ok) {
+        return { ok: false, code: val.code, message: `${labelPrefix}whereEq[${i}]. ${val.message}` };
+      }
+      whereEq.push({ column: col.value, value: val.value });
+    }
     return {
       ok: true,
       check: {
@@ -311,6 +329,7 @@ function resolveSqlRelationalCheck(
         childTable: child.value,
         fkColumn: fkCol.value,
         fkValue: fkVal.value,
+        whereEq,
       },
     };
   }

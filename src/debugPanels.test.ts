@@ -108,8 +108,8 @@ describe("debugPanels", () => {
       verificationRequest: {
         kind: "sql_relational",
         checks: [
-          { checkKind: "related_exists", id: "a", childTable: "c", fkColumn: "k", fkValue: "1" },
-          { checkKind: "related_exists", id: "b", childTable: "c", fkColumn: "k", fkValue: "2" },
+          { checkKind: "related_exists", id: "a", childTable: "c", fkColumn: "k", fkValue: "1", whereEq: [] },
+          { checkKind: "related_exists", id: "b", childTable: "c", fkColumn: "k", fkValue: "2", whereEq: [] },
         ],
       },
       status: "verified",
@@ -129,7 +129,7 @@ describe("debugPanels", () => {
       observedExecution: { paramsCanonical: "{}" },
       verificationRequest: {
         kind: "sql_relational",
-        checks: [{ checkKind: "related_exists", id: "x", childTable: "c", fkColumn: "k", fkValue: "1" }],
+        checks: [{ checkKind: "related_exists", id: "x", childTable: "c", fkColumn: "k", fkValue: "1", whereEq: [] }],
       },
       status: "verified",
       reasons: [],

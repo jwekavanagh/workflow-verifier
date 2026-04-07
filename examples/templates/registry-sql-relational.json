@@ -1,7 +1,7 @@
 [
   {
     "toolId": "example.sql_relational",
-    "effectDescriptionTemplate": "Related rows for order {orderId}",
+    "effectDescriptionTemplate": "Related line for order {/orderId} with sku {/sku}",
     "verification": {
       "kind": "sql_relational",
       "checks": [
@@ -10,7 +10,13 @@
           "id": "lines_exist",
           "childTable": { "const": "order_lines" },
           "fkColumn": { "const": "order_id" },
-          "fkValue": { "pointer": "/orderId" }
+          "fkValue": { "pointer": "/orderId" },
+          "whereEq": [
+            {
+              "column": { "const": "sku" },
+              "value": { "pointer": "/sku" }
+            }
+          ]
         },
         {
           "checkKind": "aggregate",
@@ -24,6 +30,29 @@
             }
           ],
           "expect": { "op": "eq", "value": { "const": 2 } }
+        }
+      ]
+    }
+  },
+  {
+    "toolId": "example.sql_relational_sum",
+    "effectDescriptionTemplate": "Sum of amount for bucket {/bucket}",
+    "verification": {
+      "kind": "sql_relational",
+      "checks": [
+        {
+          "checkKind": "aggregate",
+          "id": "amount_sum",
+          "table": { "const": "ledger_entries" },
+          "fn": "SUM",
+          "sumColumn": { "const": "amount" },
+          "whereEq": [
+            {
+              "column": { "const": "bucket" },
+              "value": { "pointer": "/bucket" }
+            }
+          ],
+          "expect": { "op": "eq", "value": { "const": 0 } }
         }
       ]
     }

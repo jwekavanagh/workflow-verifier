@@ -317,6 +317,8 @@ For **multi-effect** tools (`verification.kind === "sql_effects"` in the registr
 
 For **multi-check relational** tools (`verification.kind === "sql_relational"` with two or more checks), the same **`evidenceSummary.effectCount`** / **`evidenceSummary.effects[]`** shape applies on the step; resolved checks are on **`verificationRequest.checks`**. Normative behavior (failure codes, numerics, rollup parity with **`sql_effects`**) is specified only in [`relational-verification.md`](relational-verification.md).
 
+Relational check authoring and the mapping from product vocabulary to registry checkKind values are normative only in [relational-verification.md](relational-verification.md#invariant-cookbook-product-vocabulary).
+
 ### Engineer note: shared step core
 
 `reconcileFromRows` in `reconciler.ts` is the single rule table. `planLogicalSteps` collapses multiple observations per `seq`; `verifyToolObservedStep` (SQLite, sync) reconciles the **last** observation per logical step when observations are non-divergent. `verifyWorkflow` and `withWorkflowVerification` both call the same internal `runLogicalStepsVerification` once per run (SQLite sync / Postgres async). **Why:** One classification table; one logical step per `seq`; SQLite stays synchronous at the integrator boundary; Postgres stays on the batch path only.

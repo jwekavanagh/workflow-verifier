@@ -120,6 +120,17 @@ describe("relationalVerification requirements (fixtures)", () => {
     expect(rolled.reasons[0]?.code).toBe(direct.reasons[0]?.code);
   });
 
+  it("related_exists whereEq pass → verified", async () => {
+    const r = await runWf("wf_rel_exists_where_pass");
+    expect(r.steps[0]?.status).toBe("verified");
+  });
+
+  it("related_exists whereEq fail → missing RELATED_ROWS_ABSENT", async () => {
+    const r = await runWf("wf_rel_exists_where_fail");
+    expect(r.steps[0]?.status).toBe("missing");
+    expect(r.steps[0]?.reasons[0]?.code).toBe(SQL_VERIFICATION_OUTCOME_CODE.RELATED_ROWS_ABSENT);
+  });
+
   it("parameterized SQL: dynamic values only as placeholders", () => {
     const chk: ResolvedRelationalCheck = {
       checkKind: "join_count",
@@ -187,6 +198,7 @@ describe("eventual policy parity (sql_effects vs sql_relational)", () => {
         childTable: "c",
         fkColumn: "k",
         fkValue: "a",
+        whereEq: [],
       },
       {
         checkKind: "related_exists",
@@ -194,6 +206,7 @@ describe("eventual policy parity (sql_effects vs sql_relational)", () => {
         childTable: "c",
         fkColumn: "k",
         fkValue: "b",
+        whereEq: [],
       },
     ];
 

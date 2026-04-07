@@ -131,6 +131,10 @@ export type SqlRelationalCheckSpec =
       childTable: { const: string } | { pointer: string };
       fkColumn: { const: string } | { pointer: string };
       fkValue: { const: string | number | boolean | null } | { pointer: string };
+      whereEq?: Array<{
+        column: { const: string } | { pointer: string };
+        value: { const: string | number | boolean | null } | { pointer: string };
+      }>;
     };
 
 export type ToolRegistryVerification =
@@ -171,6 +175,7 @@ export type ResolvedRelationalCheck =
       childTable: string;
       fkColumn: string;
       fkValue: string;
+      whereEq: Array<{ column: string; value: string }>;
     }
   | {
       checkKind: "aggregate";

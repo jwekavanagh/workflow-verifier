@@ -6,3 +6,5 @@
 {"schemaVersion":1,"workflowId":"wf_rel_join_pass","seq":0,"type":"tool_observed","toolId":"demo.rel_join_pass","params":{}}
 {"schemaVersion":1,"workflowId":"wf_rel_join_zero","seq":0,"type":"tool_observed","toolId":"demo.rel_join_zero","params":{}}
 {"schemaVersion":1,"workflowId":"wf_rel_multi_partial","seq":0,"type":"tool_observed","toolId":"demo.rel_multi_partial","params":{"orderId":"o1"}}
+{"schemaVersion":1,"workflowId":"wf_rel_exists_where_pass","seq":0,"type":"tool_observed","toolId":"demo.rel_exists_where","params":{"orderId":"o1","sku":"sku_a"}}
+{"schemaVersion":1,"workflowId":"wf_rel_exists_where_fail","seq":0,"type":"tool_observed","toolId":"demo.rel_exists_where","params":{"orderId":"o1","sku":"sku_ghost"}}
