@@ -354,7 +354,7 @@ describe("JSON Schemas (SSOT)", () => {
     expect(v(v5only)).toBe(false);
   });
 
-  it("workflow-result-compare-input accepts v7 engine, v9 frozen, and v12 emitted", () => {
+  it("workflow-result-compare-input accepts v7 engine, v9 frozen, and v13 emitted", () => {
     const vCmp = loadSchemaValidator("workflow-result-compare-input");
     const engine: WorkflowEngineResult = {
       schemaVersion: 7,
@@ -400,7 +400,7 @@ describe("JSON Schemas (SSOT)", () => {
     expect(vCmp(v9Compat)).toBe(true);
   });
 
-  it("workflow-result v12 rejects stray runLevelCodes", () => {
+  it("workflow-result v13 rejects stray runLevelCodes", () => {
     const v = loadSchemaValidator("workflow-result");
     const engine: WorkflowEngineResult = {
       schemaVersion: 7,
@@ -453,7 +453,12 @@ describe("JSON Schemas (SSOT)", () => {
         primaryOrigin: "workflow_flow",
         confidence: "high",
         evidence: [{ referenceCode: "CLI_USAGE" }],
-        actionableFailure: { category: "bad_input", severity: "low" },
+        actionableFailure: {
+          category: "bad_input",
+          severity: "low",
+          recommendedAction: "fix_cli_usage",
+          automationSafe: false,
+        },
       },
     };
     expect(v(env)).toBe(true);

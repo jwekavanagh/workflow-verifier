@@ -51,7 +51,7 @@ describe("CI workflow truth contract (Postgres CLI)", () => {
     const parsed = JSON.parse(r.stdout.trim());
     const validateResult = loadSchemaValidator("workflow-result");
     assert.equal(validateResult(parsed), true, JSON.stringify(validateResult.errors ?? []));
-    assert.equal(parsed.schemaVersion, 12);
+    assert.equal(parsed.schemaVersion, 13);
     assert.equal(parsed.workflowId, "wf_complete");
     assert.equal(parsed.status, "complete");
     assert.equal(parsed.steps[0]?.status, "verified");
@@ -82,7 +82,7 @@ describe("CI workflow truth contract (Postgres CLI)", () => {
     const parsed = JSON.parse(r.stdout.trim());
     const validateResult = loadSchemaValidator("workflow-result");
     assert.equal(validateResult(parsed), true);
-    assert.equal(parsed.schemaVersion, 12);
+    assert.equal(parsed.schemaVersion, 13);
     assert.equal(parsed.workflowId, "wf_missing");
     assert.equal(parsed.status, "inconsistent");
     assert.equal(parsed.steps[0]?.status, "missing");
@@ -115,7 +115,7 @@ describe("CI workflow truth contract (Postgres CLI)", () => {
     const parsed = JSON.parse(r.stdout.trim());
     const validateResult = loadSchemaValidator("workflow-result");
     assert.equal(validateResult(parsed), true, JSON.stringify(validateResult.errors ?? []));
-    assert.equal(parsed.schemaVersion, 12);
+    assert.equal(parsed.schemaVersion, 13);
     const vr = parsed.steps[0]?.verificationRequest;
     assert.equal(vr?.kind, "sql_relational");
     assert.ok(Array.isArray(vr?.checks));

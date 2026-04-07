@@ -64,7 +64,7 @@ describe("WorkflowResult consumer contract (CLI stdout)", () => {
     ]) {
       assert.ok(k in parsed, `missing key ${k}`);
     }
-    assert.equal(parsed.schemaVersion, 12);
+    assert.equal(parsed.schemaVersion, 13);
     assert.equal(typeof parsed.schemaVersion, "number");
     assert.equal(typeof parsed.workflowId, "string");
     assert.equal(typeof parsed.status, "string");
@@ -78,6 +78,6 @@ describe("WorkflowResult consumer contract (CLI stdout)", () => {
       s0.observedExecution?.paramsCanonical,
       '{"fields":{"name":"Alice","status":"active"},"recordId":"c_ok"}',
     );
-    assert.equal(parsed.workflowTruthReport?.schemaVersion, 5);
+    assert.equal(parsed.workflowTruthReport?.schemaVersion, 6);
   });
 });

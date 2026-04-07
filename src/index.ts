@@ -50,6 +50,7 @@ export {
   deriveSeverityWorkflow,
   maxConsecutiveStreak,
   productionStepReasonCodeToActionableCategory,
+  productionStepReasonCodeToRemediation,
 } from "./actionableFailure.js";
 export {
   buildRunComparisonReport,
@@ -110,10 +111,12 @@ export {
   connectPostgresVerificationClient,
   createPostgresSqlReadBackend,
 } from "./sqlReadBackend.js";
+export { RECOMMENDED_ACTION_CODES } from "./types.js";
 export type {
   ActionableFailure,
   ActionableFailureCategory,
   ActionableFailureSeverity,
+  RecommendedActionCode,
   ControlRunEvent,
   ExecutionTraceBackwardPath,
   ExecutionTraceNode,

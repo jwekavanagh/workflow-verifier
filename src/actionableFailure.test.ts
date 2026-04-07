@@ -177,6 +177,8 @@ describe("deriveActionableFailureOperational", () => {
     expect(deriveActionableFailureOperational("NOT_A_REAL_OPERATIONAL_CODE")).toEqual({
       category: "unclassified",
       severity: "medium",
+      recommendedAction: "manual_review",
+      automationSafe: false,
     });
   });
 
@@ -184,6 +186,8 @@ describe("deriveActionableFailureOperational", () => {
     expect(deriveActionableFailureOperational(CLI_OPERATIONAL_CODES.CLI_USAGE)).toEqual({
       category: "bad_input",
       severity: "low",
+      recommendedAction: "fix_cli_usage",
+      automationSafe: false,
     });
   });
 });
@@ -197,8 +201,8 @@ describe("maxConsecutiveStreak and buildActionableCategoryRecurrence", () => {
 
   it("buildActionableCategoryRecurrence sorts categories", () => {
     const rows = buildActionableCategoryRecurrence([
-      { runIndex: 0, category: "zebra", severity: "low" },
-      { runIndex: 1, category: "apple", severity: "low" },
+      { runIndex: 0, category: "zebra", severity: "low", recommendedAction: "none", automationSafe: true },
+      { runIndex: 1, category: "apple", severity: "low", recommendedAction: "none", automationSafe: true },
     ]);
     expect(rows.map((r) => r.category)).toEqual(["apple", "zebra"]);
   });
@@ -241,5 +245,7 @@ describe("ambiguous category with high severity (workflow)", () => {
     const af = deriveActionableFailureWorkflow(engine, base!);
     expect(af.category).toBe("ambiguous");
     expect(af.severity).toBe("high");
+    expect(af.recommendedAction).toBe("manual_review");
+    expect(af.automationSafe).toBe(false);
   });
 });

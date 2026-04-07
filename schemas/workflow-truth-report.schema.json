@@ -16,7 +16,7 @@
     "executionPathSummary"
   ],
   "properties": {
-    "schemaVersion": { "const": 5 },
+    "schemaVersion": { "const": 6 },
     "workflowId": { "type": "string" },
     "workflowStatus": {
       "type": "string",
@@ -175,13 +175,41 @@
       "type": "string",
       "enum": ["high", "medium", "low"]
     },
+    "recommendedAction": {
+      "type": "string",
+      "enum": [
+        "none",
+        "manual_review",
+        "deduplicate",
+        "reconcile_downstream_state",
+        "correct_verification_inputs",
+        "improve_read_connectivity",
+        "resolve_multi_effect_failures",
+        "align_tool_observations",
+        "fix_event_ingest_and_steps",
+        "fix_event_sequence_order",
+        "fix_run_context_controls",
+        "fix_cli_usage",
+        "fix_registry_events_or_compare_files",
+        "fix_verification_database_connection",
+        "fix_saved_workflow_json",
+        "fix_compare_workflow_inputs",
+        "fix_execution_trace_structure",
+        "fix_verification_policy_and_hook",
+        "fix_plan_document_and_patterns",
+        "fix_plan_transition_cli_and_refs",
+        "upgrade_git_or_retry_git"
+      ]
+    },
     "actionableFailure": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["category", "severity"],
+      "required": ["category", "severity", "recommendedAction", "automationSafe"],
       "properties": {
         "category": { "$ref": "#/$defs/actionableFailureCategory" },
-        "severity": { "$ref": "#/$defs/actionableFailureSeverity" }
+        "severity": { "$ref": "#/$defs/actionableFailureSeverity" },
+        "recommendedAction": { "$ref": "#/$defs/recommendedAction" },
+        "automationSafe": { "type": "boolean" }
       }
     },
     "failureAnalysis": {

@@ -17,7 +17,7 @@
     "compareHighlights"
   ],
   "properties": {
-    "schemaVersion": { "const": 3 },
+    "schemaVersion": { "const": 4 },
     "workflowId": { "type": "string" },
     "runs": {
       "type": "array",
@@ -36,7 +36,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["runIndex", "category", "severity"],
+        "required": ["runIndex", "category", "severity", "recommendedAction", "automationSafe"],
         "properties": {
           "runIndex": { "type": "integer", "minimum": 0 },
           "category": {
@@ -47,7 +47,11 @@
               { "const": "complete" }
             ]
           },
-          "severity": { "type": "string", "enum": ["high", "medium", "low"] }
+          "severity": { "type": "string", "enum": ["high", "medium", "low"] },
+          "recommendedAction": {
+            "$ref": "https://execution-truth-layer/schemas/workflow-truth-report.schema.json#/$defs/recommendedAction"
+          },
+          "automationSafe": { "type": "boolean" }
         }
       }
     },

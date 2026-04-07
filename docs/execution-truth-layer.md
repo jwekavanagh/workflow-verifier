@@ -47,7 +47,7 @@ This subsection maps **workflow-level verdict** and **auditable run records** ac
 
 - **`agentRunBundle.ts`**: **`writeAgentRunBundle`** writes each final file via a temp name in the run directory then **rename** into place. Order: **`events.ndjson`** → **`workflow-result.json`** → **`agent-run.json`** (manifest last). On failure mid-write, temp files for the current attempt are removed; a crash can still leave an invalid directory until the next successful write—loaders return **`ARTIFACT_*`** / parse errors as today.
 - **`workflowTruthReport.ts`**: **`buildWorkflowVerdictSurface(WorkflowResult)`** for API/UI only.
-- **`pipeline.ts`**: **`withWorkflowVerification`** optional **`persistBundle: { outDir }`**. After a successful run, **`captureNdjsonUtf8()`** serializes **`bufferedRunEvents`** in strict **`observeStep` enqueue order** (`JSON.stringify(event) + "\n"` per line), then **`writeAgentRunBundle`** is called with the **final** **`WorkflowResult`** (v12 + truth report). No bundle is written if **`run`** throws or **`buildWorkflowResult`** fails.
+- **`pipeline.ts`**: **`withWorkflowVerification`** optional **`persistBundle: { outDir }`**. After a successful run, **`captureNdjsonUtf8()`** serializes **`bufferedRunEvents`** in strict **`observeStep` enqueue order** (`JSON.stringify(event) + "\n"` per line), then **`writeAgentRunBundle`** is called with the **final** **`WorkflowResult`** (v13 + truth report). No bundle is written if **`run`** throws or **`buildWorkflowResult`** fails.
 
 ### Slice 5 — Integrator
 
@@ -64,12 +64,12 @@ This subsection maps **workflow-level verdict** and **auditable run records** ac
 
 ## Slice 6 — Compare runs + independent verification
 
-This subsection maps **multi-run compare**, **reliability/read highlights**, and **independent SQL trust** acceptance criteria to emitted artifacts and the Debug Console. **Structural SSOT** for compare stdout is [`schemas/run-comparison-report.schema.json`](../schemas/run-comparison-report.schema.json) (**`schemaVersion` `3`**). **No** second compare JSON view-model is defined for Debug UI: compare and trust panels are **HTML strings** only on HTTP success paths.
+This subsection maps **multi-run compare**, **reliability/read highlights**, and **independent SQL trust** acceptance criteria to emitted artifacts and the Debug Console. **Structural SSOT** for compare stdout is [`schemas/run-comparison-report.schema.json`](../schemas/run-comparison-report.schema.json) (**`schemaVersion` `4`**). **No** second compare JSON view-model is defined for Debug UI: compare and trust panels are **HTML strings** only on HTTP success paths.
 
 | Acceptance theme | Where it appears in the product |
 |------------------|----------------------------------|
-| **9.1** Multiple workflow results in one compare | `buildRunComparisonReport` over ordered normalized **`WorkflowResult[]`** (length ≥ 2); CLI **`compare`**; **`POST /api/compare`**. Proof: `src/slice6.compare.ac.test.ts` **`AC_9_1_multi_run_compare_emits_schema_v3`**. |
-| **9.2** Introduced / resolved / recurring highlights | Required **`compareHighlights`** on **`RunComparisonReport` v3**; HTML lists derived only in **`renderComparePanelHtml`**. Proof: **`AC_9_2_compareHighlights_match_fixture`**. |
+| **9.1** Multiple workflow results in one compare | `buildRunComparisonReport` over ordered normalized **`WorkflowResult[]`** (length ≥ 2); CLI **`compare`**; **`POST /api/compare`**. Proof: `src/slice6.compare.ac.test.ts` **`AC_9_1_multi_run_compare_emits_schema_v4`**. |
+| **9.2** Introduced / resolved / recurring highlights | Required **`compareHighlights`** on **`RunComparisonReport` v4**; HTML lists derived only in **`renderComparePanelHtml`**. Proof: **`AC_9_2_compareHighlights_match_fixture`**. |
 | **9.3** Review differences in UI | Compare tab assigns **`comparePanelHtml`** to **`innerHTML`** (no browser-side recompute). Proof: `test/debug-ui/ac-9-3.spec.ts` **`AC_9_3_compare_panel_markup`**. |
 | **9.4** Reliability headline when window vs pairwise diverge | Required **`reliabilityAssessment`** ( **`headlineVerdict`**, **`headlineRationale`** ); pinned golden `test/fixtures/debug-ui-slice6/headline-ac-9-4.json`. Proof: **`AC_9_4_headlineVerdict_window_pairwise_divergence`**. |
 | **10.1–10.2** Trust from read-only SQL, not model narrative | `verifyWorkflow` + registry + DB for **`wf_missing`**: **`ROW_ABSENT`**, **`FAILED_ROW_MISSING`**, zero rows. Proof: `src/verificationAgainstSystemState.requirements.test.ts` **`AC_10_1_AC_10_2_independent_sql_evidence_not_execution_narrative`**. |
@@ -84,7 +84,7 @@ On **`200`** success, JSON bodies **must not** include keys outside the sets bel
 
 `comparePanelHtml`, `humanSummary`, `report`
 
-Types: **`comparePanelHtml`** non-empty string (server HTML from **`renderComparePanelHtml`**), **`humanSummary`** string (**`formatRunComparisonReport`**), **`report`** object (**`RunComparisonReport` v3**, AJV **`run-comparison-report`**).
+Types: **`comparePanelHtml`** non-empty string (server HTML from **`renderComparePanelHtml`**), **`humanSummary`** string (**`formatRunComparisonReport`**), **`report`** object (**`RunComparisonReport` v4**, AJV **`run-comparison-report`**).
 
 **`GET /api/runs/:runId`** when **`loadStatus === "ok"`** — keys **exactly** (UTF-16 sort order):
 
@@ -109,7 +109,7 @@ Types: **`runTrustPanelHtml`** non-empty string (from **`renderRunTrustPanelHtml
 ### Slice 6 — Engineer
 
 - **`debugPanels.ts`**: **`renderComparePanelHtml`**, **`renderRunTrustPanelHtml`**, **`formatSqlEvidenceDetailForTrustPanel`** — sole producers of compare/trust HTML for Debug UI.
-- **`runComparison.ts`**: **`buildRunComparisonReport`**, **`formatRunComparisonReport`** (v3 **`reliabilityAssessment`**, **`compareHighlights`**).
+- **`runComparison.ts`**: **`buildRunComparisonReport`**, **`formatRunComparisonReport`** (v4 **`reliabilityAssessment`**, **`compareHighlights`**, per-run **`recommendedAction`** / **`automationSafe`**).
 - **`debug-ui/app.js`**: assigns **`comparePanelHtml`** / **`runTrustPanelHtml`** to **`innerHTML`** only.
 
 **Drift guard:** `test/fixtures/debug-ui-slice6/expected-strings.json` is the only source for Playwright substring assertions (and matching Vitest checks).
@@ -237,7 +237,7 @@ Parsed diff rows map git status to `rowKind`: `A`→add, `M`→modify, `D`→del
 
 - Default **`workflowId`:** **`wf_plan_transition`** (override with **`--workflow-id`**).
 - One **`StepOutcome` per rule**; **`toolId`:** `plan_transition.rule.<id>`; **`verificationRequest`:** `null`; **`evidenceSummary.planTransition`:** `true` plus rule evidence (capped).
-- **`aggregateWorkflow`** + **`finalizeEmittedWorkflowResult`** — same stdout **`WorkflowResult` v12** and stderr human truth report as batch verify. Trust lines and step **`result=`** phrases use git/plan wording when **`workflowId === wf_plan_transition`** (`workflowTruthReport.ts`).
+- **`aggregateWorkflow`** + **`finalizeEmittedWorkflowResult`** — same stdout **`WorkflowResult` v13** and stderr human truth report as batch verify. Trust lines and step **`result=`** phrases use git/plan wording when **`workflowId === wf_plan_transition`** (`workflowTruthReport.ts`).
 
 ### Synthetic `events.ndjson` (bundle)
 
@@ -268,7 +268,7 @@ Exit codes match batch verify (**0** / **1** / **2** / **3**). Operational codes
 
 | Module | Role |
 |--------|------|
-| `schemaLoad.ts` | AJV 2020-12 validators for event line, execution trace view, registry, workflow engine/result, **stdout v12** + **frozen v9** workflow result, truth report, compare-input (engine v7 / v9 / v12 **`oneOf`**), **`cli-error-envelope`**, **`run-comparison-report`**, **`agent-run-record`**, **`plan-validation-core`** |
+| `schemaLoad.ts` | AJV 2020-12 validators for event line, execution trace view, registry, workflow engine/result, **stdout v13** + **frozen v9** workflow result, truth report, compare-input (engine v7 / v9 / v13 **`oneOf`**), **`cli-error-envelope`**, **`run-comparison-report`**, **`agent-run-record`**, **`plan-validation-core`** |
 | `failureCatalog.ts` | Stable run-level literals, `formatOperationalMessage`, CLI error envelope helpers |
 | `cliOperationalCodes.ts` | Compare/corpus operational codes such as `COMPARE_INPUT_RUN_LEVEL_INCONSISTENT`, `WORKFLOW_RESULT_RUN_LEVEL_CODES_MISMATCH` |
 | `runLevelDriftMessages.ts` | Fixed `message` strings for v9 `runLevelCodes` / `runLevelReasons` drift (SSOT for CLI stderr and corpus errors) |
@@ -296,7 +296,7 @@ Exit codes match batch verify (**0** / **1** / **2** / **3**). Operational codes
 | `agentRunBundle.ts` | `writeAgentRunBundle` — canonical three-file run directory with per-file temp+rename; used by CLI `--write-run-bundle` and optional `withWorkflowVerification` `persistBundle` |
 | `workflowTruthReport.ts` | `buildWorkflowTruthReport`, `buildWorkflowVerdictSurface`, `finalizeEmittedWorkflowResult`, `formatWorkflowTruthReportStruct`, `formatWorkflowTruthReport`, `HUMAN_REPORT_RESULT_PHRASE`, `HUMAN_REPORT_PLAN_TRANSITION_PHRASE`, `STEP_STATUS_TRUTH_LABELS`, `TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX`; human report text is rendering of structured truth with plain `result=` / `detail:` lines; plan-transition trust/result phrasing when **`workflowId === wf_plan_transition`** |
 | `executionPathFindings.ts` | `buildExecutionPathFindings`, `buildExecutionPathSummary`, `ACTION_INPUT_REASON_CODES`, `RECONCILER_STEP_REASON_CODES` — execution-path layer orthogonal to SQL reconciliation (internal; not re-exported from package entry) |
-| `workflowResultNormalize.ts` | `normalizeToEmittedWorkflowResult`, `workflowEngineResultFromEmitted` (compare ingress: engine **v7** / frozen **v9** / stdout **v12**; strip legacy **`runLevelCodes`**; inject empty **`verificationRunContext`** where needed) |
+| `workflowResultNormalize.ts` | `normalizeToEmittedWorkflowResult`, `workflowEngineResultFromEmitted` (compare ingress: engine **v7** / frozen **v9** / stdout **v13**; strip legacy **`runLevelCodes`**; inject empty **`verificationRunContext`** where needed) |
 | `runComparison.ts` | `buildRunComparisonReport`, `formatRunComparisonReport`, `logicalStepKeyFromStep`, `recurrenceSignature`; cross-run comparison |
 | `verificationPolicy.ts` | `VerificationPolicy` normalization/validation; `executeVerificationWithPolicySync` / `executeVerificationWithPolicyAsync` (strong vs eventual polling; `sql_row` / `sql_effects` / `sql_relational`); `createSqlitePolicyContext` |
 | `executionTrace.ts` | `assertValidRunEventParentGraph`, `buildExecutionTraceView`, `formatExecutionTraceText`; `traceStepKind` derivation and `backwardPaths` |
@@ -377,7 +377,7 @@ node dist/cli.js --workflow-id <id> --events <path> --registry <path> --postgres
 
 **I/O order (CLI — verdict paths 0/1/2):** **`verifyWorkflow`** emits the human report via default **`truthReport`** to **stderr** first, then the CLI writes **stdout**. So: **stderr (human) → stdout (JSON)**. If the CLI is invoked with **`--no-truth-report`**, the CLI passes a no-op **`truthReport`** into **`verifyWorkflow`**: for exits **0–2**, **stderr** is **empty** (no human report); **stdout** is unchanged (still one **`WorkflowResult`** JSON line). Exit **3** is unchanged (see [CLI operational errors](#cli-operational-errors)).
 
-**stdout:** Single JSON object matching `schemas/workflow-result.schema.json` (`schemaVersion` **`12`**; required **`verificationRunContext`** digest; required **`workflowTruthReport`** subtree validated by [`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json) — **SSOT** for structured truth JSON, including required **`failureAnalysis`** (`null` when complete, object when not — see [Actionable failure classification](#actionable-failure-classification-normative)); required **`executionPathFindings`** and **`executionPathSummary`** (see [Execution path findings](#execution-path-findings-normative)); required **`verificationPolicy`** `{ consistencyMode, verificationWindowMs, pollIntervalMs }`; required **`eventSequenceIntegrity`**; required **`runLevelReasons`** (**`runLevelCodes` is not a property** on v12 — derive a parallel code list with `runLevelReasons.map((r) => r.code)` if needed); each step includes **`intendedEffect`** `{ narrative }`, **`observedExecution`** `{ paramsCanonical }` (from evaluated `tool_observed.params` via `canonicalJsonForParams`), **`repeatObservationCount`**, and **`evaluatedObservationOrdinal`**; each non-**`verified`** step includes required **`failureDiagnostic`** — see [Verification diagnostics](#verification-diagnostics-normative)). The aggregated engine shape before finalization is `schemas/workflow-engine-result.schema.json` (`schemaVersion` **7**, also without **`runLevelCodes`**); see [Structured workflow truth report](#structured-workflow-truth-report-normative) and [Failure analysis](#failure-analysis-normative).
+**stdout:** Single JSON object matching `schemas/workflow-result.schema.json` (`schemaVersion` **`13`**; required **`verificationRunContext`** digest; required **`workflowTruthReport`** subtree validated by [`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json) — **SSOT** for structured truth JSON, including required **`failureAnalysis`** (`null` when complete, object when not — see [Actionable failure classification](#actionable-failure-classification-normative)); required **`executionPathFindings`** and **`executionPathSummary`** (see [Execution path findings](#execution-path-findings-normative)); required **`verificationPolicy`** `{ consistencyMode, verificationWindowMs, pollIntervalMs }`; required **`eventSequenceIntegrity`**; required **`runLevelReasons`** (**`runLevelCodes` is not a property** on v13 — derive a parallel code list with `runLevelReasons.map((r) => r.code)` if needed); each step includes **`intendedEffect`** `{ narrative }`, **`observedExecution`** `{ paramsCanonical }` (from evaluated `tool_observed.params` via `canonicalJsonForParams`), **`repeatObservationCount`**, and **`evaluatedObservationOrdinal`**; each non-**`verified`** step includes required **`failureDiagnostic`** — see [Verification diagnostics](#verification-diagnostics-normative)). The aggregated engine shape before finalization is `schemas/workflow-engine-result.schema.json` (`schemaVersion` **7**, also without **`runLevelCodes`**); see [Structured workflow truth report](#structured-workflow-truth-report-normative) and [Failure analysis](#failure-analysis-normative).
 
 **Verification policy (CLI):** Default is **`strong`** (single read per check). For **`eventual`**, pass **`--consistency eventual`** plus required **`--verification-window-ms`** and **`--poll-interval-ms`** (integers ≥ 1, **`pollIntervalMs` ≤ `verificationWindowMs`**). With **`strong`**, do not pass the millisecond flags. See [Verification policy (normative)](#verification-policy-normative).
 
@@ -402,7 +402,7 @@ There is **no** separate CI-only report format. Integrators should parse **stdou
 |------------|----------|
 | argv | `--workflow-id wf_complete --events <examples/events.ndjson> --registry <examples/tools.json> --postgres-url <POSTGRES_VERIFICATION_URL> --no-truth-report` |
 | Exit code | **0** |
-| **stdout** | One line; valid **`WorkflowResult`**; **`schemaVersion`** **12**; required **`verificationRunContext`**; required **`workflowTruthReport`** with **`failureAnalysis`** **`null`**; **`workflowId`** **`wf_complete`**; **`status`** **`complete`**; first step **`status`** **`verified`**; **`runLevelReasons`** **`[]`** (no **`runLevelCodes`** key) |
+| **stdout** | One line; valid **`WorkflowResult`**; **`schemaVersion`** **13**; required **`verificationRunContext`**; required **`workflowTruthReport`** with **`failureAnalysis`** **`null`**; **`workflowId`** **`wf_complete`**; **`status`** **`complete`**; first step **`status`** **`verified`**; **`runLevelReasons`** **`[]`** (no **`runLevelCodes`** key) |
 | **stderr** | Empty |
 
 **Case 2 — Postgres determinate failure (exit 1)**
@@ -441,7 +441,7 @@ When the CLI exits **3**, **stderr** is exactly **one** UTF-8 line: a JSON objec
 
 ### Human truth report
 
-**Stdout contract (normative):** Emitted **`WorkflowResult`** uses **`schemaVersion` `12`**. The **`runLevelCodes`** field is **absent** on v12 objects (AJV **`additionalProperties: false`** rejects it). Operators and tools that need a flat list of run-level codes should use **`runLevelReasons[].code`** (or derive `runLevelReasons.map((r) => r.code)`). **`runLevelReasons`** remains required.
+**Stdout contract (normative):** Emitted **`WorkflowResult`** uses **`schemaVersion` `13`**. The **`runLevelCodes`** field is **absent** on v13 objects (AJV **`additionalProperties: false`** rejects it). Operators and tools that need a flat list of run-level codes should use **`runLevelReasons[].code`** (or derive `runLevelReasons.map((r) => r.code)`). **`runLevelReasons`** remains required.
 
 **SSOT precedence (normative):** (1) JSON field names, requiredness, types, and enums on stdout are authoritative in **`schemas/*.schema.json`**; if this document’s prose disagrees, fix the prose. (2) Human stderr layout — exact line prefixes, order, and fixed phrases such as **`result=`** mapping — is authoritative in **this section** (Human truth report grammar); **`workflowTruthReport.ts`** must match verbatim; golden tests enforce agreement. (3) Where both schema and prose describe the same JSON semantics, **the schema wins**; prose summarizes and links without redefining shapes.
 
@@ -456,7 +456,7 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 - **Fixed `trust:` lines:** Most `trust:` lines map to one `WorkflowStatus` from `aggregate.ts`, except the **eventual-window uncertainty** line which applies when `workflow_status` is `incomplete` under the narrow rule in the grammar below.
 - **Machine-stable JSON labels (`STEP_STATUS_TRUTH_LABELS`):** The structured **`workflowTruthReport`** on stdout JSON uses fixed **`outcomeLabel`** strings (`VERIFIED`, `FAILED_ROW_MISSING`, …) for integrators and **`verify-workflow compare`**. The **human report text** uses plain-language **`result=`** phrases from **`HUMAN_REPORT_RESULT_PHRASE`** in `workflowTruthReport.ts` (same mapping table as JSON labels—see [Human text vs JSON `outcomeLabel`](#human-text-vs-json-outcomelabel) below). **Automation should key on stdout JSON**, not on parsing stderr text.
 - **Run-level and event-sequence issues:** Human text leads with **`detail:`** (trimmed `message`), then **`category:`**, then **`reference_code:`** (wire `code`). Same sources as **`runLevelReasons`** / **`eventSequenceIntegrity.reasons`**.
-- **Failure diagnosis:** When the workflow is not **`complete`**, after **`trust:`** and the execution-path block (see below), the human report includes a **`diagnosis:`** block mirroring **`workflowTruthReport.failureAnalysis`** on stdout JSON (see [Failure analysis](#failure-analysis-normative)), including one line **`actionable_failure: category=… severity=…`** (see [Actionable failure classification](#actionable-failure-classification-normative)).
+- **Failure diagnosis:** When the workflow is not **`complete`**, after **`trust:`** and the execution-path block (see below), the human report includes a **`diagnosis:`** block mirroring **`workflowTruthReport.failureAnalysis`** on stdout JSON (see [Failure analysis](#failure-analysis-normative)), including one line **`actionable_failure: category=… severity=… recommended_action=… automation_safe=…`** (see [Actionable failure classification](#actionable-failure-classification-normative)).
 - **Execution path:** Immediately after **`trust:`**, the human report includes **`execution_path:`** (summary string) and zero or more **`path_finding:`** lines with **`detail:`**, mirroring **`workflowTruthReport.executionPathFindings`** (see [Execution path findings](#execution-path-findings-normative)).
 - **No trailing newline inside the returned string:** The default `truthReport` implementation appends `\n` when writing to stderr.
 
@@ -477,8 +477,8 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 ### Structured workflow truth report (normative)
 
 - **SSOT for JSON shape:** [`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json) (`$id` in file). Integrators and tools should treat that schema as the authoritative contract for **`workflowTruthReport`**; this document describes purpose and integration only (no duplicate field tables here).
-- **Embedding:** On stdout / public API, **`workflowTruthReport`** is required on **`WorkflowResult`** with outer **`schemaVersion` 12** ([`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json)); inner **`workflowTruthReport.schemaVersion`** is **5**.
-- **Construction:** `buildWorkflowTruthReport(engine)` derives the object from **`WorkflowEngineResult`** (`schemaVersion` 7, [`schemas/workflow-engine-result.schema.json`](../schemas/workflow-engine-result.schema.json)) produced by `aggregateWorkflow` plus **`verificationRunContext`** merged in `verifyWorkflow` / `withWorkflowVerification`. `finalizeEmittedWorkflowResult` attaches the truth report and sets **`WorkflowResult.schemaVersion` 12**.
+- **Embedding:** On stdout / public API, **`workflowTruthReport`** is required on **`WorkflowResult`** with outer **`schemaVersion` 13** ([`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json)); inner **`workflowTruthReport.schemaVersion`** is **6**.
+- **Construction:** `buildWorkflowTruthReport(engine)` derives the object from **`WorkflowEngineResult`** (`schemaVersion` 7, [`schemas/workflow-engine-result.schema.json`](../schemas/workflow-engine-result.schema.json)) produced by `aggregateWorkflow` plus **`verificationRunContext`** merged in `verifyWorkflow` / `withWorkflowVerification`. `finalizeEmittedWorkflowResult` attaches the truth report and sets **`WorkflowResult.schemaVersion` 13**.
 - **Evolution:** Additive changes to the truth report require bumping **`workflowTruthReport.schemaVersion`** inside the truth schema; breaking engine/stdout shape bumps **`WorkflowResult.schemaVersion`**; document changes in this file’s compatibility section.
 
 ### Failure analysis (normative)
@@ -486,7 +486,7 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 **Purpose:** Deterministic root-cause hints for failed runs (human + machine) without LLMs.
 
 - **`verificationRunContext`:** Required on **`WorkflowEngineResult`** / **`WorkflowResult`**. Built from filtered **`runEvents`** in file order by **`buildVerificationRunContext`** (`verificationRunContext.ts`). Includes **`retrievalEvents`** (optional per-row **`hitCount`**), **`controlEvents`**, **`modelTurnEvents`**, **`toolSkippedEvents`**, **`toolObservedIngestIndexBySeq`** (last ingest index per **`tool_observed`** `seq`), **`firstToolObservedIngestIndex`**, **`hasRunCompletedControl`**, and **`lastRunEvent`**. v1-only event files still populate tool indices and closure fields where derivable from **`tool_observed`** lines.
-- **`failureAnalysis`:** Required on **`workflowTruthReport`**: JSON **`null`** when **`workflowStatus`** is **`complete`**; otherwise a structured object from **`buildFailureAnalysis`** (`failureAnalysis.ts`) with **`summary`**, **`primaryOrigin`** (`decision_making` \| `inputs` \| `retrieval` \| `tool_use` \| `workflow_flow` \| `downstream_system_state`), **`confidence`**, **`unknownReasonCodes`** (sorted unique; SSOT maps in **`failureOriginCatalog.ts`**), **`evidence[]`**, optional **`alternativeHypotheses`** (fixed for **`ROW_ABSENT`** and **`VALUE_MISMATCH`**), and required **`actionableFailure`** (`actionableFailure.ts`; see [Actionable failure classification](#actionable-failure-classification-normative)).
+- **`failureAnalysis`:** Required on **`workflowTruthReport`**: JSON **`null`** when **`workflowStatus`** is **`complete`**; otherwise a structured object from **`buildFailureAnalysis`** (`failureAnalysis.ts`) with **`summary`**, **`primaryOrigin`** (`decision_making` \| `inputs` \| `retrieval` \| `tool_use` \| `workflow_flow` \| `downstream_system_state`), **`confidence`**, **`unknownReasonCodes`** (sorted unique; SSOT maps in **`failureOriginCatalog.ts`**), **`evidence[]`**, optional **`alternativeHypotheses`** (fixed for **`ROW_ABSENT`** and **`VALUE_MISMATCH`**), and required **`actionableFailure`** including **`recommendedAction`** and **`automationSafe`** (`actionableFailure.ts`; see [Actionable failure classification](#actionable-failure-classification-normative)).
 - **Precedence (normative):** **P0** run-level reasons → **P1** retrieval **`error`** before failing tool ingest → **P2** bad **`model_turn`** / **`interrupt`** / skipped **`branch`/`gate`** → **P3** **`tool_skipped`** → **P4** irregular **`eventSequenceIntegrity`** → **P5** step driver (status severity, then `seq`, then `toolId`), with **P5b** multi-effect rollup to the lexicographically smallest failing effect **`id`**.
 - **SSOT for code → origin:** **`failureOriginCatalog.ts`** (operational + step + run-level + event-sequence maps). **`failureOriginTypes.ts`** re-exports **`FailureOrigin`** / **`FAILURE_ORIGINS`** from generated **`failureOriginTypes.generated.ts`**; JSON Schema enums must match (**`failureOriginSchemaEnum.test.ts`** reads the schema on disk). This document does **not** duplicate the full code table.
 
@@ -498,10 +498,32 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 
 **Normative sources (only two):**
 
-1. JSON Schema enums: **`actionableFailure.category`** and **`actionableFailure.severity`** on **`workflowTruthReport.failureAnalysis`** ([`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json)), the same category/severity on CLI **`failureDiagnosis.actionableFailure`** ([`schemas/cli-error-envelope.schema.json`](../schemas/cli-error-envelope.schema.json)), and compare report fields **`perRunActionableFailures`**, **`categoryHistogram`**, **`actionableCategoryRecurrence`**, **`reliabilityAssessment`**, **`compareHighlights`** ([`schemas/run-comparison-report.schema.json`](../schemas/run-comparison-report.schema.json); report **`schemaVersion` `3`**).
-2. Implementation **`actionableFailure.ts`**: P-CAT-1–4 precedence, workflow severity S-1–S4, **`OPERATIONAL_CODE_TO_SEVERITY`**, and step-code partition consumed by **`productionStepReasonCodeToActionableCategory`** (exhaustiveness over **`PRODUCTION_STEP_REASON_CODES`** is tested in **`actionableFailure.partitionExhaustive.test.ts`**).
+1. JSON Schema enums: **`actionableFailure.category`**, **`actionableFailure.severity`**, **`$defs/recommendedAction`** (**`actionableFailure.recommendedAction`**) and required **`actionableFailure.automationSafe`** on **`workflowTruthReport.failureAnalysis`** ([`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json)), the same fields on CLI **`failureDiagnosis.actionableFailure`** ([`schemas/cli-error-envelope.schema.json`](../schemas/cli-error-envelope.schema.json)), and compare report fields **`perRunActionableFailures`**, **`categoryHistogram`**, **`actionableCategoryRecurrence`**, **`reliabilityAssessment`**, **`compareHighlights`** ([`schemas/run-comparison-report.schema.json`](../schemas/run-comparison-report.schema.json); report **`schemaVersion` `4`**).
+2. Implementation **`actionableFailure.ts`**: P-CAT-1–4 precedence, workflow severity S-1–S4, **`OPERATIONAL_CODE_TO_SEVERITY`**, parallel remediation **`Record` maps** (workflow scopes) aligned with category classifiers, step-code partition consumed by **`productionStepReasonCodeToActionableCategory`** (exhaustiveness over **`PRODUCTION_STEP_REASON_CODES`** is tested in **`actionableFailure.partitionExhaustive.test.ts`** and **`actionableFailure.remediationExhaustive.test.ts`**).
 
 **Non-normative:** Prose in this section beyond the two bullets above is explanatory; it must not introduce a third mapping authority.
+
+### Recommended remediation (data-only contract)
+
+<!-- etl:remediation-doctrine:evidence-order -->
+
+Remediation tokens are chosen from the same **`failureAnalysis.evidence`** walk and primary-code selection rules as category and severity: **`deriveActionableCategory`** and **`deriveActionableFailureWorkflow`** in **`actionableFailure.ts`** share that ordering so a single failure analysis cannot **contradict** itself (for example, a “bad input” category with a downstream-only remediation hint). Operational CLI failures take **`recommendedAction`** and **`automationSafe`** from **`OPERATIONAL_DISPOSITION`** rows keyed by the operational code.
+
+<!-- /etl:remediation-doctrine:evidence-order -->
+
+<!-- etl:remediation-doctrine:compare-sentinel -->
+
+**`RunComparisonReport.perRunActionableFailures`** is intentionally **rectangular**: every compared run carries the same fields, including when the workflow is trusted-complete. For runs with **`failureAnalysis === null`**, **`perRunActionableFromWorkflowResult`** emits category **`complete`**, severity **`low`**, **`recommendedAction` `none`**, and **`automationSafe: true`** so aggregates and histograms remain well-formed without special-casing missing keys.
+
+<!-- /etl:remediation-doctrine:compare-sentinel -->
+
+<!-- etl:remediation-doctrine:data-only -->
+
+These fields are **verification** metadata for **external** consumers: they describe posture and intent, not commands. Mixing automated **mutation** (writes, orchestration) with read-only verification in the same process would break trust boundaries. The library never spawns **subprocesses** or runs SQL **based on** **`recommendedAction`** / **`automationSafe`**; treat them as hints for human or downstream policy only.
+
+<!-- /etl:remediation-doctrine:data-only -->
+
+**Enforcement (tests):** **`remediationWireSurfaceGuard.test.ts`** limits the **`recommendedAction`** identifier surface in production **`src/**/*.ts`**. **`remediationConsumptionGuard.test.ts`** restricts property access, forbids **`switch`** on these fields, and blocks executor entrypoints / risky imports in **`pipeline.ts`**, **`cli.ts`**, and **`reconciler.ts`**. **`actionableFailure.remediationExhaustive.test.ts`** covers workflow, CLI, and compare JSON boundaries plus the operational-success negative case (no stderr **`execution_truth_layer_error`** envelope). **`test/docs-remediation-doctrine.test.mjs`** (Module D) pins the marker blocks above.
 
 **Workflow categories:** Eight literals: **`decision_error`**, **`bad_input`**, **`retrieval_failure`**, **`control_flow_problem`**, **`state_inconsistency`**, **`downstream_execution_failure`**, **`ambiguous`**, **`unclassified`**. Compare also emits synthetic **`complete`** (with severity **`low`**) per run when **`failureAnalysis`** is **`null`**, for histograms that sum to the run count.
 
@@ -515,9 +537,9 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 | **`$ref` targets** in [`schemas/cli-error-envelope.schema.json`](../schemas/cli-error-envelope.schema.json) and [`schemas/run-comparison-report.schema.json`](../schemas/run-comparison-report.schema.json) | CLI failure diagnosis and compare reports reuse truth-report defs (no duplicated inline enums where **`$ref`** applies) |
 | **`scripts/sync-failure-origin-from-schema.mjs` → `failureOriginTypes.generated.ts`** | **`FailureOrigin`** literals are generated from **`$defs.failureOrigin.enum`**; **`npm run build`** runs the sync script before **`tsc`** |
 | **`wireReasonCodes.ts`** (`REGISTRY_RESOLVER_CODE`, `SQL_VERIFICATION_OUTCOME_CODE`, `REGISTRY_VALIDATION_CODE`, `UNKNOWN_TOOL`) | Sole definitions for emitted step/registry resolver **`code`** strings consumed by emitters (`reconciler.ts`, `multiEffectRollup.ts`, `verificationPolicy.ts`, `resolveExpectation.ts`, `pipeline.ts`, `registryValidation.ts`) |
-| **`OPERATIONAL_DISPOSITION`** in **`operationalDisposition.ts`** | Sole source of operational **`origin`**, **`summary`**, **`actionableCategory`**, **`actionableSeverity`** values; **`failureOriginCatalog.ts`** and **`actionableFailure.ts`** build their operational maps **only** by deriving from this object |
+| **`OPERATIONAL_DISPOSITION`** in **`operationalDisposition.ts`** | Sole source of operational **`origin`**, **`summary`**, **`actionableCategory`**, **`actionableSeverity`**, **`recommendedAction`**, and **`automationSafe`**; **`failureOriginCatalog.ts`** and **`actionableFailure.ts`** build their operational maps **only** by deriving from this object |
 
-**Mandatory tests:** **`failureOriginSchemaEnum.test.ts`**, **`taxonomyAuthority.test.ts`**, **`operationalDispositionDerivation.test.ts`**, **`wireReasonEmittersGuard.test.ts`**. **`failureOriginCatalog.test.ts`** retains **only** run-level and event-sequence origin map coverage (see [Engineer](#engineer)).
+**Mandatory tests:** **`failureOriginSchemaEnum.test.ts`**, **`taxonomyAuthority.test.ts`**, **`operationalDispositionDerivation.test.ts`**, **`wireReasonEmittersGuard.test.ts`**, **`actionableFailure.remediationExhaustive.test.ts`**, **`remediationWireSurfaceGuard.test.ts`**, **`remediationConsumptionGuard.test.ts`**, **`test/docs-remediation-doctrine.test.mjs`**. **`failureOriginCatalog.test.ts`** retains **only** run-level and event-sequence origin map coverage (see [Engineer](#engineer)).
 
 ## Verification diagnostics (normative)
 
@@ -541,6 +563,8 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 
 **Migration from v11 stdout:** Bump saved **`WorkflowResult.schemaVersion`** to **12** (no step-shape changes). Run **`npm run migrate:workflow-result-v12`** on JSON trees under **`test/golden/`**, **`test/fixtures/`**, and **`examples/`** (excluding sealed debug-corpus bundles as in the v11 script).
 
+**Migration from v12 stdout:** Bump saved **`WorkflowResult.schemaVersion`** to **13** and recompute embedded **`workflowTruthReport`** (adds **`recommendedAction`** / **`automationSafe`** on **`actionableFailure`** and truth **`schemaVersion` 6**). After **`npm run build`**, run **`npm run migrate:workflow-result-v13`** on the same JSON trees (same exclusions as the v12 script). Do not hand-edit saved **`WorkflowResult`** files for this bump.
+
 **Grammar (UTF-8; lines separated by `\n` only; returned string has no trailing `\n`)**
 
 1. **Header — exactly three lines**
@@ -556,7 +580,7 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 2. **Run-level**
    - If `runLevelReasons` is empty: line exactly `run_level: (none)`.
    - Otherwise: line `run_level:` then for each entry in **`runLevelReasons`** order: line `  - detail: ` + `reason.message` (trimmed), or `(no message)` if empty after trim; then line `    category: ` + category from `failureDiagnosticForRunLevelCode(reason.code)`; then line `    reference_code: ` + `reason.code`.
-   - Run-level codes in JSON are **only** on **`runLevelReasons[].code`** (v12 stdout has **no** separate **`runLevelCodes`** array). When there are no matching events for the workflow id, the library appends **`NO_STEPS_FOR_WORKFLOW`** with message `No tool_observed events for this workflow id after filtering.`
+   - Run-level codes in JSON are **only** on **`runLevelReasons[].code`** (v13 stdout has **no** separate **`runLevelCodes`** array). When there are no matching events for the workflow id, the library appends **`NO_STEPS_FOR_WORKFLOW`** with message `No tool_observed events for this workflow id after filtering.`
    - Catalog literal for **`MALFORMED_EVENT_LINE`**: `Event line was missing, invalid JSON, or failed schema validation for a tool observation.`
 
 3. **Event sequence integrity**
@@ -924,7 +948,7 @@ Step statuses: `verified` | `missing` | `inconsistent` | `incomplete_verificatio
 
 **PRD mapping:** PRD §4 “Failed” (determinate bad outcome) ↔ `inconsistent`. §4 “Incomplete” (cannot confirm) ↔ `incomplete`. §6 three bullets ↔ these three strings. **Multi-effect:** step-level “partial success” is `partially_verified`; the workflow is still **`inconsistent`** until every step is `verified`.
 
-**Compatibility:** Emitted **`WorkflowResult.schemaVersion`** is **12** with required **`workflowTruthReport`** and **`verificationRunContext`** (no **`runLevelCodes`**). The engine-only JSON (`schemaVersion` **7**) is defined by [`schemas/workflow-engine-result.schema.json`](../schemas/workflow-engine-result.schema.json). Required **`verificationPolicy`** and **`eventSequenceIntegrity`**; non-**`verified`** steps require **`failureDiagnostic`**; consumers must allow step `status` **`uncertain`** (see [`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json)).
+**Compatibility:** Emitted **`WorkflowResult.schemaVersion`** is **13** with required **`workflowTruthReport`** and **`verificationRunContext`** (no **`runLevelCodes`**). The engine-only JSON (`schemaVersion` **7**) is defined by [`schemas/workflow-engine-result.schema.json`](../schemas/workflow-engine-result.schema.json). Required **`verificationPolicy`** and **`eventSequenceIntegrity`**; non-**`verified`** steps require **`failureDiagnostic`**; consumers must allow step `status` **`uncertain`** (see [`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json)).
 
 ## Agent run record (canonical bundle)
 
@@ -945,7 +969,7 @@ Structural SSOT: [`schemas/agent-run-record.schema.json`](../schemas/agent-run-r
 5. **Workflow result artifact, then events:** resolve path under the run directory; if file missing → **`MISSING_WORKFLOW_RESULT`** or **`MISSING_EVENTS`** respectively; else read bytes; if length ≠ manifest **`byteLength`** → **`ARTIFACT_LENGTH_MISMATCH`**; if **`sha256`** (hex, lowercase) ≠ manifest → **`ARTIFACT_INTEGRITY_MISMATCH`**.
 6. **Parse** workflow-result bytes: failure → **`WORKFLOW_RESULT_JSON`**.
 7. **v9 run-level alignment (before AJV):** If the parsed object has **`schemaVersion` `9`**, require **`runLevelCodes`** and **`runLevelReasons`** arrays of equal length with **`runLevelCodes[i] === runLevelReasons[i].code`** for every index; on failure → **`WORKFLOW_RESULT_RUN_LEVEL_CODES_MISMATCH`** with **`message`** exactly **`Corpus workflow result: runLevelCodes and runLevelReasons are inconsistent.`** (see [Corpus load outcomes](#corpus-load-outcomes-normative)).
-8. **Workflow-result schema + normalize:** v9 documents validate against **`workflow-result-v9.schema.json`**; v12+ against **`workflow-result.schema.json`**; failure → **`WORKFLOW_RESULT_INVALID`**.
+8. **Workflow-result schema + normalize:** v9 documents validate against **`workflow-result-v9.schema.json`**; v13+ against **`workflow-result.schema.json`**; failure → **`WORKFLOW_RESULT_INVALID`**.
 9. **`manifest.workflowId`** must equal normalized **`WorkflowResult.workflowId`**: else **`AGENT_RUN_WORKFLOW_ID_MISMATCH`**.
 10. **Events:** call **`loadEventsForWorkflow`** on **`events.ndjson`** (second disk read after step 5).
 
@@ -1015,7 +1039,7 @@ If **`agentRunRecord.capturedAt`** parses as a valid date, use that instant. **E
 
 ## Cross-run comparison (normative)
 
-This section defines **cross-run comparison**: comparing saved workflow artifacts locally (no hosted backend). **Inputs** are validated with **`schemas/workflow-result-compare-input.schema.json`**: each file is exactly one of **`WorkflowEngineResult`** (**`schemaVersion` 7**, or legacy **5** upgraded with empty **`verificationRunContext`**), **frozen v9** **`WorkflowResult`** ([`schemas/workflow-result-v9.schema.json`](../schemas/workflow-result-v9.schema.json); requires **`runLevelCodes`** + **`runLevelReasons`** with per-index alignment), or emitted stdout **`WorkflowResult`** (**`schemaVersion` 12**, or legacy **6–8** upgraded). The **`oneOf`** order in the schema is **engine v7 → frozen v9 → stdout v12**. Before AJV, v9-shaped inputs must pass the same **`runLevelCodes` / `runLevelReasons`** index rule; failure → exit **3**, **`COMPARE_INPUT_RUN_LEVEL_INCONSISTENT`**, **`message`** **`Compare input workflow result: runLevelCodes and runLevelReasons are inconsistent.`** The CLI normalizes each input to emitted v10 (`finalizeEmittedWorkflowResult`; legacy inputs upgraded as in [Failure analysis](#failure-analysis-normative) and [Actionable failure classification](#actionable-failure-classification-normative)). For **`workflowTruthReport.schemaVersion` ≥ **3**, recomputed truth must match the file (**`util.isDeepStrictEqual`**) — mismatch → exit **3**, **`COMPARE_WORKFLOW_TRUTH_MISMATCH`**). The machine output is **`RunComparisonReport`** (`schemas/run-comparison-report.schema.json`, **`schemaVersion` `3`**), including prior aggregates (**`perRunActionableFailures`**, **`categoryHistogram`**, **`actionableCategoryRecurrence`**) plus required **`reliabilityAssessment`** and **`compareHighlights`**. **Breaking:** saved compare **stdout** files with **`schemaVersion` `2`** are not valid v3 output; re-run compare or upgrade tooling. Behavioral semantics below are authoritative—the schema is structural only (see [`$comment`](../schemas/run-comparison-report.schema.json)).
+This section defines **cross-run comparison**: comparing saved workflow artifacts locally (no hosted backend). **Inputs** are validated with **`schemas/workflow-result-compare-input.schema.json`**: each file is exactly one of **`WorkflowEngineResult`** (**`schemaVersion` 7**, or legacy **5** upgraded with empty **`verificationRunContext`**), **frozen v9** **`WorkflowResult`** ([`schemas/workflow-result-v9.schema.json`](../schemas/workflow-result-v9.schema.json); requires **`runLevelCodes`** + **`runLevelReasons`** with per-index alignment), or emitted stdout **`WorkflowResult`** (**`schemaVersion` 13**, or legacy **6–8** / **12** upgraded). The **`oneOf`** order in the schema is **engine v7 → frozen v9 → stdout v13**. Before AJV, v9-shaped inputs must pass the same **`runLevelCodes` / `runLevelReasons`** index rule; failure → exit **3**, **`COMPARE_INPUT_RUN_LEVEL_INCONSISTENT`**, **`message`** **`Compare input workflow result: runLevelCodes and runLevelReasons are inconsistent.`** The CLI normalizes each input to emitted v10 (`finalizeEmittedWorkflowResult`; legacy inputs upgraded as in [Failure analysis](#failure-analysis-normative) and [Actionable failure classification](#actionable-failure-classification-normative)). For **`workflowTruthReport.schemaVersion` ≥ **3**, recomputed truth must match the file (**`util.isDeepStrictEqual`**) — mismatch → exit **3**, **`COMPARE_WORKFLOW_TRUTH_MISMATCH`**). The machine output is **`RunComparisonReport`** (`schemas/run-comparison-report.schema.json`, **`schemaVersion` `3`**), including prior aggregates (**`perRunActionableFailures`**, **`categoryHistogram`**, **`actionableCategoryRecurrence`**) plus required **`reliabilityAssessment`** and **`compareHighlights`**. **Breaking:** saved compare **stdout** files with **`schemaVersion` `2`** are not valid v3 output; re-run compare or upgrade tooling. Behavioral semantics below are authoritative—the schema is structural only (see [`$comment`](../schemas/run-comparison-report.schema.json)).
 
 ### `logicalStepKey`
 

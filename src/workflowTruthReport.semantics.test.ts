@@ -56,7 +56,7 @@ describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
       steps: [verifiedStep(0, "t1")],
     };
     const truth = buildWorkflowTruthReport(engine);
-    expect(truth.schemaVersion).toBe(5);
+    expect(truth.schemaVersion).toBe(6);
     expect(truth.failureAnalysis).toBeNull();
     expect(truth.executionPathFindings).toEqual([]);
     expect(truth.executionPathSummary).toBe(
@@ -111,7 +111,12 @@ describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
     expect(truth.failureAnalysis!.primaryOrigin).toBe("downstream_system_state");
     expect(truth.failureAnalysis!.confidence).toBe("medium");
     expect(truth.failureAnalysis!.unknownReasonCodes).toEqual([]);
-    expect(truth.failureAnalysis!.actionableFailure).toEqual({ category: "ambiguous", severity: "high" });
+    expect(truth.failureAnalysis!.actionableFailure).toEqual({
+      category: "ambiguous",
+      severity: "high",
+      recommendedAction: "manual_review",
+      automationSafe: false,
+    });
     expect(truth.failureAnalysis!.alternativeHypotheses).toHaveLength(2);
     expect(truth.steps[0]!.outcomeLabel).toBe(STEP_STATUS_TRUTH_LABELS.missing);
     expect(truth.steps[0]!.failureCategory).toBe("workflow_execution");
@@ -138,6 +143,8 @@ describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
     expect(truth.failureAnalysis!.actionableFailure).toEqual({
       category: "control_flow_problem",
       severity: "medium",
+      recommendedAction: "fix_event_ingest_and_steps",
+      automationSafe: false,
     });
     expect(truth.runLevelIssues).toHaveLength(1);
     expect(truth.runLevelIssues[0]!.code).toBe("NO_STEPS_FOR_WORKFLOW");
@@ -184,6 +191,8 @@ describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
     expect(truth.failureAnalysis!.actionableFailure).toEqual({
       category: "downstream_execution_failure",
       severity: "medium",
+      recommendedAction: "improve_read_connectivity",
+      automationSafe: false,
     });
     expect(truth.failureAnalysis!.alternativeHypotheses).toBeUndefined();
     expect(truth.trustSummary).toBe(TRUST_LINE_UNCERTAIN_WITHIN_WINDOW);

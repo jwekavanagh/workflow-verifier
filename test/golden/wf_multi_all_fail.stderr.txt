@@ -6,7 +6,7 @@ diagnosis:
   summary: Primary failure at seq 0 tool demo.multi_contact (code ROW_ABSENT); origin: downstream_system_state. Multi-effect verification: authoritative per-effect outcomes are under workflowTruthReport.steps[].effects.
   primary_origin: downstream_system_state
   confidence: medium
-  actionable_failure: category=ambiguous severity=high
+  actionable_failure: category=ambiguous severity=high recommended_action=manual_review automation_safe=false
   - evidence: scope=step codes=ROW_ABSENT seq=0 tool=demo.multi_contact
   - evidence: scope=effect codes=ROW_ABSENT seq=0 effect_id=primary
   alternative_origin: downstream_system_state

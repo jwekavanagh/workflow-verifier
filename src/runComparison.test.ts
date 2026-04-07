@@ -75,6 +75,28 @@ function assertReportValid(report: ReturnType<typeof buildRunComparisonReport>):
 }
 
 describe("runComparison", () => {
+  it("buildRunComparisonReport v4 perRunActionableFailures includes recommendedAction and automationSafe", () => {
+    const ok = wf([sqlRowStep(0, "t", "a", true)]);
+    const bad = wf([sqlRowStep(0, "t", "a", false)]);
+    const report = buildRunComparisonReport([ok, bad], ["ok", "bad"]);
+    expect(report.schemaVersion).toBe(4);
+    assertReportValid(report);
+    const complete = report.perRunActionableFailures.find((p) => p.runIndex === 0);
+    const failing = report.perRunActionableFailures.find((p) => p.runIndex === 1);
+    expect(complete).toMatchObject({
+      category: "complete",
+      severity: "low",
+      recommendedAction: "none",
+      automationSafe: true,
+    });
+    expect(failing).toMatchObject({
+      category: "ambiguous",
+      severity: "high",
+      recommendedAction: "manual_review",
+      automationSafe: false,
+    });
+  });
+
   it("P1 reorder all verified: unchangedOk per key, seq movement, no failure deltas", () => {
     const r0 = wf([sqlRowStep(0, "t1", "a", true), sqlRowStep(1, "t1", "b", true)]);
     const r1 = wf([sqlRowStep(0, "t1", "b", true), sqlRowStep(1, "t1", "a", true)]);
@@ -349,7 +371,7 @@ describe("runComparison", () => {
       const out = proc.stdout.trim();
       expect(out.length).toBeGreaterThan(0);
       const parsed = JSON.parse(out) as { schemaVersion: number };
-      expect(parsed.schemaVersion).toBe(3);
+      expect(parsed.schemaVersion).toBe(4);
       const v = loadSchemaValidator("run-comparison-report");
       expect(v(JSON.parse(out))).toBe(true);
       expect(proc.stderr).toContain("cross_run_comparison:");

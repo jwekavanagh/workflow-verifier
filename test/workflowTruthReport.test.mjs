@@ -53,7 +53,7 @@ diagnosis:
   summary: Primary failure at seq 0 tool crm.upsert_contact (code ROW_ABSENT); origin: downstream_system_state.
   primary_origin: downstream_system_state
   confidence: medium
-  actionable_failure: category=ambiguous severity=high
+  actionable_failure: category=ambiguous severity=high recommended_action=manual_review automation_safe=false
   - evidence: scope=step codes=ROW_ABSENT seq=0 tool=crm.upsert_contact
   alternative_origin: downstream_system_state
     rationale: The database has no row at the verified key; the tool log may not have committed a write, or replication lag prevented observation.
@@ -80,7 +80,7 @@ diagnosis:
   summary: Primary failure at seq 0 tool nope.tool (code UNKNOWN_TOOL); origin: tool_use.
   primary_origin: tool_use
   confidence: high
-  actionable_failure: category=bad_input severity=medium
+  actionable_failure: category=bad_input severity=medium recommended_action=correct_verification_inputs automation_safe=false
   - evidence: scope=step codes=UNKNOWN_TOOL seq=0 tool=nope.tool
 run_level: (none)
 event_sequence: normal
@@ -107,7 +107,7 @@ diagnosis:
   summary: Run-level ingest or planning issue (MALFORMED_EVENT_LINE, NO_STEPS_FOR_WORKFLOW); origin: inputs.
   primary_origin: inputs
   confidence: medium
-  actionable_failure: category=bad_input severity=medium
+  actionable_failure: category=bad_input severity=medium recommended_action=fix_event_ingest_and_steps automation_safe=false
   - evidence: scope=run_level codes=MALFORMED_EVENT_LINE,NO_STEPS_FOR_WORKFLOW
 run_level:
   - detail: ${MALFORMED_MSG}
@@ -129,7 +129,7 @@ diagnosis:
   summary: Run-level ingest or planning issue (NO_STEPS_FOR_WORKFLOW); origin: workflow_flow.
   primary_origin: workflow_flow
   confidence: high
-  actionable_failure: category=control_flow_problem severity=medium
+  actionable_failure: category=control_flow_problem severity=medium recommended_action=fix_event_ingest_and_steps automation_safe=false
   - evidence: scope=run_level codes=NO_STEPS_FOR_WORKFLOW
 run_level:
   - detail: ${NO_STEPS_MSG}
@@ -162,7 +162,7 @@ diagnosis:
   summary: Primary failure at seq 0 tool t (code ROW_NOT_OBSERVED_WITHIN_WINDOW); origin: downstream_system_state.
   primary_origin: downstream_system_state
   confidence: high
-  actionable_failure: category=downstream_execution_failure severity=medium
+  actionable_failure: category=downstream_execution_failure severity=medium recommended_action=improve_read_connectivity automation_safe=false
   - evidence: scope=step codes=ROW_NOT_OBSERVED_WITHIN_WINDOW seq=0 tool=t
 run_level: (none)
 event_sequence: normal

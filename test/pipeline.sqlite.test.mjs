@@ -72,7 +72,7 @@ describe("verifyWorkflow integration", () => {
         pollIntervalMs: 100,
       },
     });
-    assert.equal(r.schemaVersion, 12);
+    assert.equal(r.schemaVersion, 13);
     assert.equal(r.status, "complete");
     assert.equal(r.steps[0]?.status, "verified");
     assert.deepStrictEqual(r.verificationPolicy, {
@@ -165,7 +165,7 @@ describe("verifyWorkflow integration", () => {
       logStep: noopLog,
       truthReport: () => {},
     });
-    assert.equal(r.schemaVersion, 12);
+    assert.equal(r.schemaVersion, 13);
     assert.equal(r.status, "complete");
     assert.equal(r.steps.length, 1);
     assert.equal(r.steps[0]?.status, "verified");

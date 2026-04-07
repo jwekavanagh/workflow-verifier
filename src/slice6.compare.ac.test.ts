@@ -60,12 +60,12 @@ function wf(steps: StepOutcome[], id = "wf_slice6_ac"): WorkflowResult {
 describe("Slice 6 compare acceptance tests", () => {
   const v = loadSchemaValidator("run-comparison-report");
 
-  it("AC_9_1_multi_run_compare_emits_schema_v3", () => {
+  it("AC_9_1_multi_run_compare_emits_schema_v4", () => {
     const r0 = wf([sqlRowStep(0, "t", "a", true)]);
     const r1 = wf([sqlRowStep(0, "t", "a", true)]);
     const r2 = wf([sqlRowStep(0, "t", "a", true)]);
     const report = buildRunComparisonReport([r0, r1, r2], ["r0", "r1", "r2"]);
-    expect(report.schemaVersion).toBe(3);
+    expect(report.schemaVersion).toBe(4);
     expect(report.runs).toHaveLength(3);
     expect(v(report)).toBe(true);
   });

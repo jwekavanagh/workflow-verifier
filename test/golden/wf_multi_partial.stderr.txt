@@ -6,7 +6,7 @@ diagnosis:
   summary: Primary failure at seq 0 tool demo.multi_contact (code VALUE_MISMATCH); origin: downstream_system_state. Multi-effect verification: authoritative per-effect outcomes are under workflowTruthReport.steps[].effects.
   primary_origin: downstream_system_state
   confidence: medium
-  actionable_failure: category=ambiguous severity=high
+  actionable_failure: category=ambiguous severity=high recommended_action=manual_review automation_safe=false
   - evidence: scope=step codes=VALUE_MISMATCH seq=0 tool=demo.multi_contact
   - evidence: scope=effect codes=VALUE_MISMATCH seq=0 effect_id=secondary
   alternative_origin: downstream_system_state

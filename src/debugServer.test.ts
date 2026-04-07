@@ -205,7 +205,7 @@ describe("debugServer HTTP", () => {
       };
       expect(sortedKeys(data)).toEqual(DEBUG_API_COMPARE_200_KEYS);
       expect(data.comparePanelHtml.length).toBeGreaterThan(0);
-      expect(data.report.schemaVersion).toBe(3);
+      expect(data.report.schemaVersion).toBe(4);
     } finally {
       await srv.close();
     }

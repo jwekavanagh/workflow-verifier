@@ -338,9 +338,59 @@ export type ActionableFailureCategory =
 
 export type ActionableFailureSeverity = "high" | "medium" | "low";
 
+/** Closed set; mirrors `schemas/workflow-truth-report.schema.json` → `$defs/recommendedAction`. */
+export type RecommendedActionCode =
+  | "none"
+  | "manual_review"
+  | "deduplicate"
+  | "reconcile_downstream_state"
+  | "correct_verification_inputs"
+  | "improve_read_connectivity"
+  | "resolve_multi_effect_failures"
+  | "align_tool_observations"
+  | "fix_event_ingest_and_steps"
+  | "fix_event_sequence_order"
+  | "fix_run_context_controls"
+  | "fix_cli_usage"
+  | "fix_registry_events_or_compare_files"
+  | "fix_verification_database_connection"
+  | "fix_saved_workflow_json"
+  | "fix_compare_workflow_inputs"
+  | "fix_execution_trace_structure"
+  | "fix_verification_policy_and_hook"
+  | "fix_plan_document_and_patterns"
+  | "fix_plan_transition_cli_and_refs"
+  | "upgrade_git_or_retry_git";
+
+export const RECOMMENDED_ACTION_CODES = [
+  "none",
+  "manual_review",
+  "deduplicate",
+  "reconcile_downstream_state",
+  "correct_verification_inputs",
+  "improve_read_connectivity",
+  "resolve_multi_effect_failures",
+  "align_tool_observations",
+  "fix_event_ingest_and_steps",
+  "fix_event_sequence_order",
+  "fix_run_context_controls",
+  "fix_cli_usage",
+  "fix_registry_events_or_compare_files",
+  "fix_verification_database_connection",
+  "fix_saved_workflow_json",
+  "fix_compare_workflow_inputs",
+  "fix_execution_trace_structure",
+  "fix_verification_policy_and_hook",
+  "fix_plan_document_and_patterns",
+  "fix_plan_transition_cli_and_refs",
+  "upgrade_git_or_retry_git",
+] as const satisfies readonly RecommendedActionCode[];
+
 export type ActionableFailure = {
   category: ActionableFailureCategory;
   severity: ActionableFailureSeverity;
+  recommendedAction: RecommendedActionCode;
+  automationSafe: boolean;
 };
 
 export type FailureAnalysisEvidenceItem = {
@@ -456,7 +506,7 @@ export type WorkflowTruthStep = {
 };
 
 export type WorkflowTruthReport = {
-  schemaVersion: 5;
+  schemaVersion: 6;
   workflowId: string;
   workflowStatus: WorkflowStatus;
   trustSummary: string;
@@ -471,9 +521,9 @@ export type WorkflowTruthReport = {
   executionPathSummary: string;
 };
 
-/** Emitted verification result on stdout / public API (`schemaVersion` 12). */
+/** Emitted verification result on stdout / public API (`schemaVersion` 13). */
 export type WorkflowResult = Omit<WorkflowEngineResult, "schemaVersion"> & {
-  schemaVersion: 12;
+  schemaVersion: 13;
   workflowTruthReport: WorkflowTruthReport;
 };
 

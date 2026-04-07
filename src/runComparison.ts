@@ -65,12 +65,20 @@ export function actionableTrend(first: PerRunActionable, last: PerRunActionable)
 export function perRunActionableFromWorkflowResult(r: WorkflowResult, runIndex: number): PerRunActionable {
   const fa = r.workflowTruthReport.failureAnalysis;
   if (fa === null) {
-    return { runIndex, category: "complete", severity: "low" };
+    return {
+      runIndex,
+      category: "complete",
+      severity: "low",
+      recommendedAction: "none",
+      automationSafe: true,
+    };
   }
   return {
     runIndex,
     category: fa.actionableFailure.category,
     severity: fa.actionableFailure.severity,
+    recommendedAction: fa.actionableFailure.recommendedAction,
+    automationSafe: fa.actionableFailure.automationSafe,
   };
 }
 
@@ -150,7 +158,7 @@ export type RecurrencePattern = {
 
 /** JSON report shape; validate with `schemas/run-comparison-report.schema.json`. */
 export type RunComparisonReport = {
-  schemaVersion: 3;
+  schemaVersion: 4;
   workflowId: string;
   runs: Array<{ runIndex: number; displayLabel: string }>;
   perRunActionableFailures: PerRunActionable[];
@@ -726,7 +734,7 @@ export function buildRunComparisonReport(
   const compareHighlights = buildCompareHighlights(bucketA, bucketB, recurrence.patterns);
 
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     workflowId: wf,
     runs: results.map((_, i) => ({
       runIndex: i,
@@ -762,7 +770,7 @@ export function formatRunComparisonReport(report: RunComparisonReport): string {
   lines.push(`  workflow_id: ${report.workflowId}`);
   lines.push(`  runs: ${report.runs.map((r) => `${r.runIndex}=${r.displayLabel}`).join(", ")}`);
   lines.push(
-    `  per_run_actionable: ${report.perRunActionableFailures.map((p) => `${p.runIndex}=${p.category}/${p.severity}`).join(", ")}`,
+    `  per_run_actionable: ${report.perRunActionableFailures.map((p) => `${p.runIndex}=${p.category}/${p.severity}/${p.recommendedAction}/${p.automationSafe}`).join(", ")}`,
   );
   lines.push(
     `  category_histogram: ${report.categoryHistogram.map((h) => `${h.category}×${h.count}`).join("; ") || "(none)"}`,

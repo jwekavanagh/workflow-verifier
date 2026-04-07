@@ -266,7 +266,7 @@ export function buildWorkflowTruthReport(engine: WorkflowEngineResult): Workflow
   );
 
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     workflowId: engine.workflowId,
     workflowStatus: engine.status,
     trustSummary: trustSummaryForEngine(engine),
@@ -282,7 +282,7 @@ export function buildWorkflowTruthReport(engine: WorkflowEngineResult): Workflow
 export function finalizeEmittedWorkflowResult(engine: WorkflowEngineResult): WorkflowResult {
   return {
     ...engine,
-    schemaVersion: 12,
+    schemaVersion: 13,
     workflowTruthReport: buildWorkflowTruthReport(engine),
   };
 }
@@ -348,7 +348,7 @@ export function formatWorkflowTruthReportStruct(truth: WorkflowTruthReport): str
     lines.push(`  primary_origin: ${d.primaryOrigin}`);
     lines.push(`  confidence: ${d.confidence}`);
     lines.push(
-      `  actionable_failure: category=${d.actionableFailure.category} severity=${d.actionableFailure.severity}`,
+      `  actionable_failure: category=${d.actionableFailure.category} severity=${d.actionableFailure.severity} recommended_action=${d.actionableFailure.recommendedAction} automation_safe=${d.actionableFailure.automationSafe}`,
     );
     for (const ev of d.evidence) {
       const parts = [`scope=${ev.scope}`];
