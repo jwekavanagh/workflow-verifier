@@ -139,6 +139,63 @@ Like (same shape as [\`test/ref.mjs\`](c:/x/y/test/ref.mjs)) for comparison.
     expect(harvestQualifyingPathsFromPlan(md, {})).toEqual([]);
   });
 
+  it("EG_BACKTICK: e.g. before backtick path skips harvest on that line", () => {
+    const md = `---
+name: x
+todos: []
+---
+
+## Testing
+
+Illustrative only e.g. \`src/only-example.ts\`
+`;
+    expect(harvestQualifyingPathsFromPlan(md, fmFromPlanMarkdown(md))).toEqual([]);
+  });
+
+  it("FIXTURE_PHRASE: chosen in fixture skips harvest on that line", () => {
+    const md = `---
+name: x
+todos: []
+---
+
+## Testing
+
+Old/new paths chosen in fixture, see \`src/fixture-example.ts\`.
+`;
+    expect(harvestQualifyingPathsFromPlan(md, fmFromPlanMarkdown(md))).toEqual([]);
+  });
+
+  it("ISO-IMPL: implementation line without reference-only markers still harvests", () => {
+    const md = `---
+name: x
+todos: []
+---
+
+## Implementation
+
+Touch \`src/required.ts\`.
+`;
+    expect(harvestQualifyingPathsFromPlan(md, fmFromPlanMarkdown(md))).toEqual(["src/required.ts"]);
+  });
+
+  const PIN_SLICE_PLAN_EXPECTED = [
+    "docs/execution-truth-layer.md",
+    "schemas/plan-validation-frontmatter.schema.json",
+    "src/cli.ts",
+    "src/index.ts",
+    "src/planTransition.ts",
+    "src/schemaLoad.ts",
+  ];
+
+  it("PIN_SLICE_PLAN: plan-transition_validation slice harvest matches deliverables only", () => {
+    const p = path.join(repoRoot, "plans", "plan-transition_validation_slice_91ae04db.plan.md");
+    const md = readFileSync(p, "utf8");
+    const result = harvestQualifyingPathsFromPlan(md, fmFromPlanMarkdown(md));
+    expect(result).toEqual(PIN_SLICE_PLAN_EXPECTED);
+    expect(result).not.toContain("src/copy.ts");
+    expect(result).not.toContain("src/original.ts");
+  });
+
   it("GOLD-S2: slice_2 plan matches pinned array", () => {
     const p = path.join(repoRoot, "plans", "slice_2_outcome_verification_107174c5.plan.md");
     const md = readFileSync(p, "utf8");

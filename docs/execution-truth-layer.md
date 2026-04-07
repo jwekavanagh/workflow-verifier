@@ -168,8 +168,10 @@ const PLAN_TRANSITION_OBLIGATION_H2_TITLE_RE =
 
 ```javascript
 const PLAN_TRANSITION_REFERENCE_ONLY_LINE_RE =
-  /\b(?:same\s+shape\s+as|similar\s+to|mirrors(?:\s+existing)?|for\s+example|e\.g\.)\b/i;
+  /\b(?:same\s+shape\s+as|similar\s+to|mirrors(?:\s+existing)?|for\s+example|hypothetical|chosen\s+in\s+fixture)\b|(?:e\.g\.|i\.e\.)(?=\s|,|$)/i;
 ```
+
+Abbreviated **`e.g.`** / **`i.e.`** use a lookahead after the final dot because a trailing **`\b`** does not match between **`.`** and following whitespace in JavaScript.
 
 **Extractors (deterministic):**
 
