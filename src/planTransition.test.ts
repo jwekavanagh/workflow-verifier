@@ -4,12 +4,14 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { CLI_OPERATIONAL_CODES } from "./cliOperationalCodes.js";
 import { loadSchemaValidator } from "./schemaLoad.js";
 import { TruthLayerError } from "./truthLayerError.js";
 import {
   buildPlanTransitionEventsNdjson,
   buildPlanTransitionWorkflowResult,
   evaluatePlanRules,
+  loadPlanTransitionRules,
   parseGitNameStatusZ,
   parseGitVersionTriple,
   PLAN_RULE_CODES,
@@ -149,20 +151,18 @@ describe("planTransition", () => {
     }
   });
 
-  it("plan-validation schema rejects requireRenameFromTo without includeCopy", () => {
-    const v = loadSchemaValidator("plan-validation-frontmatter");
+  it("plan-validation-core schema rejects requireRenameFromTo without includeCopy", () => {
+    const v = loadSchemaValidator("plan-validation-core");
     const bad = {
-      planValidation: {
-        schemaVersion: 1,
-        rules: [
-          {
-            id: "x",
-            kind: "requireRenameFromTo",
-            fromPattern: "a",
-            toPattern: "b",
-          },
-        ],
-      },
+      schemaVersion: 1,
+      rules: [
+        {
+          id: "x",
+          kind: "requireRenameFromTo",
+          fromPattern: "a",
+          toPattern: "b",
+        },
+      ],
     };
     expect(v(bad)).toBe(false);
   });
@@ -177,9 +177,11 @@ describe("planTransition", () => {
       afterCommitSha: "b".repeat(40),
       planResolvedPath: path.join(root, "Plan.md"),
       planSha256: "c".repeat(64),
+      transitionRulesSource: "front_matter",
     });
     const line = JSON.parse(buf.toString("utf8").trim());
     expect(v(line)).toBe(true);
+    expect(line.params.transitionRulesSource).toBe("front_matter");
     expect(line.params.beforeCommitSha).toHaveLength(40);
     expect(line.params.planSha256).toHaveLength(64);
   });
@@ -233,7 +235,7 @@ planValidation:
     const planPath = path.join(dir, "Plan.md");
     writeFileSync(planPath, planBody, "utf8");
 
-    const result = buildPlanTransitionWorkflowResult({
+    const { workflowResult: result } = buildPlanTransitionWorkflowResult({
       repoRoot: dir,
       beforeRef: before,
       afterRef: after,
@@ -282,7 +284,7 @@ planValidation:
     const planPath = path.join(dir, "Plan.md");
     writeFileSync(planPath, planBody, "utf8");
 
-    const result = buildPlanTransitionWorkflowResult({
+    const { workflowResult: result } = buildPlanTransitionWorkflowResult({
       repoRoot: dir,
       beforeRef: before,
       afterRef: after,
@@ -318,7 +320,7 @@ planValidation:
     const planPath = path.join(dir, "Plan.md");
     writeFileSync(planPath, planBody, "utf8");
 
-    const result = buildPlanTransitionWorkflowResult({
+    const { workflowResult: result } = buildPlanTransitionWorkflowResult({
       repoRoot: dir,
       beforeRef: before,
       afterRef: after,
@@ -327,6 +329,265 @@ planValidation:
     expect(result.status).toBe("inconsistent");
     expect(result.steps[0]?.status).toBe("inconsistent");
   }, 20_000);
+
+  it("integration: body-section yaml rules match FM equivalent for modify", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "plan-tr-body-"));
+    execFileSync("git", ["init", dir], { windowsHide: true });
+    gitConfig(dir);
+    mkdirSync(path.join(dir, "src"), { recursive: true });
+    writeFileSync(path.join(dir, "src", "x.txt"), "a");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "base"], { windowsHide: true });
+    const before = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+    writeFileSync(path.join(dir, "src", "x.txt"), "b");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "chg"], { windowsHide: true });
+    const after = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+
+    const planBody = `---
+name: Cursor plan
+overview: test
+---
+## Repository transition validation
+\`\`\`yaml
+schemaVersion: 1
+rules:
+  - id: must_modify
+    kind: matchingRowsMustHaveRowKinds
+    pattern: "src/x.txt"
+    rowKinds: [modify]
+\`\`\`
+`;
+    const planPath = path.join(dir, "Plan.md");
+    writeFileSync(planPath, planBody, "utf8");
+
+    const { workflowResult: result, transitionRulesProvenance } = buildPlanTransitionWorkflowResult({
+      repoRoot: dir,
+      beforeRef: before,
+      afterRef: after,
+      planPath,
+      workflowId: PLAN_TRANSITION_WORKFLOW_ID,
+    });
+    expect(transitionRulesProvenance).toBe("body_section");
+    expect(result.status).toBe("complete");
+    expect(result.steps[0]?.status).toBe("verified");
+  }, 20_000);
+
+  it("integration: FM planValidation wins over duplicate body headings and yaml", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "plan-tr-fmwin-"));
+    execFileSync("git", ["init", dir], { windowsHide: true });
+    gitConfig(dir);
+    mkdirSync(path.join(dir, "src"), { recursive: true });
+    writeFileSync(path.join(dir, "src", "x.txt"), "a");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "base"], { windowsHide: true });
+    const before = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+    writeFileSync(path.join(dir, "src", "x.txt"), "b");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "chg"], { windowsHide: true });
+    const after = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+
+    const planBody = `---
+planValidation:
+  schemaVersion: 1
+  rules:
+    - id: must_modify
+      kind: matchingRowsMustHaveRowKinds
+      pattern: "src/x.txt"
+      rowKinds: [modify]
+---
+## Repository transition validation
+## Repository transition validation
+\`\`\`yaml
+schemaVersion: 1
+rules:
+  - id: forbid_all
+    kind: forbidMatchingRows
+    pattern: "**/*"
+\`\`\`
+`;
+    const planPath = path.join(dir, "Plan.md");
+    writeFileSync(planPath, planBody, "utf8");
+
+    const { workflowResult: result, transitionRulesProvenance } = buildPlanTransitionWorkflowResult({
+      repoRoot: dir,
+      beforeRef: before,
+      afterRef: after,
+      planPath,
+    });
+    expect(transitionRulesProvenance).toBe("front_matter");
+    expect(result.status).toBe("complete");
+    expect(result.steps[0]?.status).toBe("verified");
+  }, 20_000);
+
+  it("integration: FM rules used when body would forbid all paths", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "plan-tr-prec-"));
+    execFileSync("git", ["init", dir], { windowsHide: true });
+    gitConfig(dir);
+    mkdirSync(path.join(dir, "src"), { recursive: true });
+    writeFileSync(path.join(dir, "src", "x.txt"), "a");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "base"], { windowsHide: true });
+    const before = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+    writeFileSync(path.join(dir, "src", "x.txt"), "b");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "chg"], { windowsHide: true });
+    const after = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+
+    const planBody = `---
+planValidation:
+  schemaVersion: 1
+  rules:
+    - id: must_modify
+      kind: matchingRowsMustHaveRowKinds
+      pattern: "src/x.txt"
+      rowKinds: [modify]
+---
+## Repository transition validation
+\`\`\`yaml
+schemaVersion: 1
+rules:
+  - id: forbid_all
+    kind: forbidMatchingRows
+    pattern: "**/*"
+\`\`\`
+`;
+    const planPath = path.join(dir, "Plan.md");
+    writeFileSync(planPath, planBody, "utf8");
+
+    const { workflowResult: result } = buildPlanTransitionWorkflowResult({
+      repoRoot: dir,
+      beforeRef: before,
+      afterRef: after,
+      planPath,
+    });
+    expect(result.status).toBe("complete");
+    expect(result.steps[0]?.status).toBe("verified");
+  }, 20_000);
+});
+
+describe("loadPlanTransitionRules", () => {
+  it("Cursor-like front matter without planValidation yields INSUFFICIENT_SPEC", () => {
+    const md = `---
+name: Slice
+overview: x
+todos: []
+isProject: false
+---
+
+# Body
+`;
+    try {
+      loadPlanTransitionRules(md);
+      expect.fail("expected TruthLayerError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TruthLayerError);
+      expect((e as TruthLayerError).code).toBe(CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC);
+    }
+  });
+
+  it("duplicate Repository transition validation headings yield AMBIGUOUS_BODY_RULES", () => {
+    const md = `---
+name: x
+---
+## Repository transition validation
+x
+## Repository transition validation
+y
+`;
+    try {
+      loadPlanTransitionRules(md);
+      expect.fail("expected TruthLayerError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TruthLayerError);
+      expect((e as TruthLayerError).code).toBe(CLI_OPERATIONAL_CODES.PLAN_VALIDATION_AMBIGUOUS_BODY_RULES);
+    }
+  });
+
+  it("first fence not yaml yields INSUFFICIENT_SPEC", () => {
+    const md = `---
+name: x
+---
+## Repository transition validation
+\`\`\`json
+{}
+\`\`\`
+`;
+    try {
+      loadPlanTransitionRules(md);
+      expect.fail("expected TruthLayerError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TruthLayerError);
+      expect((e as TruthLayerError).code).toBe(CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC);
+    }
+  });
+
+  it("two yaml fences in section yield AMBIGUOUS_BODY_RULES", () => {
+    const md = `---
+name: x
+---
+## Repository transition validation
+\`\`\`yaml
+schemaVersion: 1
+rules: []
+\`\`\`
+\`\`\`yaml
+schemaVersion: 1
+rules: []
+\`\`\`
+`;
+    try {
+      loadPlanTransitionRules(md);
+      expect.fail("expected TruthLayerError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TruthLayerError);
+      expect((e as TruthLayerError).code).toBe(CLI_OPERATIONAL_CODES.PLAN_VALIDATION_AMBIGUOUS_BODY_RULES);
+    }
+  });
+
+  it("invalid yaml in body fence yields PLAN_VALIDATION_YAML_INVALID with body prefix", () => {
+    const md = `---
+name: x
+---
+## Repository transition validation
+\`\`\`yaml
+schemaVersion: 1
+rules: [oops not closed
+\`\`\`
+`;
+    try {
+      loadPlanTransitionRules(md);
+      expect.fail("expected TruthLayerError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TruthLayerError);
+      expect((e as TruthLayerError).code).toBe(CLI_OPERATIONAL_CODES.PLAN_VALIDATION_YAML_INVALID);
+      expect((e as TruthLayerError).message).toContain("body Repository transition validation:");
+    }
+  });
+
+  it("body yaml valid but schema invalid yields SCHEMA_INVALID with body prefix", () => {
+    const md = `---
+name: x
+---
+## Repository transition validation
+\`\`\`yaml
+schemaVersion: 1
+rules:
+  - id: x
+    kind: requireRenameFromTo
+    fromPattern: a
+    toPattern: b
+\`\`\`
+`;
+    try {
+      loadPlanTransitionRules(md);
+      expect.fail("expected TruthLayerError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TruthLayerError);
+      expect((e as TruthLayerError).code).toBe(CLI_OPERATIONAL_CODES.PLAN_VALIDATION_SCHEMA_INVALID);
+      expect((e as TruthLayerError).message.startsWith("body Repository transition validation:")).toBe(true);
+    }
+  });
 });
 
 describe("plan-transition CLI", () => {
@@ -418,9 +679,69 @@ planValidation:
 
     const ev = readFileSync(path.join(bundleDir, "events.ndjson"), "utf8");
     const v = loadSchemaValidator("event");
-    expect(v(JSON.parse(ev.trim()))).toBe(true);
+    const evLine = JSON.parse(ev.trim()) as { params: { transitionRulesSource?: string } };
+    expect(v(evLine)).toBe(true);
+    expect(evLine.params.transitionRulesSource).toBe("front_matter");
     const ar = JSON.parse(readFileSync(path.join(bundleDir, "agent-run.json"), "utf8"));
     const vAr = loadSchemaValidator("agent-run-record");
     expect(vAr(ar)).toBe(true);
+  }, 20_000);
+
+  it("plan-transition --write-run-bundle sets transitionRulesSource body_section for body rules", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "plan-bundle-body-"));
+    execFileSync("git", ["init", dir], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "config", "user.email", "c@test"], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "config", "user.name", "c"], { windowsHide: true });
+    writeFileSync(path.join(dir, "f.txt"), "1");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "a"], { windowsHide: true });
+    const b = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+    writeFileSync(path.join(dir, "f.txt"), "2");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "b"], { windowsHide: true });
+    const a = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+
+    const plan = `---
+name: p
+---
+## Repository transition validation
+\`\`\`yaml
+schemaVersion: 1
+rules:
+  - id: noop
+    kind: forbidMatchingRows
+    pattern: "__no_such_path_plan_bundle_body__.txt"
+\`\`\`
+`;
+    const planPath = path.join(dir, "Plan.md");
+    writeFileSync(planPath, plan, "utf8");
+
+    const bundleDir = path.join(dir, "bundle-out");
+    mkdirSync(bundleDir, { recursive: true });
+    execFileSync(
+      process.execPath,
+      [
+        cliJs,
+        "plan-transition",
+        "--repo",
+        dir,
+        "--before",
+        b,
+        "--after",
+        a,
+        "--plan",
+        planPath,
+        "--no-truth-report",
+        "--write-run-bundle",
+        bundleDir,
+      ],
+      { encoding: "utf8", windowsHide: true },
+    );
+
+    const evLine = JSON.parse(readFileSync(path.join(bundleDir, "events.ndjson"), "utf8").trim()) as {
+      params: { transitionRulesSource?: string };
+    };
+    expect(loadSchemaValidator("event")(evLine)).toBe(true);
+    expect(evLine.params.transitionRulesSource).toBe("body_section");
   }, 20_000);
 });

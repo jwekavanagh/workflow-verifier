@@ -19,6 +19,16 @@ const PICOMATCH_OPTIONS = { dot: true, nocase: false } as const;
 
 const EVIDENCE_CAP = 50;
 
+const PLAN_INSUFFICIENT_SPEC_DETAIL =
+  "No machine-checkable plan transition rules were found. Add planValidation (schemaVersion: 1, rules) under YAML front matter, or add exactly one heading \"Repository transition validation\" followed by a single yaml or yml fenced block with the same structure.";
+
+const PLAN_BODY_FIRST_FENCE_MUST_BE_YAML =
+  "The first fenced code block in the \"Repository transition validation\" section must use the yaml or yml language tag.";
+
+const REPOSITORY_TRANSITION_HEADING_LINE = /^#{1,6}\s+Repository transition validation\s*$/;
+
+export type TransitionRulesProvenance = "front_matter" | "body_section";
+
 export type PlanDiffRowKind =
   | "add"
   | "modify"
@@ -282,9 +292,87 @@ export function extractPlanFrontMatterYamlSource(md: string): string {
   return rest.slice(0, end);
 }
 
-export function parseAndValidatePlanDocument(planFilePath: string): { rules: PlanRule[] } {
-  const raw = readFileSync(planFilePath, "utf8");
-  const yamlSrc = extractPlanFrontMatterYamlSource(raw);
+function stripUtf8Bom(s: string): string {
+  return s.charCodeAt(0) === 0xfeff ? s.slice(1) : s;
+}
+
+export function extractMarkdownBodyAfterFrontMatter(md: string): string {
+  if (!md.startsWith("---\n") && !md.startsWith("---\r\n")) {
+    throw new TruthLayerError(
+      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_NO_FRONT_MATTER,
+      "Plan.md must start with YAML front matter (--- on line 1).",
+    );
+  }
+  const rest = md.slice(3).replace(/^\r?\n/, "");
+  const end = rest.search(/\n---\s*(?:\r?\n|$)/);
+  if (end === -1) {
+    throw new TruthLayerError(
+      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_NO_FRONT_MATTER,
+      "Plan.md front matter must end with a closing --- line.",
+    );
+  }
+  const afterClose = rest.slice(end);
+  const delim = afterClose.match(/^\r?\n---\s*(?:\r?\n|$)/);
+  if (!delim) {
+    throw new TruthLayerError(
+      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_NO_FRONT_MATTER,
+      "Plan.md front matter must end with a closing --- line.",
+    );
+  }
+  return afterClose.slice(delim[0].length);
+}
+
+function markdownHeadingLevel(line: string): number | null {
+  const m = /^(#{1,6})\s/.exec(line);
+  return m ? m[1]!.length : null;
+}
+
+function extractFencedBlocks(section: string): Array<{ info: string; inner: string }> {
+  const lines = section.split("\n");
+  const blocks: Array<{ info: string; inner: string }> = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i]!;
+    const open = /^```(\S*)\s*$/.exec(line);
+    if (!open) {
+      i += 1;
+      continue;
+    }
+    const info = open[1] ?? "";
+    i += 1;
+    const innerLines: string[] = [];
+    let closed = false;
+    while (i < lines.length) {
+      if (/^```\s*$/.test(lines[i]!)) {
+        closed = true;
+        i += 1;
+        break;
+      }
+      innerLines.push(lines[i]!);
+      i += 1;
+    }
+    if (closed) {
+      blocks.push({ info, inner: innerLines.join("\n") });
+    }
+  }
+  return blocks;
+}
+
+function validatePlanValidationCoreOrThrow(value: unknown, labelPrefix: string): PlanRule[] {
+  const v = loadSchemaValidator("plan-validation-core");
+  if (!v(value)) {
+    const msg = `${labelPrefix}${JSON.stringify(v.errors ?? [])}`;
+    throw new TruthLayerError(CLI_OPERATIONAL_CODES.PLAN_VALIDATION_SCHEMA_INVALID, msg);
+  }
+  return (value as { rules: PlanRule[] }).rules;
+}
+
+export function loadPlanTransitionRules(rawMarkdown: string): {
+  rules: PlanRule[];
+  source: TransitionRulesProvenance;
+} {
+  const md = stripUtf8Bom(rawMarkdown);
+  const yamlSrc = extractPlanFrontMatterYamlSource(md);
   let doc: unknown;
   try {
     doc = YAML.parse(yamlSrc);
@@ -295,13 +383,91 @@ export function parseAndValidatePlanDocument(planFilePath: string): { rules: Pla
       { cause: e },
     );
   }
-  const v = loadSchemaValidator("plan-validation-frontmatter");
-  if (!v(doc)) {
-    const msg = JSON.stringify(v.errors ?? []);
-    throw new TruthLayerError(CLI_OPERATIONAL_CODES.PLAN_VALIDATION_SCHEMA_INVALID, msg);
+  const fm =
+    doc && typeof doc === "object" && doc !== null ? (doc as Record<string, unknown>) : {};
+  if (Object.prototype.hasOwnProperty.call(fm, "planValidation")) {
+    const rules = validatePlanValidationCoreOrThrow(fm.planValidation, "front matter planValidation:");
+    return { rules, source: "front_matter" };
   }
-  const d = doc as { planValidation: { rules: PlanRule[] } };
-  return { rules: d.planValidation.rules };
+
+  const body = extractMarkdownBodyAfterFrontMatter(md).replace(/\r\n/g, "\n");
+  const lines = body.split("\n");
+  const headingIndices: number[] = [];
+  for (let li = 0; li < lines.length; li++) {
+    if (REPOSITORY_TRANSITION_HEADING_LINE.test(lines[li]!)) headingIndices.push(li);
+  }
+  if (headingIndices.length === 0) {
+    throw new TruthLayerError(
+      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC,
+      PLAN_INSUFFICIENT_SPEC_DETAIL,
+    );
+  }
+  if (headingIndices.length > 1) {
+    throw new TruthLayerError(
+      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_AMBIGUOUS_BODY_RULES,
+      'Duplicate "Repository transition validation" headings are not allowed when loading rules from the plan body.',
+    );
+  }
+  const headingLineIdx = headingIndices[0]!;
+  const level = markdownHeadingLevel(lines[headingLineIdx]!);
+  if (level === null) {
+    throw new TruthLayerError(
+      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC,
+      PLAN_INSUFFICIENT_SPEC_DETAIL,
+    );
+  }
+  const sectionLines: string[] = [];
+  for (let li = headingLineIdx + 1; li < lines.length; li++) {
+    const line = lines[li]!;
+    const lvl = markdownHeadingLevel(line);
+    if (lvl !== null && lvl <= level) break;
+    sectionLines.push(line);
+  }
+  const section = sectionLines.join("\n");
+  const blocks = extractFencedBlocks(section);
+  if (blocks.length === 0) {
+    throw new TruthLayerError(
+      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC,
+      PLAN_INSUFFICIENT_SPEC_DETAIL,
+    );
+  }
+  const first = blocks[0]!;
+  if (first.info !== "yaml" && first.info !== "yml") {
+    throw new TruthLayerError(
+      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC,
+      PLAN_BODY_FIRST_FENCE_MUST_BE_YAML,
+    );
+  }
+  const yamlFenceCount = blocks.filter((b) => b.info === "yaml" || b.info === "yml").length;
+  if (yamlFenceCount > 1) {
+    throw new TruthLayerError(
+      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_AMBIGUOUS_BODY_RULES,
+      'Multiple yaml or yml fenced blocks in the "Repository transition validation" section are not allowed.',
+    );
+  }
+  let parsed: unknown;
+  try {
+    parsed = YAML.parse(first.inner);
+  } catch (e) {
+    throw new TruthLayerError(
+      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_YAML_INVALID,
+      `body Repository transition validation: YAML parse failed: ${e instanceof Error ? e.message : String(e)}`,
+      { cause: e },
+    );
+  }
+  const rules = validatePlanValidationCoreOrThrow(
+    parsed,
+    "body Repository transition validation:",
+  );
+  return { rules, source: "body_section" };
+}
+
+export function parseAndValidatePlanDocument(planFilePath: string): {
+  rules: PlanRule[];
+  source: TransitionRulesProvenance;
+} {
+  const raw = readFileSync(planFilePath, "utf8");
+  return loadPlanTransitionRules(raw);
 }
 
 export function assertPlanPathInsideRepo(repoRoot: string, planPath: string): string {
@@ -491,11 +657,13 @@ export type BuildPlanTransitionInput = {
   workflowId?: string;
 };
 
-export function buildPlanTransitionWorkflowResult(input: BuildPlanTransitionInput): WorkflowResult {
+export function buildPlanTransitionWorkflowResult(
+  input: BuildPlanTransitionInput,
+): { workflowResult: WorkflowResult; transitionRulesProvenance: TransitionRulesProvenance } {
   assertGitVersionAtLeast_2_30();
   const repo = path.resolve(input.repoRoot);
   const planReal = assertPlanPathInsideRepo(repo, input.planPath);
-  const { rules } = parseAndValidatePlanDocument(planReal);
+  const { rules, source } = parseAndValidatePlanDocument(planReal);
   preflightAllPlanPatterns(rules);
 
   const beforeSha = resolveCommitSha(repo, input.beforeRef);
@@ -511,7 +679,10 @@ export function buildPlanTransitionWorkflowResult(input: BuildPlanTransitionInpu
     pollIntervalMs: 0,
   });
   const engine = aggregateWorkflow(workflowId, steps, [], verificationPolicy, { kind: "normal" });
-  return finalizeEmittedWorkflowResult(engine);
+  return {
+    workflowResult: finalizeEmittedWorkflowResult(engine),
+    transitionRulesProvenance: source,
+  };
 }
 
 export function sha256HexOfFile(filePath: string): string {
@@ -527,6 +698,7 @@ export function buildPlanTransitionEventsNdjson(input: {
   afterCommitSha: string;
   planResolvedPath: string;
   planSha256: string;
+  transitionRulesSource: TransitionRulesProvenance;
 }): Buffer {
   const line = {
     schemaVersion: 1,
@@ -541,6 +713,7 @@ export function buildPlanTransitionEventsNdjson(input: {
       afterCommitSha: input.afterCommitSha,
       planResolvedPath: input.planResolvedPath,
       planSha256: input.planSha256,
+      transitionRulesSource: input.transitionRulesSource,
     },
   };
   return Buffer.from(`${JSON.stringify(line)}\n`, "utf8");

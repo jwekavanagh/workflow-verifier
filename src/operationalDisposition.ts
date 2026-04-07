@@ -218,13 +218,29 @@ export const OPERATIONAL_DISPOSITION = {
   },
   [CLI_OPERATIONAL_CODES.PLAN_VALIDATION_YAML_INVALID]: {
     origin: "inputs",
-    summary: "Plan.md front matter is not valid YAML.",
+    summary:
+      "YAML parse failed in Plan.md (YAML front matter or the body section \"Repository transition validation\").",
     actionableCategory: "bad_input",
     actionableSeverity: "medium",
   },
   [CLI_OPERATIONAL_CODES.PLAN_VALIDATION_SCHEMA_INVALID]: {
     origin: "inputs",
-    summary: "planValidation in Plan.md failed schema validation.",
+    summary:
+      "planValidation rules failed JSON Schema validation (front matter key planValidation or body yaml fence under \"Repository transition validation\").",
+    actionableCategory: "bad_input",
+    actionableSeverity: "medium",
+  },
+  [CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC]: {
+    origin: "inputs",
+    summary:
+      "Plan.md has no machine-checkable transition rules: add planValidation to YAML front matter, or add a single ## Repository transition validation section whose first fenced block is yaml/yml.",
+    actionableCategory: "bad_input",
+    actionableSeverity: "medium",
+  },
+  [CLI_OPERATIONAL_CODES.PLAN_VALIDATION_AMBIGUOUS_BODY_RULES]: {
+    origin: "inputs",
+    summary:
+      "Plan.md body has duplicate \"Repository transition validation\" headings or multiple yaml/yml fences in that section.",
     actionableCategory: "bad_input",
     actionableSeverity: "medium",
   },

@@ -1,21 +1,14 @@
 {
-  "$id": "https://execution-truth-layer/schemas/plan-validation-frontmatter.schema.json",
-  "title": "PlanValidationFrontmatterDocument",
+  "$id": "https://execution-truth-layer/schemas/plan-validation-core.schema.json",
+  "title": "PlanValidationCore",
   "type": "object",
-  "required": ["planValidation"],
-  "additionalProperties": true,
+  "additionalProperties": false,
+  "required": ["schemaVersion", "rules"],
   "properties": {
-    "planValidation": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["schemaVersion", "rules"],
-      "properties": {
-        "schemaVersion": { "const": 1 },
-        "rules": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/planRule" }
-        }
-      }
+    "schemaVersion": { "const": 1 },
+    "rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/planRule" }
     }
   },
   "$defs": {

@@ -36,7 +36,7 @@ export type SchemaValidatorName =
   | "run-comparison-report"
   | "registry-validation-result"
   | "cli-error-envelope"
-  | "plan-validation-frontmatter";
+  | "plan-validation-core";
 
 const validatorCache: Partial<Record<SchemaValidatorName, ValidateFunction>> = {};
 
@@ -108,8 +108,8 @@ export function loadSchemaValidator(name: SchemaValidatorName): ValidateFunction
       return compileSchemaFile(name, "run-comparison-report.schema.json");
     case "registry-validation-result":
       return compileSchemaFile(name, "registry-validation-result.schema.json");
-    case "plan-validation-frontmatter":
-      return compileSchemaFile(name, "plan-validation-frontmatter.schema.json");
+    case "plan-validation-core":
+      return compileSchemaFile(name, "plan-validation-core.schema.json");
     default: {
       const _exhaustive: never = name;
       return _exhaustive;

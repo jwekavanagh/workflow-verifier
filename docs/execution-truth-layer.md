@@ -101,7 +101,7 @@ Types: **`runTrustPanelHtml`** non-empty string (from **`renderRunTrustPanelHtml
 | **`p[data-etl-window-trend]`**, **`p[data-etl-pairwise-trend]`**, **`p[data-etl-recurrence]`** | Reliability lines |
 | **`ul[data-etl-list="introduced\|resolved\|recurring"]`** | Compare highlight lists (may be empty; no placeholder **`li`**) |
 | **`section[data-etl-section="run-trust"]`** | Trust panel root |
-| **`p[data-etl-verification-basis]`** | Fixed operator line: independent SQL basis (plan-transition runs: git + **`planValidation`** basis — see [Plan transition validation](#plan-transition-validation-normative)) |
+| **`p[data-etl-verification-basis]`** | Fixed operator line: independent SQL basis (plan-transition runs: git + machine plan rules basis — see [Plan transition validation](#plan-transition-validation-normative)) |
 | **`table[data-etl-table="verify-evidence"]`**, **`tr[data-etl-seq]`**, **`td[data-etl-field="sql-evidence"]`** | Step alignment + SQL evidence column |
 | **`tr[data-etl-alignment-warning="true"]`** | Truth/engine seq misalignment |
 | **`section[data-etl-section="execution-path"]`**, **`p[data-etl-execution-path-empty]`**, **`p[data-etl-execution-path-summary]`**, **`ol[data-etl-list="execution-findings"]`**, **`li[data-etl-finding-code]`** | Execution-path rollup |
@@ -116,19 +116,60 @@ Types: **`runTrustPanelHtml`** non-empty string (from **`renderRunTrustPanelHtml
 
 ## Plan transition validation (normative)
 
-This subsection defines **`verify-workflow plan-transition`**: validate a **git** diff between two commits against **machine-declared rules** in **`Plan.md` YAML front matter**. It does **not** interpret free-form markdown or todo checkboxes; intent is only what appears under **`planValidation`** after schema validation. It does **not** use SQL or the tool registry.
+This subsection defines **`verify-workflow plan-transition`**: validate a **git** diff between two commits against **machine-declared rules** read from the same plan markdown file (**`--plan`**). Rules are **not** inferred from prose, tables, or todo text. It does **not** use SQL or the tool registry.
 
 ### Non-goals
 
-- No NLP on the markdown body.
-- No equivalence between `planLogicalSteps` (tool `seq` grouping) and a human **`Plan.md`** unless the author copies rules into **`planValidation`**.
+- No NLP on the markdown body (including **`overview`** and todo **`content`**).
+- No equivalence between `planLogicalSteps` (tool `seq` grouping) and narrative in the plan unless the author supplies machine rules in one of the allowed places below.
 
-### Requirements
+### Where rules come from (ordered)
+
+1. **Front matter `planValidation` key:** If the parsed YAML front matter object **has own property** **`planValidation`**, its value is validated with AJV against [`schemas/plan-validation-core.schema.json`](../schemas/plan-validation-core.schema.json) (object **`schemaVersion` `1`** and **`rules`**). The markdown body is **not** scanned. Duplicate **`Repository transition validation`** headings in the body are ignored in this case.
+2. **Body section:** If **`planValidation`** is **absent** from front matter, rules load from the body only, as follows.
+
+### Body section contract (only when `planValidation` key absent)
+
+- Normalize the body after the closing front matter delimiter using **LF** newlines (`\r\n` → `\n`).
+- **Heading lines:** count lines matching exactly  
+  `^#{1,6}\s+Repository transition validation\s*$`  
+  - **0 matches** → operational **`PLAN_VALIDATION_INSUFFICIENT_SPEC`**.  
+  - **>1 match** → **`PLAN_VALIDATION_AMBIGUOUS_BODY_RULES`**.  
+  - **Exactly 1 match:** let **`H`** be the heading level (number of `#`). The **section** runs from the line after that heading through the line before the next heading whose level is **≤ `H`**, or to EOF.
+- **Fenced blocks** in the section (opening line `^```(\S*)\s*$`, closing line `^```\s*$`, in order):
+  - **0 blocks** → **`PLAN_VALIDATION_INSUFFICIENT_SPEC`**.
+  - The **first** block’s info string must be exactly **`yaml`** or **`yml`**; otherwise **`PLAN_VALIDATION_INSUFFICIENT_SPEC`** (first fence must be YAML).
+  - If **more than one** block has info **`yaml`** or **`yml`** → **`PLAN_VALIDATION_AMBIGUOUS_BODY_RULES`**.
+  - Parse the **first** fenced block’s inner text as YAML. YAML parse failure → **`PLAN_VALIDATION_YAML_INVALID`** with message prefix **`body Repository transition validation:`**.
+  - Validate the parsed object with **`plan-validation-core`**. Failure → **`PLAN_VALIDATION_SCHEMA_INVALID`** with prefix **`body Repository transition validation:`**.
+
+### Front matter YAML (always)
+
+- Malformed front matter YAML → **`PLAN_VALIDATION_YAML_INVALID`**.
+- If **`planValidation`** is present and core validation fails → **`PLAN_VALIDATION_SCHEMA_INVALID`** with prefix **`front matter planValidation:`**.
+
+### Failure modes (plan-transition validation inputs)
+
+| Condition | Code |
+|-----------|------|
+| Front matter YAML parse error | `PLAN_VALIDATION_YAML_INVALID` |
+| `planValidation` present, core AJV fails | `PLAN_VALIDATION_SCHEMA_INVALID` (`front matter planValidation:` prefix) |
+| No `planValidation` key; body heading count 0 | `PLAN_VALIDATION_INSUFFICIENT_SPEC` |
+| No `planValidation` key; body heading count > 1 | `PLAN_VALIDATION_AMBIGUOUS_BODY_RULES` |
+| No `planValidation` key; section has no fences | `PLAN_VALIDATION_INSUFFICIENT_SPEC` |
+| No `planValidation` key; first fence not `yaml`/`yml` | `PLAN_VALIDATION_INSUFFICIENT_SPEC` |
+| No `planValidation` key; two or more `yaml`/`yml` fences in section | `PLAN_VALIDATION_AMBIGUOUS_BODY_RULES` |
+| No `planValidation` key; body YAML parse error | `PLAN_VALIDATION_YAML_INVALID` (`body Repository transition validation:` prefix) |
+| No `planValidation` key; body core AJV fails | `PLAN_VALIDATION_SCHEMA_INVALID` (`body Repository transition validation:` prefix) |
+| Unsafe / invalid glob in rules | `PLAN_VALIDATION_INVALID_PATTERN` |
+| Git / ref / parse errors | `PLAN_TRANSITION_*` |
+
+### Requirements (environment and file)
 
 - **Git:** minimum **2.30.0** (enforced before diff; operational code **`PLAN_TRANSITION_GIT_TOO_OLD`**).
 - **Diff:** `git -C <repo> diff --no-ext-diff -z --name-status <before>..<after>` with **both** refs resolved via `git rev-parse --verify <ref>^{commit}`.
-- **Plan file:** must start with YAML front matter (`---` … `---`); **`--plan`** must resolve under **`realpath(--repo)`** (operational **`PLAN_PATH_OUTSIDE_REPO`** if not).
-- **Schema:** [`schemas/plan-validation-frontmatter.schema.json`](../schemas/plan-validation-frontmatter.schema.json) — root document may contain other YAML keys; **`planValidation`** is required with **`schemaVersion` `1`** and **`rules`**.
+- **Plan file:** must start with YAML front matter (`---` … `---`); **`--plan`** must resolve under **`realpath(--repo)`** (operational **`PLAN_PATH_OUTSIDE_REPO`** if not). A leading UTF-8 BOM is stripped before parsing.
+- **Rule shape SSOT:** [`schemas/plan-validation-core.schema.json`](../schemas/plan-validation-core.schema.json) — only the **`{ schemaVersion, rules }`** object is schema-validated (whether it came from front matter or from the body fence).
 
 ### Rule kinds (`planValidation.rules[]`)
 
@@ -152,7 +193,7 @@ Parsed diff rows map git status to `rowKind`: `A`→add, `M`→modify, `D`→del
 
 ### Synthetic `events.ndjson` (bundle)
 
-With **`--write-run-bundle`**, **`events.ndjson`** is a **single** schema-valid **v1** `tool_observed` line, **`toolId`:** `plan_transition.meta`, **`params`:** `beforeRef`, `afterRef`, `beforeCommitSha`, `afterCommitSha`, `planResolvedPath`, `planSha256`. **`agent-run.json`** remains schema **v1** (unchanged).
+With **`--write-run-bundle`**, **`events.ndjson`** is a **single** schema-valid **v1** `tool_observed` line, **`toolId`:** `plan_transition.meta`, **`params`:** `beforeRef`, `afterRef`, `beforeCommitSha`, `afterCommitSha`, `planResolvedPath`, `planSha256`, **`transitionRulesSource`** (`"front_matter"` \| `"body_section"`). **`agent-run.json`** remains schema **v1** (unchanged).
 
 ### Debug Console trust panel
 
@@ -179,7 +220,7 @@ Exit codes match batch verify (**0** / **1** / **2** / **3**). Operational codes
 
 | Module | Role |
 |--------|------|
-| `schemaLoad.ts` | AJV 2020-12 validators for event line, execution trace view, registry, workflow engine/result, **stdout v11** + **frozen v9** workflow result, truth report, compare-input (engine v7 / v9 / v11 **`oneOf`**), **`cli-error-envelope`**, **`run-comparison-report`**, **`agent-run-record`**, **`plan-validation-frontmatter`** |
+| `schemaLoad.ts` | AJV 2020-12 validators for event line, execution trace view, registry, workflow engine/result, **stdout v11** + **frozen v9** workflow result, truth report, compare-input (engine v7 / v9 / v11 **`oneOf`**), **`cli-error-envelope`**, **`run-comparison-report`**, **`agent-run-record`**, **`plan-validation-core`** |
 | `failureCatalog.ts` | Stable run-level literals, `formatOperationalMessage`, CLI error envelope helpers |
 | `cliOperationalCodes.ts` | Compare/corpus operational codes such as `COMPARE_INPUT_RUN_LEVEL_INCONSISTENT`, `WORKFLOW_RESULT_RUN_LEVEL_CODES_MISMATCH` |
 | `runLevelDriftMessages.ts` | Fixed `message` strings for v9 `runLevelCodes` / `runLevelReasons` drift (SSOT for CLI stderr and corpus errors) |
@@ -192,7 +233,7 @@ Exit codes match batch verify (**0** / **1** / **2** / **3**). Operational codes
 | `eventSequenceIntegrity.ts` | Pure analysis of capture order vs `seq` and optional `timestamp` monotonicity (seq-sorted order) |
 | `canonicalParams.ts` | `canonicalJsonForParams` — deterministic params serialization (retry divergence + `observedExecution.paramsCanonical`) |
 | `planLogicalSteps.ts` | Stable sort, group by `seq`, canonical params equality, divergence vs last observation |
-| `planTransition.ts` | **`plan-transition`**: git version gate, `-z` name-status parse, **`planValidation`** rule eval → **`StepOutcome[]`**, **`buildPlanTransitionWorkflowResult`**, synthetic **`events.ndjson`** meta line |
+| `planTransition.ts` | **`plan-transition`**: git version gate, `-z` name-status parse, load rules from front matter **`planValidation`** or body **`Repository transition validation`** YAML fence, rule eval → **`StepOutcome[]`**, **`buildPlanTransitionWorkflowResult`** (returns **`workflowResult`** + provenance), synthetic **`events.ndjson`** meta line |
 | `planTransitionConstants.ts` | **`PLAN_TRANSITION_WORKFLOW_ID`** (`wf_plan_transition`) — imported by truth report / debug panels without a cycle through `planTransition.ts` |
 | `resolveExpectation.ts` | Registry + params → `VerificationRequest`; `renderIntendedEffect` for step `intendedEffect.narrative` |
 | `valueVerification.ts` | Canonical display strings + `verificationScalarsEqual` (single scalar comparison table) |

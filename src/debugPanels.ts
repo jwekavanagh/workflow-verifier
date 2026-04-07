@@ -44,7 +44,7 @@ const VERIFICATION_BASIS_LINE =
   "Verification outcomes below are from read-only SQL reconciliation against the workflow registry and observed tool parameters—not from model-reported success.";
 
 const PLAN_TRANSITION_VERIFICATION_BASIS_LINE =
-  "Verification outcomes below are from git diff (name-status) and machine-declared planValidation rules in Plan.md front matter—not from model-reported success.";
+  "Verification outcomes below are from git diff (name-status) and machine-declared plan rules (YAML front matter planValidation or body section Repository transition validation)—not from model-reported success.";
 
 const EXECUTION_PATH_EMPTY = "No execution-path concerns recorded for this run.";
 
