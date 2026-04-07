@@ -102,7 +102,7 @@ Exit codes:
   Local Debug Console on 127.0.0.1 (see docs/execution-truth-layer.md — Debug Console).
 
   verify-workflow plan-transition --repo <dir> --before <ref> --after <ref> --plan <path>
-  Validate git Before..After against machine plan rules (front matter planValidation or body section; Git >= 2.30.0; see docs).
+  Validate git Before..After against machine plan rules (planValidation, body YAML section, or derived path citations; Git >= 2.30.0; see docs).
 
   --help, -h  print this message and exit 0`;
 }
@@ -610,7 +610,7 @@ Optional:
   --no-truth-report
   --write-run-bundle <dir>
 
-Requires Git >= 2.30.0. Plan file must start with YAML front matter; rules from front matter planValidation or from a body section "Repository transition validation" (see docs).
+Requires Git >= 2.30.0. Plan file must start with YAML front matter; rules from front matter planValidation, or from a body section "Repository transition validation", or derived from path citations when neither is present (see docs).
 
 Exit codes:
   0  workflow status complete

@@ -12,6 +12,7 @@ import type { Reason, StepOutcome, WorkflowResult } from "./types.js";
 import { finalizeEmittedWorkflowResult } from "./workflowTruthReport.js";
 import { resolveVerificationPolicyInput } from "./verificationPolicy.js";
 import { PLAN_TRANSITION_WORKFLOW_ID } from "./planTransitionConstants.js";
+import { harvestQualifyingPathsFromPlan } from "./planTransitionPathHarvest.js";
 
 export { PLAN_TRANSITION_WORKFLOW_ID } from "./planTransitionConstants.js";
 
@@ -20,14 +21,14 @@ const PICOMATCH_OPTIONS = { dot: true, nocase: false } as const;
 const EVIDENCE_CAP = 50;
 
 const PLAN_INSUFFICIENT_SPEC_DETAIL =
-  "No machine-checkable plan transition rules were found. Add planValidation (schemaVersion: 1, rules) under YAML front matter, or add exactly one heading \"Repository transition validation\" followed by a single yaml or yml fenced block with the same structure.";
+  "No machine-checkable plan transition rules were found. Add planValidation (schemaVersion: 1, rules) under YAML front matter; or add exactly one heading \"Repository transition validation\" followed by a single yaml or yml fenced block with the same structure; or, when neither is present, cite allowed repo-relative file paths in the plan body or in front matter todos[].content (markdown links and inline backticks under src/, schemas/, examples/, docs/, test/, debug-ui/, plans/) so rules can be derived.";
 
 const PLAN_BODY_FIRST_FENCE_MUST_BE_YAML =
   "The first fenced code block in the \"Repository transition validation\" section must use the yaml or yml language tag.";
 
 const REPOSITORY_TRANSITION_HEADING_LINE = /^#{1,6}\s+Repository transition validation\s*$/;
 
-export type TransitionRulesProvenance = "front_matter" | "body_section";
+export type TransitionRulesProvenance = "front_matter" | "body_section" | "derived_citations";
 
 export type PlanDiffRowKind =
   | "add"
@@ -396,70 +397,81 @@ export function loadPlanTransitionRules(rawMarkdown: string): {
   for (let li = 0; li < lines.length; li++) {
     if (REPOSITORY_TRANSITION_HEADING_LINE.test(lines[li]!)) headingIndices.push(li);
   }
-  if (headingIndices.length === 0) {
-    throw new TruthLayerError(
-      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC,
-      PLAN_INSUFFICIENT_SPEC_DETAIL,
-    );
-  }
   if (headingIndices.length > 1) {
     throw new TruthLayerError(
       CLI_OPERATIONAL_CODES.PLAN_VALIDATION_AMBIGUOUS_BODY_RULES,
       'Duplicate "Repository transition validation" headings are not allowed when loading rules from the plan body.',
     );
   }
-  const headingLineIdx = headingIndices[0]!;
-  const level = markdownHeadingLevel(lines[headingLineIdx]!);
-  if (level === null) {
+
+  if (headingIndices.length === 1) {
+    const headingLineIdx = headingIndices[0]!;
+    const level = markdownHeadingLevel(lines[headingLineIdx]!);
+    if (level === null) {
+      throw new TruthLayerError(
+        CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC,
+        PLAN_INSUFFICIENT_SPEC_DETAIL,
+      );
+    }
+    const sectionLines: string[] = [];
+    for (let li = headingLineIdx + 1; li < lines.length; li++) {
+      const line = lines[li]!;
+      const lvl = markdownHeadingLevel(line);
+      if (lvl !== null && lvl <= level) break;
+      sectionLines.push(line);
+    }
+    const section = sectionLines.join("\n");
+    const blocks = extractFencedBlocks(section);
+    if (blocks.length === 0) {
+      throw new TruthLayerError(
+        CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC,
+        PLAN_INSUFFICIENT_SPEC_DETAIL,
+      );
+    }
+    const first = blocks[0]!;
+    if (first.info !== "yaml" && first.info !== "yml") {
+      throw new TruthLayerError(
+        CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC,
+        PLAN_BODY_FIRST_FENCE_MUST_BE_YAML,
+      );
+    }
+    const yamlFenceCount = blocks.filter((b) => b.info === "yaml" || b.info === "yml").length;
+    if (yamlFenceCount > 1) {
+      throw new TruthLayerError(
+        CLI_OPERATIONAL_CODES.PLAN_VALIDATION_AMBIGUOUS_BODY_RULES,
+        'Multiple yaml or yml fenced blocks in the "Repository transition validation" section are not allowed.',
+      );
+    }
+    let parsed: unknown;
+    try {
+      parsed = YAML.parse(first.inner);
+    } catch (e) {
+      throw new TruthLayerError(
+        CLI_OPERATIONAL_CODES.PLAN_VALIDATION_YAML_INVALID,
+        `body Repository transition validation: YAML parse failed: ${e instanceof Error ? e.message : String(e)}`,
+        { cause: e },
+      );
+    }
+    const rules = validatePlanValidationCoreOrThrow(
+      parsed,
+      "body Repository transition validation:",
+    );
+    return { rules, source: "body_section" };
+  }
+
+  const harvested = harvestQualifyingPathsFromPlan(md, fm);
+  if (harvested.length === 0) {
     throw new TruthLayerError(
       CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC,
       PLAN_INSUFFICIENT_SPEC_DETAIL,
     );
   }
-  const sectionLines: string[] = [];
-  for (let li = headingLineIdx + 1; li < lines.length; li++) {
-    const line = lines[li]!;
-    const lvl = markdownHeadingLevel(line);
-    if (lvl !== null && lvl <= level) break;
-    sectionLines.push(line);
-  }
-  const section = sectionLines.join("\n");
-  const blocks = extractFencedBlocks(section);
-  if (blocks.length === 0) {
-    throw new TruthLayerError(
-      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC,
-      PLAN_INSUFFICIENT_SPEC_DETAIL,
-    );
-  }
-  const first = blocks[0]!;
-  if (first.info !== "yaml" && first.info !== "yml") {
-    throw new TruthLayerError(
-      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC,
-      PLAN_BODY_FIRST_FENCE_MUST_BE_YAML,
-    );
-  }
-  const yamlFenceCount = blocks.filter((b) => b.info === "yaml" || b.info === "yml").length;
-  if (yamlFenceCount > 1) {
-    throw new TruthLayerError(
-      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_AMBIGUOUS_BODY_RULES,
-      'Multiple yaml or yml fenced blocks in the "Repository transition validation" section are not allowed.',
-    );
-  }
-  let parsed: unknown;
-  try {
-    parsed = YAML.parse(first.inner);
-  } catch (e) {
-    throw new TruthLayerError(
-      CLI_OPERATIONAL_CODES.PLAN_VALIDATION_YAML_INVALID,
-      `body Repository transition validation: YAML parse failed: ${e instanceof Error ? e.message : String(e)}`,
-      { cause: e },
-    );
-  }
-  const rules = validatePlanValidationCoreOrThrow(
-    parsed,
-    "body Repository transition validation:",
-  );
-  return { rules, source: "body_section" };
+  const derivedRule: PlanRule = {
+    id: "derived.allowlist",
+    kind: "allChangedPathsMustMatchAllowlist",
+    allowPatterns: harvested,
+  };
+  return { rules: [derivedRule], source: "derived_citations" };
 }
 
 export function parseAndValidatePlanDocument(planFilePath: string): {

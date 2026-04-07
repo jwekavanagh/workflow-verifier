@@ -186,6 +186,23 @@ describe("planTransition", () => {
     expect(line.params.planSha256).toHaveLength(64);
   });
 
+  it("buildPlanTransitionEventsNdjson accepts transitionRulesSource derived_citations", () => {
+    const v = loadSchemaValidator("event");
+    const buf = buildPlanTransitionEventsNdjson({
+      workflowId: PLAN_TRANSITION_WORKFLOW_ID,
+      beforeRef: "main~1",
+      afterRef: "main",
+      beforeCommitSha: "a".repeat(40),
+      afterCommitSha: "b".repeat(40),
+      planResolvedPath: path.join(root, "Plan.md"),
+      planSha256: "c".repeat(64),
+      transitionRulesSource: "derived_citations",
+    });
+    const line = JSON.parse(buf.toString("utf8").trim());
+    expect(v(line)).toBe(true);
+    expect(line.params.transitionRulesSource).toBe("derived_citations");
+  });
+
   it("git subprocess: modify file with space in name matches parser", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "plan-tr-"));
     execFileSync("git", ["init", dir], { windowsHide: true });
@@ -464,10 +481,88 @@ rules:
     expect(result.status).toBe("complete");
     expect(result.steps[0]?.status).toBe("verified");
   }, 20_000);
+
+  it("integration: derived_citations allowlist passes when diff only touches cited file", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "plan-tr-derived-pass-"));
+    execFileSync("git", ["init", dir], { windowsHide: true });
+    gitConfig(dir);
+    mkdirSync(path.join(dir, "src"), { recursive: true });
+    writeFileSync(path.join(dir, "src", "tracked.ts"), "a");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "base"], { windowsHide: true });
+    const before = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+    writeFileSync(path.join(dir, "src", "tracked.ts"), "b");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "chg"], { windowsHide: true });
+    const after = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+
+    const planBody = `---
+name: Plan
+overview: x
+isProject: false
+---
+
+# Work
+
+Edit \`src/tracked.ts\`.
+`;
+    const planPath = path.join(dir, "Plan.md");
+    writeFileSync(planPath, planBody, "utf8");
+
+    const { workflowResult: result, transitionRulesProvenance } = buildPlanTransitionWorkflowResult({
+      repoRoot: dir,
+      beforeRef: before,
+      afterRef: after,
+      planPath,
+    });
+    expect(transitionRulesProvenance).toBe("derived_citations");
+    expect(result.status).toBe("complete");
+    expect(result.steps[0]?.status).toBe("verified");
+  }, 20_000);
+
+  it("integration: derived_citations fails when diff adds uncited root file", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "plan-tr-derived-fail-"));
+    execFileSync("git", ["init", dir], { windowsHide: true });
+    gitConfig(dir);
+    mkdirSync(path.join(dir, "src"), { recursive: true });
+    writeFileSync(path.join(dir, "src", "tracked.ts"), "a");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "base"], { windowsHide: true });
+    const before = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+    writeFileSync(path.join(dir, "src", "tracked.ts"), "b");
+    writeFileSync(path.join(dir, "z_uncited.txt"), "x");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "chg"], { windowsHide: true });
+    const after = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+
+    const planBody = `---
+name: Plan
+overview: x
+isProject: false
+---
+
+# Work
+
+Edit \`src/tracked.ts\`.
+`;
+    const planPath = path.join(dir, "Plan.md");
+    writeFileSync(planPath, planBody, "utf8");
+
+    const { workflowResult: result, transitionRulesProvenance } = buildPlanTransitionWorkflowResult({
+      repoRoot: dir,
+      beforeRef: before,
+      afterRef: after,
+      planPath,
+    });
+    expect(transitionRulesProvenance).toBe("derived_citations");
+    expect(result.status).toBe("inconsistent");
+    expect(result.steps[0]?.status).toBe("inconsistent");
+    expect(result.steps[0]?.reasons[0]?.code).toBe(PLAN_RULE_CODES.ALLOWLIST_VIOLATION);
+  }, 20_000);
 });
 
 describe("loadPlanTransitionRules", () => {
-  it("Cursor-like front matter without planValidation yields INSUFFICIENT_SPEC", () => {
+  it("Cursor-like front matter without planValidation and no citations yields INSUFFICIENT_SPEC", () => {
     const md = `---
 name: Slice
 overview: x
@@ -484,6 +579,28 @@ isProject: false
       expect(e).toBeInstanceOf(TruthLayerError);
       expect((e as TruthLayerError).code).toBe(CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC);
     }
+  });
+
+  it("derived_citations: zero Repository transition heading and one backtick path yields allowlist rule", () => {
+    const md = `---
+name: Slice
+overview: x
+isProject: false
+---
+
+# Body
+
+Change \`src/only.ts\`.
+`;
+    const { rules, source } = loadPlanTransitionRules(md);
+    expect(source).toBe("derived_citations");
+    expect(rules).toEqual([
+      {
+        id: "derived.allowlist",
+        kind: "allChangedPathsMustMatchAllowlist",
+        allowPatterns: ["src/only.ts"],
+      },
+    ]);
   });
 
   it("duplicate Repository transition validation headings yield AMBIGUOUS_BODY_RULES", () => {
@@ -587,6 +704,23 @@ rules:
       expect((e as TruthLayerError).code).toBe(CLI_OPERATIONAL_CODES.PLAN_VALIDATION_SCHEMA_INVALID);
       expect((e as TruthLayerError).message.startsWith("body Repository transition validation:")).toBe(true);
     }
+  });
+
+  it("planValidation in front matter wins over body path citations", () => {
+    const md = `---
+planValidation:
+  schemaVersion: 1
+  rules:
+    - id: fm_rule
+      kind: forbidMatchingRows
+      pattern: "nope.txt"
+---
+Also \`src/ignored.ts\` in prose.
+`;
+    const { rules, source } = loadPlanTransitionRules(md);
+    expect(source).toBe("front_matter");
+    expect(rules).toHaveLength(1);
+    expect(rules[0]?.id).toBe("fm_rule");
   });
 });
 
@@ -743,5 +877,61 @@ rules:
     };
     expect(loadSchemaValidator("event")(evLine)).toBe(true);
     expect(evLine.params.transitionRulesSource).toBe("body_section");
+  }, 20_000);
+
+  it("plan-transition --write-run-bundle sets transitionRulesSource derived_citations", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "plan-bundle-derived-"));
+    execFileSync("git", ["init", dir], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "config", "user.email", "c@test"], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "config", "user.name", "c"], { windowsHide: true });
+    mkdirSync(path.join(dir, "src"), { recursive: true });
+    writeFileSync(path.join(dir, "src", "t.ts"), "1");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "a"], { windowsHide: true });
+    const b = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+    writeFileSync(path.join(dir, "src", "t.ts"), "2");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "b"], { windowsHide: true });
+    const a = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+
+    const plan = `---
+name: p
+overview: x
+---
+
+# x
+
+\`src/t.ts\`
+`;
+    const planPath = path.join(dir, "Plan.md");
+    writeFileSync(planPath, plan, "utf8");
+
+    const bundleDir = path.join(dir, "bundle-out");
+    mkdirSync(bundleDir, { recursive: true });
+    execFileSync(
+      process.execPath,
+      [
+        cliJs,
+        "plan-transition",
+        "--repo",
+        dir,
+        "--before",
+        b,
+        "--after",
+        a,
+        "--plan",
+        planPath,
+        "--no-truth-report",
+        "--write-run-bundle",
+        bundleDir,
+      ],
+      { encoding: "utf8", windowsHide: true },
+    );
+
+    const evLine = JSON.parse(readFileSync(path.join(bundleDir, "events.ndjson"), "utf8").trim()) as {
+      params: { transitionRulesSource?: string };
+    };
+    expect(loadSchemaValidator("event")(evLine)).toBe(true);
+    expect(evLine.params.transitionRulesSource).toBe("derived_citations");
   }, 20_000);
 });

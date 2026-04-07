@@ -116,32 +116,47 @@ Types: **`runTrustPanelHtml`** non-empty string (from **`renderRunTrustPanelHtml
 
 ## Plan transition validation (normative)
 
-This subsection defines **`verify-workflow plan-transition`**: validate a **git** diff between two commits against **machine-declared rules** read from the same plan markdown file (**`--plan`**). Rules are **not** inferred from prose, tables, or todo text. It does **not** use SQL or the tool registry.
+This subsection defines **`verify-workflow plan-transition`**: validate a **git** diff between two commits against **machine-checkable rules** read from the same plan markdown file (**`--plan`**). It does **not** use SQL or the tool registry.
+
+Rules come from **one** of three sources ([Where rules come from](#where-rules-come-from-ordered)); the product **never** interprets arbitrary prose as requirements. **Derived citations** (**`derived_citations`**) collect path-shaped tokens only by deterministic rules implemented in **`planTransitionPathHarvest.ts`** — not NLP and not semantic interpretation of tables or checklist prose.
 
 ### Non-goals
 
-- No NLP on the markdown body (including **`overview`** and todo **`content`**).
-- No equivalence between `planLogicalSteps` (tool `seq` grouping) and narrative in the plan unless the author supplies machine rules in one of the allowed places below.
+- No NLP or free-text “understanding” of **`overview`**, narrative tables, or todo **semantics**.
+- No equivalence between `planLogicalSteps` (tool `seq` grouping) and narrative unless the author supplies **`planValidation`**, the body YAML block, or qualifying path citations for the derived allowlist.
+- **No fallback:** If there is **exactly one** **`Repository transition validation`** heading, only the body YAML pipeline runs; malformed YAML, wrong fences, or schema errors **do not** fall through to derived citations.
 
 ### Where rules come from (ordered)
 
-1. **Front matter `planValidation` key:** If the parsed YAML front matter object **has own property** **`planValidation`**, its value is validated with AJV against [`schemas/plan-validation-core.schema.json`](../schemas/plan-validation-core.schema.json) (object **`schemaVersion` `1`** and **`rules`**). The markdown body is **not** scanned. Duplicate **`Repository transition validation`** headings in the body are ignored in this case.
-2. **Body section:** If **`planValidation`** is **absent** from front matter, rules load from the body only, as follows.
+1. **Front matter `planValidation` key:** If the parsed YAML front matter object **has own property** **`planValidation`**, its value is validated with AJV against [`schemas/plan-validation-core.schema.json`](../schemas/plan-validation-core.schema.json) (object **`schemaVersion` `1`** and **`rules`**). The markdown body is **not** scanned for rules. Duplicate **`Repository transition validation`** headings in the body are ignored in this case.
+2. **Else** normalize the plan body after the closing front matter delimiter using **LF** newlines (`\r\n` → `\n`) and count lines matching exactly  
+   `^#{1,6}\s+Repository transition validation\s*$`.
+   - **>1 match** → **`PLAN_VALIDATION_AMBIGUOUS_BODY_RULES`**. **No** derived citations.
+   - **Exactly 1 match** → load rules from the [body YAML section](#body-section-contract-exactly-one-repository-transition-validation-heading) below. **No** derived citations on any error in that pipeline.
+   - **0 matches** → [Derived citations](#derived-citations-derived_citations): if **≥1** qualifying path is harvested, emit a single synthetic rule **`allChangedPathsMustMatchAllowlist`** with **`id`** **`derived.allowlist`** and **`allowPatterns`** = sorted unique paths. If **0** paths → **`PLAN_VALIDATION_INSUFFICIENT_SPEC`**.
 
-### Body section contract (only when `planValidation` key absent)
+### Body section contract (exactly one `Repository transition validation` heading)
 
-- Normalize the body after the closing front matter delimiter using **LF** newlines (`\r\n` → `\n`).
-- **Heading lines:** count lines matching exactly  
-  `^#{1,6}\s+Repository transition validation\s*$`  
-  - **0 matches** → operational **`PLAN_VALIDATION_INSUFFICIENT_SPEC`**.  
-  - **>1 match** → **`PLAN_VALIDATION_AMBIGUOUS_BODY_RULES`**.  
-  - **Exactly 1 match:** let **`H`** be the heading level (number of `#`). The **section** runs from the line after that heading through the line before the next heading whose level is **≤ `H`**, or to EOF.
+- Let **`H`** be the heading level (number of `#`). The **section** runs from the line after that heading through the line before the next heading whose level is **≤ `H`**, or to EOF.
 - **Fenced blocks** in the section (opening line `^```(\S*)\s*$`, closing line `^```\s*$`, in order):
   - **0 blocks** → **`PLAN_VALIDATION_INSUFFICIENT_SPEC`**.
   - The **first** block’s info string must be exactly **`yaml`** or **`yml`**; otherwise **`PLAN_VALIDATION_INSUFFICIENT_SPEC`** (first fence must be YAML).
   - If **more than one** block has info **`yaml`** or **`yml`** → **`PLAN_VALIDATION_AMBIGUOUS_BODY_RULES`**.
   - Parse the **first** fenced block’s inner text as YAML. YAML parse failure → **`PLAN_VALIDATION_YAML_INVALID`** with message prefix **`body Repository transition validation:`**.
   - Validate the parsed object with **`plan-validation-core`**. Failure → **`PLAN_VALIDATION_SCHEMA_INVALID`** with prefix **`body Repository transition validation:`**.
+
+### Derived citations (`derived_citations`)
+
+**Scan surfaces:** (1) Plan body after front matter, with **all** fenced code blocks removed (same fence line rules as elsewhere: opening `^```(\S*)\s*$`, closing `^```\s*$`, inclusive). (2) Each front matter **`todos[]`** element that is an object with **`content`** a string — run the **same** extractors on **`content`** only.
+
+**Extractors (deterministic):**
+
+- **Markdown links** (non-image): `(?<!!)\[([^\]]*)\]\(([^)\s]+)(\s+"[^"]*")?\)` — candidate = group 2; optional `<` `>` wrapper stripped from ends.
+- **Inline backticks:** single-line `` `…` `` where the inner text matches a repo-relative path under allowed roots with an allowed extension (see **`planTransitionPathHarvest.ts`**).
+
+**Normalization:** trim ASCII space/tab; optional **`file:`** URL via `URL` + pathname; `\` → `/`; strip leading `./`; reject `..`, ASCII controls, spaces, `?`, `#`, and `//` in the candidate; take the **last** path anchored at allowed roots **`src/`**, **`schemas/`**, **`examples/`**, **`docs/`**, **`test/`**, **`debug-ui/`**, **`plans/`**; final segment must use an allowed extension (**`ts`**, **`tsx`**, **`js`**, **`mjs`**, **`json`**, **`md`**, **`sql`**, case-insensitive on input; canonical paths lowercase the extension only). **Dedupe** with a set; **sort** UTF-16 string order.
+
+**Product meaning:** Every path in the git name-status diff must match **≥1** harvested pattern. **Scope-only:** does **not** assert that every cited file changed, nor row kinds, nor narrative requirements.
 
 ### Front matter YAML (always)
 
@@ -154,14 +169,14 @@ This subsection defines **`verify-workflow plan-transition`**: validate a **git*
 |-----------|------|
 | Front matter YAML parse error | `PLAN_VALIDATION_YAML_INVALID` |
 | `planValidation` present, core AJV fails | `PLAN_VALIDATION_SCHEMA_INVALID` (`front matter planValidation:` prefix) |
-| No `planValidation` key; body heading count 0 | `PLAN_VALIDATION_INSUFFICIENT_SPEC` |
-| No `planValidation` key; body heading count > 1 | `PLAN_VALIDATION_AMBIGUOUS_BODY_RULES` |
-| No `planValidation` key; section has no fences | `PLAN_VALIDATION_INSUFFICIENT_SPEC` |
-| No `planValidation` key; first fence not `yaml`/`yml` | `PLAN_VALIDATION_INSUFFICIENT_SPEC` |
-| No `planValidation` key; two or more `yaml`/`yml` fences in section | `PLAN_VALIDATION_AMBIGUOUS_BODY_RULES` |
-| No `planValidation` key; body YAML parse error | `PLAN_VALIDATION_YAML_INVALID` (`body Repository transition validation:` prefix) |
-| No `planValidation` key; body core AJV fails | `PLAN_VALIDATION_SCHEMA_INVALID` (`body Repository transition validation:` prefix) |
-| Unsafe / invalid glob in rules | `PLAN_VALIDATION_INVALID_PATTERN` |
+| No `planValidation`; body heading count > 1 | `PLAN_VALIDATION_AMBIGUOUS_BODY_RULES` |
+| No `planValidation`; body heading count 1; section has no fences | `PLAN_VALIDATION_INSUFFICIENT_SPEC` |
+| No `planValidation`; body heading count 1; first fence not `yaml`/`yml` | `PLAN_VALIDATION_INSUFFICIENT_SPEC` |
+| No `planValidation`; body heading count 1; two or more `yaml`/`yml` fences in section | `PLAN_VALIDATION_AMBIGUOUS_BODY_RULES` |
+| No `planValidation`; body heading count 1; body YAML parse error | `PLAN_VALIDATION_YAML_INVALID` (`body Repository transition validation:` prefix) |
+| No `planValidation`; body heading count 1; body core AJV fails | `PLAN_VALIDATION_SCHEMA_INVALID` (`body Repository transition validation:` prefix) |
+| No `planValidation`; body heading count 0; zero qualifying harvested paths | `PLAN_VALIDATION_INSUFFICIENT_SPEC` |
+| Unsafe / invalid glob in rules (including derived allowPatterns) | `PLAN_VALIDATION_INVALID_PATTERN` |
 | Git / ref / parse errors | `PLAN_TRANSITION_*` |
 
 ### Requirements (environment and file)
@@ -169,7 +184,7 @@ This subsection defines **`verify-workflow plan-transition`**: validate a **git*
 - **Git:** minimum **2.30.0** (enforced before diff; operational code **`PLAN_TRANSITION_GIT_TOO_OLD`**).
 - **Diff:** `git -C <repo> diff --no-ext-diff -z --name-status <before>..<after>` with **both** refs resolved via `git rev-parse --verify <ref>^{commit}`.
 - **Plan file:** must start with YAML front matter (`---` … `---`); **`--plan`** must resolve under **`realpath(--repo)`** (operational **`PLAN_PATH_OUTSIDE_REPO`** if not). A leading UTF-8 BOM is stripped before parsing.
-- **Rule shape SSOT:** [`schemas/plan-validation-core.schema.json`](../schemas/plan-validation-core.schema.json) — only the **`{ schemaVersion, rules }`** object is schema-validated (whether it came from front matter or from the body fence).
+- **Rule shape SSOT:** [`schemas/plan-validation-core.schema.json`](../schemas/plan-validation-core.schema.json) — only the **`{ schemaVersion, rules }`** object is schema-validated when loaded from front matter or from the body fence. **Derived** rules are built in code as one **`allChangedPathsMustMatchAllowlist`** rule (always schema-compatible with that shape).
 
 ### Rule kinds (`planValidation.rules[]`)
 
@@ -193,7 +208,7 @@ Parsed diff rows map git status to `rowKind`: `A`→add, `M`→modify, `D`→del
 
 ### Synthetic `events.ndjson` (bundle)
 
-With **`--write-run-bundle`**, **`events.ndjson`** is a **single** schema-valid **v1** `tool_observed` line, **`toolId`:** `plan_transition.meta`, **`params`:** `beforeRef`, `afterRef`, `beforeCommitSha`, `afterCommitSha`, `planResolvedPath`, `planSha256`, **`transitionRulesSource`** (`"front_matter"` \| `"body_section"`). **`agent-run.json`** remains schema **v1** (unchanged).
+With **`--write-run-bundle`**, **`events.ndjson`** is a **single** schema-valid **v1** `tool_observed` line, **`toolId`:** `plan_transition.meta`, **`params`:** `beforeRef`, `afterRef`, `beforeCommitSha`, `afterCommitSha`, `planResolvedPath`, `planSha256`, **`transitionRulesSource`** (`"front_matter"` \| `"body_section"` \| `"derived_citations"`). **`agent-run.json`** remains schema **v1** (unchanged).
 
 ### Debug Console trust panel
 
@@ -210,7 +225,7 @@ Exit codes match batch verify (**0** / **1** / **2** / **3**). Operational codes
 
 ### Proof in repo
 
-- `src/planTransition.ts`, `src/planTransitionConstants.ts`, `src/planTransition.test.ts` (golden NUL fixtures, rule eval, git subprocess checks, CLI smoke).
+- `src/planTransition.ts`, `src/planTransitionPathHarvest.ts`, `src/planTransitionConstants.ts`, `src/planTransition.test.ts`, `src/planTransitionPathHarvest.test.ts` (golden NUL fixtures, path harvest goldens, rule eval, git subprocess checks, CLI smoke).
 
 ## Audiences
 
@@ -233,7 +248,8 @@ Exit codes match batch verify (**0** / **1** / **2** / **3**). Operational codes
 | `eventSequenceIntegrity.ts` | Pure analysis of capture order vs `seq` and optional `timestamp` monotonicity (seq-sorted order) |
 | `canonicalParams.ts` | `canonicalJsonForParams` — deterministic params serialization (retry divergence + `observedExecution.paramsCanonical`) |
 | `planLogicalSteps.ts` | Stable sort, group by `seq`, canonical params equality, divergence vs last observation |
-| `planTransition.ts` | **`plan-transition`**: git version gate, `-z` name-status parse, load rules from front matter **`planValidation`** or body **`Repository transition validation`** YAML fence, rule eval → **`StepOutcome[]`**, **`buildPlanTransitionWorkflowResult`** (returns **`workflowResult`** + provenance), synthetic **`events.ndjson`** meta line |
+| `planTransition.ts` | **`plan-transition`**: git version gate, `-z` name-status parse, load rules from front matter **`planValidation`**, body **`Repository transition validation`** YAML fence, or **`derived_citations`** path harvest, rule eval → **`StepOutcome[]`**, **`buildPlanTransitionWorkflowResult`** (returns **`workflowResult`** + provenance), synthetic **`events.ndjson`** meta line |
+| `planTransitionPathHarvest.ts` | Deterministic path citation harvest for **`derived_citations`** (links, inline backticks, **`todos[].content`**, fenced-block stripping) |
 | `planTransitionConstants.ts` | **`PLAN_TRANSITION_WORKFLOW_ID`** (`wf_plan_transition`) — imported by truth report / debug panels without a cycle through `planTransition.ts` |
 | `resolveExpectation.ts` | Registry + params → `VerificationRequest`; `renderIntendedEffect` for step `intendedEffect.narrative` |
 | `valueVerification.ts` | Canonical display strings + `verificationScalarsEqual` (single scalar comparison table) |
