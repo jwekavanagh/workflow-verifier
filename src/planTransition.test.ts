@@ -20,8 +20,19 @@ import {
   type PlanDiffRow,
 } from "./planTransition.js";
 import { PLAN_TRANSITION_WORKFLOW_ID } from "./planTransitionConstants.js";
+import type { WorkflowResult } from "./types.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+/** Mirrors `DERIVED_CITATION_REQUIRE_ROW_KINDS` in planTransition.ts (derived citation obligations). */
+const DERIVED_REQUIRE_MATCH_ROW_KINDS: PlanDiffRow["rowKind"][] = [
+  "add",
+  "modify",
+  "delete",
+  "rename",
+  "copy",
+  "type_change",
+];
 
 function gitConfig(repo: string): void {
   execFileSync("git", ["-C", repo, "config", "user.email", "pt@test.local"], { windowsHide: true });
@@ -104,7 +115,7 @@ describe("planTransition", () => {
     expect(step.reasons[0]?.code).toBe(PLAN_RULE_CODES.ROW_KIND_MISMATCH);
   });
 
-  it("allChangedPathsMustMatchAllowlist catches path outside allowlist", () => {
+  it("evaluatePlanRules: foreign path fails when every changed path must match pattern set", () => {
     const rows: PlanDiffRow[] = [
       { rowKind: "modify", paths: ["good.txt"] },
       { rowKind: "add", paths: ["evil.txt"] },
@@ -118,7 +129,7 @@ describe("planTransition", () => {
     expect(evaluatePlanRules(rows, [rule])[0]?.reasons[0]?.code).toBe(PLAN_RULE_CODES.ALLOWLIST_VIOLATION);
   });
 
-  it("allowlist counts both paths on rename when new path outside list", () => {
+  it("every-path-must-match-patterns rule fails rename when destination outside pattern set", () => {
     const rows: PlanDiffRow[] = [{ rowKind: "rename", paths: ["allowed/old.txt", "outside/new.txt"] }];
     const rule = {
       id: "r1",
@@ -265,7 +276,7 @@ planValidation:
     expect(result.steps[0]?.status).toBe("verified");
   }, 20_000);
 
-  it("picomatch ** pattern matches nested path for allowlist", () => {
+  it("picomatch ** matches nested path for every-path-must-match-patterns rule", () => {
     const rows: PlanDiffRow[] = [{ rowKind: "modify", paths: ["src/nested/foo.ts"] }];
     const rule = {
       id: "r1",
@@ -273,6 +284,19 @@ planValidation:
       allowPatterns: ["src/**/*.ts"],
     };
     expect(evaluatePlanRules(rows, [rule])[0]?.status).toBe("verified");
+  });
+
+  it("evaluatePlanRules: requireMatchingRow is inconsistent when diff rows are empty", () => {
+    const rows: PlanDiffRow[] = [];
+    const rule = {
+      id: "r1",
+      kind: "requireMatchingRow" as const,
+      pattern: "any/path.ts",
+      rowKinds: ["modify" as const],
+    };
+    const step = evaluatePlanRules(rows, [rule])[0]!;
+    expect(step.status).toBe("inconsistent");
+    expect(step.reasons[0]?.code).toBe(PLAN_RULE_CODES.REQUIRED_ROW_MISSING);
   });
 
   it("integration: git mv satisfies requireRenameFromTo", () => {
@@ -482,7 +506,7 @@ rules:
     expect(result.steps[0]?.status).toBe("verified");
   }, 20_000);
 
-  it("integration: derived_citations allowlist passes when diff only touches cited file", () => {
+  it("integration: derived_citations passes when diff only touches cited file", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "plan-tr-derived-pass-"));
     execFileSync("git", ["init", dir], { windowsHide: true });
     gitConfig(dir);
@@ -517,10 +541,11 @@ Edit \`src/tracked.ts\`.
     });
     expect(transitionRulesProvenance).toBe("derived_citations");
     expect(result.status).toBe("complete");
+    expect(result.steps.length).toBe(1);
     expect(result.steps[0]?.status).toBe("verified");
   }, 20_000);
 
-  it("integration: derived_citations fails when diff adds uncited root file", () => {
+  it("integration: derived_citations passes when diff adds uncited file if cited path changes", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "plan-tr-derived-fail-"));
     execFileSync("git", ["init", dir], { windowsHide: true });
     gitConfig(dir);
@@ -555,9 +580,49 @@ Edit \`src/tracked.ts\`.
       planPath,
     });
     expect(transitionRulesProvenance).toBe("derived_citations");
+    expect(result.status).toBe("complete");
+    expect(result.steps.length).toBe(1);
+    expect(result.steps.every((s) => s.status === "verified")).toBe(true);
+  }, 20_000);
+
+  it("integration: derived_citations fails when only uncited path changes", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "plan-tr-derived-uncited-only-"));
+    execFileSync("git", ["init", dir], { windowsHide: true });
+    gitConfig(dir);
+    mkdirSync(path.join(dir, "src"), { recursive: true });
+    writeFileSync(path.join(dir, "src", "tracked.ts"), "a");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "base"], { windowsHide: true });
+    const before = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+    writeFileSync(path.join(dir, "z_extra.txt"), "x");
+    execFileSync("git", ["-C", dir, "add", "."], { windowsHide: true });
+    execFileSync("git", ["-C", dir, "commit", "-m", "add uncited only"], { windowsHide: true });
+    const after = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+
+    const planBody = `---
+name: Plan
+overview: x
+isProject: false
+---
+
+# Work
+
+Edit \`src/tracked.ts\`.
+`;
+    const planPath = path.join(dir, "Plan.md");
+    writeFileSync(planPath, planBody, "utf8");
+
+    const { workflowResult: result, transitionRulesProvenance } = buildPlanTransitionWorkflowResult({
+      repoRoot: dir,
+      beforeRef: before,
+      afterRef: after,
+      planPath,
+    });
+    expect(transitionRulesProvenance).toBe("derived_citations");
     expect(result.status).toBe("inconsistent");
+    expect(result.steps.length).toBe(1);
     expect(result.steps[0]?.status).toBe("inconsistent");
-    expect(result.steps[0]?.reasons[0]?.code).toBe(PLAN_RULE_CODES.ALLOWLIST_VIOLATION);
+    expect(result.steps[0]?.reasons[0]?.code).toBe(PLAN_RULE_CODES.REQUIRED_ROW_MISSING);
   }, 20_000);
 });
 
@@ -581,7 +646,7 @@ isProject: false
     }
   });
 
-  it("derived_citations: zero Repository transition heading and one backtick path yields allowlist rule", () => {
+  it("derived_citations: zero Repository transition heading and one backtick path yields requireMatchingRow rules", () => {
     const md = `---
 name: Slice
 overview: x
@@ -596,11 +661,40 @@ Change \`src/only.ts\`.
     expect(source).toBe("derived_citations");
     expect(rules).toEqual([
       {
-        id: "derived.allowlist",
-        kind: "allChangedPathsMustMatchAllowlist",
-        allowPatterns: ["src/only.ts"],
+        id: "derived.require.0",
+        kind: "requireMatchingRow",
+        pattern: "src/only.ts",
+        rowKinds: [...DERIVED_REQUIRE_MATCH_ROW_KINDS],
       },
     ]);
+  });
+
+  it("derived_citations: two backtick paths yield two requireMatchingRow rules in path sort order", () => {
+    const md = `---
+name: Slice
+overview: x
+isProject: false
+---
+
+# Body
+
+Touch \`src/a.ts\` and \`src/b.ts\`.
+`;
+    const { rules, source } = loadPlanTransitionRules(md);
+    expect(source).toBe("derived_citations");
+    expect(rules.length).toBe(2);
+    expect(rules[0]).toEqual({
+      id: "derived.require.0",
+      kind: "requireMatchingRow",
+      pattern: "src/a.ts",
+      rowKinds: [...DERIVED_REQUIRE_MATCH_ROW_KINDS],
+    });
+    expect(rules[1]).toEqual({
+      id: "derived.require.1",
+      kind: "requireMatchingRow",
+      pattern: "src/b.ts",
+      rowKinds: [...DERIVED_REQUIRE_MATCH_ROW_KINDS],
+    });
   });
 
   it("duplicate Repository transition validation headings yield AMBIGUOUS_BODY_RULES", () => {
@@ -933,5 +1027,10 @@ overview: x
     };
     expect(loadSchemaValidator("event")(evLine)).toBe(true);
     expect(evLine.params.transitionRulesSource).toBe("derived_citations");
+
+    const wf = JSON.parse(readFileSync(path.join(bundleDir, "workflow-result.json"), "utf8")) as WorkflowResult;
+    expect(wf.status).toBe("complete");
+    expect(wf.steps.length).toBe(1);
+    expect(wf.steps[0]?.status).toBe("verified");
   }, 20_000);
 });

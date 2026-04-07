@@ -21,7 +21,7 @@ const PICOMATCH_OPTIONS = { dot: true, nocase: false } as const;
 const EVIDENCE_CAP = 50;
 
 const PLAN_INSUFFICIENT_SPEC_DETAIL =
-  "No machine-checkable plan transition rules were found. Add planValidation (schemaVersion: 1, rules) under YAML front matter; or add exactly one heading \"Repository transition validation\" followed by a single yaml or yml fenced block with the same structure; or, when neither is present, cite allowed repo-relative file paths in the plan body or in front matter todos[].content (markdown links and inline backticks under src/, schemas/, examples/, docs/, test/, debug-ui/, plans/) so rules can be derived.";
+  "No machine-checkable plan transition rules were found. Add planValidation (schemaVersion: 1, rules) under YAML front matter; or add exactly one heading \"Repository transition validation\" followed by a single yaml or yml fenced block with the same structure; or, when neither is present, cite qualifying repo-relative file paths in the plan body or in front matter todos[].content (markdown links and inline backticks under src/, schemas/, examples/, docs/, test/, debug-ui/, plans/) so each cited path can be required to appear in the git name-status diff.";
 
 const PLAN_BODY_FIRST_FENCE_MUST_BE_YAML =
   "The first fenced code block in the \"Repository transition validation\" section must use the yaml or yml language tag.";
@@ -51,6 +51,16 @@ export const PLAN_RULE_CODES = {
   ALLOWLIST_VIOLATION: "PLAN_RULE_ALLOWLIST_VIOLATION",
   RENAME_MISMATCH: "PLAN_RULE_RENAME_MISMATCH",
 } as const;
+
+/** Row kinds for synthetic `requireMatchingRow` rules from derived path citations (`unmerged` excluded). */
+const DERIVED_CITATION_REQUIRE_ROW_KINDS: PlanDiffRowKind[] = [
+  "add",
+  "modify",
+  "delete",
+  "rename",
+  "copy",
+  "type_change",
+];
 
 function normalizePathSlashes(p: string): string {
   return p.replace(/\\/g, "/");
@@ -466,12 +476,13 @@ export function loadPlanTransitionRules(rawMarkdown: string): {
       PLAN_INSUFFICIENT_SPEC_DETAIL,
     );
   }
-  const derivedRule: PlanRule = {
-    id: "derived.allowlist",
-    kind: "allChangedPathsMustMatchAllowlist",
-    allowPatterns: harvested,
-  };
-  return { rules: [derivedRule], source: "derived_citations" };
+  const derivedRules: PlanRule[] = harvested.map((pattern, i) => ({
+    id: `derived.require.${i}`,
+    kind: "requireMatchingRow" as const,
+    pattern,
+    rowKinds: [...DERIVED_CITATION_REQUIRE_ROW_KINDS],
+  }));
+  return { rules: derivedRules, source: "derived_citations" };
 }
 
 export function parseAndValidatePlanDocument(planFilePath: string): {

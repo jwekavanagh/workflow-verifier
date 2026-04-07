@@ -233,7 +233,7 @@ export const OPERATIONAL_DISPOSITION = {
   [CLI_OPERATIONAL_CODES.PLAN_VALIDATION_INSUFFICIENT_SPEC]: {
     origin: "inputs",
     summary:
-      "Plan.md has no machine-checkable transition rules: add planValidation to YAML front matter; or add a single ## Repository transition validation section whose first fenced block is yaml/yml; or cite allowed repo-relative paths in the plan body or todos (see docs — derived citations).",
+      "Plan.md has no machine-checkable transition rules: add planValidation to YAML front matter; or add a single ## Repository transition validation section whose first fenced block is yaml/yml; or cite qualifying repo-relative paths in the plan body or todos so derived rules can require those paths to appear in the git diff (see docs — derived citations).",
     actionableCategory: "bad_input",
     actionableSeverity: "medium",
   },

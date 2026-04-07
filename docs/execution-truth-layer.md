@@ -123,7 +123,7 @@ Rules come from **one** of three sources ([Where rules come from](#where-rules-c
 ### Non-goals
 
 - No NLP or free-text “understanding” of **`overview`**, narrative tables, or todo **semantics**.
-- No equivalence between `planLogicalSteps` (tool `seq` grouping) and narrative unless the author supplies **`planValidation`**, the body YAML block, or qualifying path citations for the derived allowlist.
+- No equivalence between `planLogicalSteps` (tool `seq` grouping) and narrative unless the author supplies **`planValidation`**, the body YAML block, or qualifying path citations for **derived required surfaces** (each cited path must appear in the git name-status diff).
 - **No fallback:** If there is **exactly one** **`Repository transition validation`** heading, only the body YAML pipeline runs; malformed YAML, wrong fences, or schema errors **do not** fall through to derived citations.
 
 ### Where rules come from (ordered)
@@ -133,7 +133,7 @@ Rules come from **one** of three sources ([Where rules come from](#where-rules-c
    `^#{1,6}\s+Repository transition validation\s*$`.
    - **>1 match** → **`PLAN_VALIDATION_AMBIGUOUS_BODY_RULES`**. **No** derived citations.
    - **Exactly 1 match** → load rules from the [body YAML section](#body-section-contract-exactly-one-repository-transition-validation-heading) below. **No** derived citations on any error in that pipeline.
-   - **0 matches** → [Derived citations](#derived-citations-derived_citations): if **≥1** qualifying path is harvested, emit a single synthetic rule **`allChangedPathsMustMatchAllowlist`** with **`id`** **`derived.allowlist`** and **`allowPatterns`** = sorted unique paths. If **0** paths → **`PLAN_VALIDATION_INSUFFICIENT_SPEC`**.
+   - **0 matches** → [Derived citations](#derived-citations-derived_citations): if **≥1** qualifying path is harvested, emit **N** synthetic **`requireMatchingRow`** rules (**N** = number of sorted unique harvested paths), with **`id`** values **`derived.require.0`** … **`derived.require.N-1`**, **`pattern`** = each path, and **`rowKinds`** = **`add`**, **`modify`**, **`delete`**, **`rename`**, **`copy`**, **`type_change`** (same set for each rule; **`unmerged`** excluded). If **0** paths → **`PLAN_VALIDATION_INSUFFICIENT_SPEC`**.
 
 ### Body section contract (exactly one `Repository transition validation` heading)
 
@@ -156,7 +156,7 @@ Rules come from **one** of three sources ([Where rules come from](#where-rules-c
 
 **Normalization:** trim ASCII space/tab; optional **`file:`** URL via `URL` + pathname; `\` → `/`; strip leading `./`; reject `..`, ASCII controls, spaces, `?`, `#`, and `//` in the candidate; take the **last** path anchored at allowed roots **`src/`**, **`schemas/`**, **`examples/`**, **`docs/`**, **`test/`**, **`debug-ui/`**, **`plans/`**; final segment must use an allowed extension (**`ts`**, **`tsx`**, **`js`**, **`mjs`**, **`json`**, **`md`**, **`sql`**, case-insensitive on input; canonical paths lowercase the extension only). **Dedupe** with a set; **sort** UTF-16 string order.
 
-**Product meaning:** Every path in the git name-status diff must match **≥1** harvested pattern. **Scope-only:** does **not** assert that every cited file changed, nor row kinds, nor narrative requirements.
+**Product meaning:** **Each** harvested path **must** appear on at least one parsed diff row (any path position on that row), with **`rowKind`** ∈ **`{add, modify, delete, rename, copy, type_change}`** — i.e. the same semantics as an explicit **`requireMatchingRow`** rule per path. **Not** a global scope gate: other changed paths may appear in the diff without being cited. **Does not** interpret narrative requirements beyond these obligations.
 
 ### Front matter YAML (always)
 
@@ -176,7 +176,7 @@ Rules come from **one** of three sources ([Where rules come from](#where-rules-c
 | No `planValidation`; body heading count 1; body YAML parse error | `PLAN_VALIDATION_YAML_INVALID` (`body Repository transition validation:` prefix) |
 | No `planValidation`; body heading count 1; body core AJV fails | `PLAN_VALIDATION_SCHEMA_INVALID` (`body Repository transition validation:` prefix) |
 | No `planValidation`; body heading count 0; zero qualifying harvested paths | `PLAN_VALIDATION_INSUFFICIENT_SPEC` |
-| Unsafe / invalid glob in rules (including derived allowPatterns) | `PLAN_VALIDATION_INVALID_PATTERN` |
+| Unsafe / invalid glob in rules (including derived synthetic rule patterns) | `PLAN_VALIDATION_INVALID_PATTERN` |
 | Git / ref / parse errors | `PLAN_TRANSITION_*` |
 
 ### Requirements (environment and file)
@@ -184,7 +184,7 @@ Rules come from **one** of three sources ([Where rules come from](#where-rules-c
 - **Git:** minimum **2.30.0** (enforced before diff; operational code **`PLAN_TRANSITION_GIT_TOO_OLD`**).
 - **Diff:** `git -C <repo> diff --no-ext-diff -z --name-status <before>..<after>` with **both** refs resolved via `git rev-parse --verify <ref>^{commit}`.
 - **Plan file:** must start with YAML front matter (`---` … `---`); **`--plan`** must resolve under **`realpath(--repo)`** (operational **`PLAN_PATH_OUTSIDE_REPO`** if not). A leading UTF-8 BOM is stripped before parsing.
-- **Rule shape SSOT:** [`schemas/plan-validation-core.schema.json`](../schemas/plan-validation-core.schema.json) — only the **`{ schemaVersion, rules }`** object is schema-validated when loaded from front matter or from the body fence. **Derived** rules are built in code as one **`allChangedPathsMustMatchAllowlist`** rule (always schema-compatible with that shape).
+- **Rule shape SSOT:** [`schemas/plan-validation-core.schema.json`](../schemas/plan-validation-core.schema.json) — only the **`{ schemaVersion, rules }`** object is schema-validated when loaded from front matter or from the body fence. **Derived** rules are built in code as **N** **`requireMatchingRow`** rules (**`derived.require.*`**) with the shape above (each is schema-compatible with the **`requireMatchingRow`** branch of that schema).
 
 ### Rule kinds (`planValidation.rules[]`)
 
