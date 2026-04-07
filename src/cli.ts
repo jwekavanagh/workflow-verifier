@@ -45,6 +45,10 @@ import { COMPARE_INPUT_RUN_LEVEL_INCONSISTENT_MESSAGE } from "./runLevelDriftMes
 import { isV9RunLevelCodesInconsistent } from "./workflowRunLevelConsistency.js";
 import { formatWorkflowTruthReport } from "./workflowTruthReport.js";
 import { workflowEngineResultFromEmitted } from "./workflowResultNormalize.js";
+import { atomicWriteUtf8File } from "./quickVerify/atomicWrite.js";
+import { stableStringify } from "./quickVerify/canonicalJson.js";
+import { runQuickVerify } from "./quickVerify/runQuickVerify.js";
+import type { QuickVerifyReport } from "./quickVerify/runQuickVerify.js";
 
 function argValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
@@ -64,8 +68,26 @@ function argValues(args: string[], name: string): string[] {
   return out;
 }
 
+function usageQuick(): string {
+  return `Usage:
+  verify-workflow quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path>
+
+  Use - for stdin. Writes registry JSON array atomically before stdout (see docs/quick-verify-normative.md).
+
+Exit codes:
+  0  verdict pass
+  1  verdict fail
+  2  verdict uncertain
+  3  operational failure (stderr: JSON envelope)
+
+  --help, -h  print this message and exit 0`;
+}
+
 function usageVerify(): string {
   return `Usage:
+  verify-workflow quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path>
+    (zero-config path; see docs/quick-verify-normative.md)
+
   verify-workflow --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
   verify-workflow --workflow-id <id> --events <path> --registry <path> --postgres-url <url>
 
@@ -81,11 +103,6 @@ Provide exactly one of --db or --postgres-url.
 
 Optional output:
   --no-truth-report   For verdict exits 0–2, do not print the human truth report to stderr (stderr empty). stdout WorkflowResult JSON is unchanged. Exit 3 stderr is unchanged (single-line JSON envelope).
-  --write-run-bundle <dir>   After a successful verify (schema-valid WorkflowResult), write a canonical run directory: events.ndjson (byte copy of --events), workflow-result.json (emitted result), agent-run.json (SHA-256 manifest). Directory is created if missing. Requires exit 0–2 (operational failure skips the write).
-  --sign-ed25519-private-key <path>   With --write-run-bundle only: PKCS#8 PEM Ed25519 private key; also writes workflow-result.sig.json and manifest schemaVersion 2.
-
-  verify-bundle-signature --run-dir <dir> --public-key <path>
-  Verify signed bundle (Ed25519 + manifest v2). Exit 0 if valid; exit 3 with JSON envelope on failure.
 
 Exit codes:
   0  workflow status complete
@@ -103,6 +120,13 @@ Exit codes:
 
   verify-workflow execution-trace --workflow-id <id> --events <path> [--workflow-result <path>] [--format json|text]
   Emit ExecutionTraceView JSON or text (see docs/execution-truth-layer.md).
+
+Advanced / optional (persisted runs, signing, local UI, plan/git checks):
+  --write-run-bundle <dir>   After a successful verify (schema-valid WorkflowResult), write a canonical run directory: events.ndjson (byte copy of --events), workflow-result.json (emitted result), agent-run.json (SHA-256 manifest). Directory is created if missing. Requires exit 0–2 (operational failure skips the write).
+  --sign-ed25519-private-key <path>   With --write-run-bundle only: PKCS#8 PEM Ed25519 private key; also writes workflow-result.sig.json and manifest schemaVersion 2.
+
+  verify-bundle-signature --run-dir <dir> --public-key <path>
+  Verify signed bundle (Ed25519 + manifest v2). Exit 0 if valid; exit 3 with JSON envelope on failure.
 
   verify-workflow debug --corpus <dir> [--port <n>]
   Local Debug Console on 127.0.0.1 (see docs/execution-truth-layer.md — Debug Console).
@@ -294,6 +318,82 @@ Exit codes:
 
 function writeCliError(code: string, message: string): void {
   console.error(cliErrorEnvelope(code, message));
+}
+
+async function runQuickSubcommand(args: string[]): Promise<void> {
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(usageQuick());
+    process.exit(0);
+  }
+  const inputPath = argValue(args, "--input");
+  const exportPath = argValue(args, "--export-registry");
+  const dbPath = argValue(args, "--db");
+  const postgresUrl = argValue(args, "--postgres-url");
+  if (!inputPath || !exportPath) {
+    writeCliError(CLI_OPERATIONAL_CODES.CLI_USAGE, "Missing --input or --export-registry.");
+    process.exit(3);
+  }
+  const dbCount = (dbPath ? 1 : 0) + (postgresUrl ? 1 : 0);
+  if (dbCount !== 1) {
+    writeCliError(
+      CLI_OPERATIONAL_CODES.CLI_USAGE,
+      "Provide exactly one of --db or --postgres-url.",
+    );
+    process.exit(3);
+  }
+  let inputUtf8: string;
+  try {
+    inputUtf8 = inputPath === "-" ? readFileSync(0, "utf8") : readFileSync(path.resolve(inputPath), "utf8");
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    writeCliError(CLI_OPERATIONAL_CODES.CLI_USAGE, `Cannot read --input: ${msg}`);
+    process.exit(3);
+  }
+  let registryUtf8: string;
+  let report: QuickVerifyReport;
+  try {
+    const out = await runQuickVerify({
+      inputUtf8,
+      postgresUrl: postgresUrl ?? undefined,
+      sqlitePath: dbPath ?? undefined,
+    });
+    report = out.report;
+    registryUtf8 = out.registryUtf8;
+  } catch (e) {
+    if (e instanceof TruthLayerError) {
+      writeCliError(e.code, e.message);
+      process.exit(3);
+    }
+    const msg = e instanceof Error ? e.message : String(e);
+    writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(msg));
+    process.exit(3);
+  }
+  const validateQuickReport = loadSchemaValidator("quick-verify-report");
+  if (!validateQuickReport(report)) {
+    writeCliError(
+      CLI_OPERATIONAL_CODES.WORKFLOW_RESULT_SCHEMA_INVALID,
+      JSON.stringify(validateQuickReport.errors ?? []),
+    );
+    process.exit(3);
+  }
+  try {
+    atomicWriteUtf8File(path.resolve(exportPath), registryUtf8);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(`export-registry: ${msg}`));
+    process.exit(3);
+  }
+  try {
+    process.stdout.write(stableStringify(report) + "\n");
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(`stdout: ${msg}`));
+    process.exit(3);
+  }
+  console.error(`Quick Verify: ${report.verdict}\n${report.summary}`);
+  if (report.verdict === "pass") process.exit(0);
+  if (report.verdict === "fail") process.exit(1);
+  process.exit(2);
 }
 
 function runVerifyBundleSignatureSubcommand(args: string[]): void {
@@ -776,6 +876,10 @@ function runPlanTransitionSubcommand(args: string[]): void {
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
+  if (args[0] === "quick") {
+    await runQuickSubcommand(args.slice(1));
+    return;
+  }
   if (args[0] === "verify-bundle-signature") {
     runVerifyBundleSignatureSubcommand(args.slice(1));
     return;

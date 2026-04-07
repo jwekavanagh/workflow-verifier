@@ -1,0 +1,1 @@
+[{"toolId":"crm.upsert_contact","effectDescriptionTemplate":"Upsert contact {/recordId} with fields {/fields}","verification":{"kind":"sql_row","table":{"const":"contacts"},"identityEq":[{"column":{"const":"id"},"value":{"pointer":"/recordId"}}],"requiredFields":{"pointer":"/fields"}}}]

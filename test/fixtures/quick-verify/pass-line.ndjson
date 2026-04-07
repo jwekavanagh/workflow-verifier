@@ -1,0 +1,1 @@
+{"toolId":"crm.upsert_contact","params":{"id":"c_ok","name":"Alice","status":"active"}}

@@ -6,6 +6,18 @@
 
 *NPM package name: `execution-truth-layer`.*
 
+### Quick Verify (zero-config path)
+
+After **`npm run build`**, point at **JSON/NDJSON activity** and a **SQLite or Postgres** database (read-only). The tool infers tables and columns, verifies rows, writes an **export registry** array atomically, then prints a **`quick-verify-report`** JSON line on stdout.
+
+```bash
+node dist/cli.js quick --input <path> --db examples/demo.db --export-registry ./quick-export.json
+```
+
+Use **`--postgres-url "postgresql://…"`** instead of **`--db`**. Use **`-`** as the input path to read stdin. Exit codes: **0** pass, **1** fail, **2** uncertain, **3** operational. Full rules: **[`docs/quick-verify-normative.md`](docs/quick-verify-normative.md)**.
+
+---
+
 ## Canonical use case
 
 **Verify that an AI support or CRM workflow really persisted the intended update.**
@@ -16,7 +28,7 @@ The agent says the ticket or contact was updated; logs show success. This tool c
 
 ## Core workflow verification
 
-Everything below is what most teams need to try the idea and wire it into a pipeline. Optional capabilities (bundles, compare, UI, contracts) live under **[Advanced features](#advanced-features)**.
+Everything below is what most teams need to try the idea and wire it into a pipeline. Optional capabilities (compare, persisted runs, hooks, registry checks) live under **[Advanced features](#advanced-features)**. **Signing**, the **Debug Console**, and **`plan-transition`** are **advanced / optional** there—integrator and power-user paths, not part of the core wedge.
 
 ### Example: before and after
 
@@ -28,7 +40,7 @@ The bundled demo uses workflow **`wf_complete`** (log and DB agree) and **`wf_mi
 
 ### Quickstart
 
-**Prerequisite:** **Node.js ≥ 22.13** (uses built-in [`node:sqlite`](https://nodejs.org/api/sqlite.html)).
+**Prerequisite:** **Node.js ≥ 22.13** (uses built-in [`node:sqlite`](https://nodejs.org/api/sqlite.html))—or skip local Node and use **[Docker quickstart](#docker-quickstart-optional)**.
 
 1. **`npm install`** in the repo root.
 2. **`npm start`** — runs a build, seeds **`examples/demo.db`**, then runs the two demo workflows from **`examples/events.ndjson`** and **`examples/tools.json`**.
@@ -40,6 +52,24 @@ npm start
 ```
 
 `npm install` does not compile TypeScript. For **`node dist/cli.js`** without `npm start`, run **`npm run build`** first so **`dist/`** exists.
+
+### Docker quickstart (optional)
+
+Use this when you want the bundled demo without installing Node or matching **22.13+** on the host. The repo is bind-mounted so **`examples/demo.db`** and any edits stay on your machine.
+
+**Bash / macOS / Linux** (run from the repo root):
+
+```bash
+docker run --rm -it -v "$PWD:/work" -w /work node:22-bookworm bash -lc "npm install && npm start"
+```
+
+**PowerShell** (repo root):
+
+```powershell
+docker run --rm -it -v "${PWD}:/work" -w /work node:22-bookworm bash -lc "npm install && npm start"
+```
+
+For ad hoc CLI runs after that, add **`npm run build`** to the same pattern, or run **`node dist/cli.js ...`** inside a container the same way (mount + **`-w /work`**).
 
 ### Sample output
 
@@ -161,17 +191,17 @@ Run **after** a workflow (or CI replay of its log), **before** you treat the out
 
 ## Advanced features
 
-The items below are **optional**. Full detail (schemas, CLI I/O, Postgres session guards, signing, compare inputs, Debug Console API, and more) is in the authoritative reference, **[docs/execution-truth-layer.md](docs/execution-truth-layer.md)**—not duplicated here.
+The items below are **optional**. Full detail (schemas, CLI I/O, Postgres session guards, compare inputs, and more) is in **[docs/execution-truth-layer.md](docs/execution-truth-layer.md)**—not duplicated here. **Cryptographic signing**, the **Debug Console**, and **`plan-transition`** are **advanced / optional** in that doc as well; most adopters never need them to get value from SQL-backed verification.
 
 | Area | What it is |
 |------|------------|
-| **Signed run bundles** | Seal **`events`**, **`workflow-result`**, and a manifest (optional **Ed25519** signing) for audit and reload in tooling. See [Agent run record](docs/execution-truth-layer.md#agent-run-record-canonical-bundle) and [Signing](docs/execution-truth-layer.md#cryptographic-signing-of-workflow-result-normative). |
 | **Cross-run compare** | `verify-workflow compare` over saved results—trend and reliability summaries. See [Cross-run comparison](docs/execution-truth-layer.md#cross-run-comparison-normative). |
-| **Debug Console** | Local UI for corpus loads, compare panel, run-trust panel. See [Debug Console](docs/execution-truth-layer.md#debug-console-normative); UI tests: **`npm run test:debug-ui`**. |
 | **Execution trace view** | `execution-trace` CLI for model + tools + control in one NDJSON. See [End-to-end execution visibility](docs/execution-truth-layer.md#end-to-end-execution-visibility-normative). |
 | **In-process hook** | SQLite-only **`withWorkflowVerification`** — [Low-friction integration](docs/execution-truth-layer.md#low-friction-integration-in-process). |
 | **Registry-only check** | `validate-registry --registry <path>` — [Registry validation](docs/execution-truth-layer.md#registry-validation-validate-registry--normative). |
-| **Plan transition validation** | `plan-transition` subcommand for git + plan markdown checks (workflow-adjacent tooling). See [Plan transition validation](docs/execution-truth-layer.md#plan-transition-validation-normative). |
+| **Run bundles (advanced / optional)** | Persist **`events`**, **`workflow-result`**, and a manifest for audit and reload. **Ed25519 signing** is an extra on top, not required for the bundle layout. See [Agent run record](docs/execution-truth-layer.md#agent-run-record-canonical-bundle) and [Signing](docs/execution-truth-layer.md#cryptographic-signing-of-workflow-result-normative). |
+| **Debug Console (advanced / optional)** | Local UI for corpus loads, compare panel, run-trust panel. See [Debug Console](docs/execution-truth-layer.md#debug-console-normative); UI tests: **`npm run test:debug-ui`**. |
+| **Plan transition validation (advanced / optional)** | `plan-transition` subcommand: git diff vs machine-checkable rules in a plan markdown file—separate from SQL verification. See [Plan transition validation](docs/execution-truth-layer.md#plan-transition-validation-normative). |
 
 **CLI reference** (streams, exit codes, human vs machine output, schema versions for compare/bundles): see **[Human truth report](docs/execution-truth-layer.md#human-truth-report)** and **[CLI operational errors](docs/execution-truth-layer.md#cli-operational-errors)** in the authoritative reference.
 
@@ -185,9 +215,9 @@ npm test
 
 Runs build, Vitest, SQLite Node tests, and the first-run demo. No Postgres required.
 
-### CI (Postgres + Debug Console)
+### CI (Postgres + optional Debug UI)
 
-For the full suite (matches [`.github/workflows/ci.yml`](.github/workflows/ci.yml)), set **`POSTGRES_ADMIN_URL`** and **`POSTGRES_VERIFICATION_URL`**, then **`npm run test:ci`** (includes Playwright for the Debug Console). Example local server: `docker run -d --name etl-pg -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:16` — then export the same URL pattern CI uses (see workflow file).
+For the full suite (matches [`.github/workflows/ci.yml`](.github/workflows/ci.yml)), set **`POSTGRES_ADMIN_URL`** and **`POSTGRES_VERIFICATION_URL`**, then **`npm run test:ci`** (includes Playwright for the **advanced / optional** Debug Console). Example local server: `docker run -d --name etl-pg -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:16` — then export the same URL pattern CI uses (see workflow file).
 
 ## License
 

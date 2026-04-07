@@ -1,0 +1,124 @@
+{
+  "$id": "https://execution-truth-layer/schemas/quick-verify-report.schema.json",
+  "title": "QuickVerifyReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "verdict",
+    "summary",
+    "scope",
+    "ingest",
+    "units",
+    "exportableRegistry"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "verdict": { "type": "string", "enum": ["pass", "fail", "uncertain"] },
+    "summary": { "type": "string", "minLength": 1 },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["quickVerifyVersion", "capabilities"],
+      "properties": {
+        "quickVerifyVersion": { "type": "string", "const": "1.0.0" },
+        "capabilities": {
+          "type": "array",
+          "const": ["inferred_row", "inferred_related_exists"]
+        }
+      }
+    },
+    "ingest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reasonCodes", "malformedLineCount"],
+      "properties": {
+        "reasonCodes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "malformedLineCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ingestWarnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code"],
+        "properties": {
+          "code": { "type": "string" },
+          "actionKey": { "type": "string" }
+        }
+      }
+    },
+    "runHeaderReasonCodes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "units": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unitId",
+          "kind",
+          "verdict",
+          "confidence",
+          "reasonCodes",
+          "inference",
+          "explanation"
+        ],
+        "properties": {
+          "unitId": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "enum": ["row", "related_exists"] },
+          "verdict": {
+            "type": "string",
+            "enum": ["verified", "fail", "uncertain"]
+          },
+          "confidence": { "type": "number" },
+          "reasonCodes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "inference": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["table", "rationale"],
+            "properties": {
+              "table": { "type": "string" },
+              "rationale": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "alternates": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "verification": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "explanation": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "exportableRegistry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tools"],
+      "properties": {
+        "tools": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    }
+  }
+}

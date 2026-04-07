@@ -1,0 +1,10 @@
+export const T_TABLE = 0.6;
+export const T_COL = 0.5;
+export const T_OVERALL = 0.55;
+export const T_AMBIGUITY_DELTA = 0.08;
+export const T_EXPORT = 0.55;
+export const MAX_INPUT_BYTES = 8_388_608;
+export const MAX_ACTIONS = 50;
+export const MAX_UNITS = 20;
+export const FLATTEN_MAX_DEPTH = 6;
+export const FLATTEN_MAX_NODES = 500;

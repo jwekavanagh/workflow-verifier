@@ -1,0 +1,9 @@
+{
+  "$id": "https://execution-truth-layer/schemas/tools-registry-export.schema.json",
+  "title": "ToolsRegistryExportArray",
+  "description": "Quick Verify --export-registry file: same items as tools-registry but allows empty array.",
+  "type": "array",
+  "items": {
+    "$ref": "https://execution-truth-layer/schemas/tools-registry.schema.json#/items"
+  }
+}
