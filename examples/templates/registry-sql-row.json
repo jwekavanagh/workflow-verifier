@@ -5,10 +5,12 @@
     "verification": {
       "kind": "sql_row",
       "table": { "const": "entities" },
-      "key": {
-        "column": { "const": "id" },
-        "value": { "pointer": "/entityId" }
-      },
+      "identityEq": [
+        {
+          "column": { "const": "id" },
+          "value": { "pointer": "/entityId" }
+        }
+      ],
       "requiredFields": { "pointer": "/fields" }
     }
   }

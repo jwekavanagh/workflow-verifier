@@ -11,8 +11,7 @@ function baseReq(overrides = {}) {
   return {
     kind: "sql_row",
     table: "t",
-    keyColumn: "id",
-    keyValue: "1",
+    identityEq: [{ column: "id", value: "1" }],
     requiredFields: { name: "a" },
     ...overrides,
   };
@@ -139,7 +138,7 @@ describe("reconcileSqlRow rule table", () => {
     db.exec("INSERT INTO t VALUES ('1','a')");
     const r = reconcileSqlRow(
       db,
-      baseReq({ table: "nonexistent_table", keyColumn: "id", keyValue: "1" }),
+      baseReq({ table: "nonexistent_table" }),
     );
     assert.equal(r.status, "incomplete_verification");
     assert.equal(r.reasons[0]?.code, "CONNECTOR_ERROR");

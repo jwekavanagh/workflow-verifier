@@ -9,8 +9,12 @@
           "checkKind": "related_exists",
           "id": "lines",
           "childTable": { "const": "rel_lines" },
-          "fkColumn": { "const": "order_id" },
-          "fkValue": { "pointer": "/orderId" }
+          "matchEq": [
+            {
+              "column": { "const": "order_id" },
+              "value": { "pointer": "/orderId" }
+            }
+          ]
         }
       ]
     }
@@ -97,15 +101,23 @@
           "checkKind": "related_exists",
           "id": "good",
           "childTable": { "const": "rel_lines" },
-          "fkColumn": { "const": "order_id" },
-          "fkValue": { "pointer": "/orderId" }
+          "matchEq": [
+            {
+              "column": { "const": "order_id" },
+              "value": { "pointer": "/orderId" }
+            }
+          ]
         },
         {
           "checkKind": "related_exists",
           "id": "bad",
           "childTable": { "const": "rel_lines" },
-          "fkColumn": { "const": "order_id" },
-          "fkValue": { "const": "ghost" }
+          "matchEq": [
+            {
+              "column": { "const": "order_id" },
+              "value": { "const": "ghost" }
+            }
+          ]
         }
       ]
     }
@@ -120,9 +132,11 @@
           "checkKind": "related_exists",
           "id": "line_sku",
           "childTable": { "const": "rel_lines" },
-          "fkColumn": { "const": "order_id" },
-          "fkValue": { "pointer": "/orderId" },
-          "whereEq": [
+          "matchEq": [
+            {
+              "column": { "const": "order_id" },
+              "value": { "pointer": "/orderId" }
+            },
             {
               "column": { "const": "sku" },
               "value": { "pointer": "/sku" }

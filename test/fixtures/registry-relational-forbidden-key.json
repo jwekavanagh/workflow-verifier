@@ -9,8 +9,12 @@
           "checkKind": "related_exists",
           "id": "a",
           "childTable": { "const": "t" },
-          "fkColumn": { "const": "k" },
-          "fkValue": { "const": "1" },
+          "matchEq": [
+            {
+              "column": { "const": "k" },
+              "value": { "const": "1" }
+            }
+          ],
           "sql": "SELECT 1"
         }
       ]

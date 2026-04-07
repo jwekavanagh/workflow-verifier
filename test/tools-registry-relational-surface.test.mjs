@@ -32,7 +32,18 @@ const JOIN_KEYS = new Set([
   "expect",
 ]);
 const JOIN_INNER_KEYS = new Set(["leftColumn", "rightColumn"]);
-const EXISTS_KEYS = new Set(["checkKind", "id", "childTable", "fkColumn", "fkValue", "whereEq"]);
+const EXISTS_KEYS = new Set(["checkKind", "id", "childTable", "matchEq"]);
+const ANTI_JOIN_KEYS = new Set([
+  "checkKind",
+  "id",
+  "anchorTable",
+  "lookupTable",
+  "anchorColumn",
+  "lookupColumn",
+  "lookupPresenceColumn",
+  "filterEqAnchor",
+  "filterEqLookup",
+]);
 const EXPECT_KEYS = new Set(["op", "value"]);
 const WHERE_PLAIN_KEYS = new Set(["column", "value"]);
 const WHERE_SIDE_KEYS = new Set(["tableSide", "column", "value"]);
@@ -71,6 +82,8 @@ describe("tools-registry relational surface", () => {
           assertKeys(chk.expect, EXPECT_KEYS, "expect");
         } else if (chk.checkKind === "related_exists") {
           assertKeys(chk, EXISTS_KEYS, "related_exists");
+        } else if (chk.checkKind === "anti_join") {
+          assertKeys(chk, ANTI_JOIN_KEYS, "anti_join");
         } else {
           assert.fail(`unknown checkKind ${chk.checkKind}`);
         }

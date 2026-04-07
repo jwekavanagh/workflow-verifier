@@ -14,7 +14,7 @@
     "verificationRunContext"
   ],
   "properties": {
-    "schemaVersion": { "const": 7 },
+    "schemaVersion": { "const": 8 },
     "workflowId": { "type": "string" },
     "status": {
       "type": "string",
@@ -197,16 +197,46 @@
         "type": ["string", "number", "boolean", "null"]
       }
     },
+    "identityEqPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["column", "value"],
+      "properties": {
+        "column": { "type": "string", "minLength": 1 },
+        "value": { "type": "string" }
+      }
+    },
     "verificationRequestSqlRow": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "table", "keyColumn", "keyValue", "requiredFields"],
+      "required": ["kind", "table", "identityEq", "requiredFields"],
       "properties": {
         "kind": { "const": "sql_row" },
         "table": { "type": "string" },
-        "keyColumn": { "type": "string" },
-        "keyValue": { "type": "string" },
+        "identityEq": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/identityEqPair" }
+        },
         "requiredFields": { "$ref": "#/$defs/requiredFieldsMap" }
+      }
+    },
+    "verificationRequestSqlRowAbsent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "table", "identityEq", "filterEq"],
+      "properties": {
+        "kind": { "const": "sql_row_absent" },
+        "table": { "type": "string" },
+        "identityEq": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/identityEqPair" }
+        },
+        "filterEq": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/identityEqPair" }
+        }
       }
     },
     "verificationRequestSqlEffects": {
@@ -221,13 +251,16 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "kind", "table", "keyColumn", "keyValue", "requiredFields"],
+            "required": ["id", "kind", "table", "identityEq", "requiredFields"],
             "properties": {
               "id": { "type": "string", "minLength": 1 },
               "kind": { "const": "sql_row" },
               "table": { "type": "string" },
-              "keyColumn": { "type": "string" },
-              "keyValue": { "type": "string" },
+              "identityEq": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "$ref": "#/$defs/identityEqPair" }
+              },
               "requiredFields": { "$ref": "#/$defs/requiredFieldsMap" }
             }
           }
@@ -258,16 +291,15 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["checkKind", "id", "childTable", "fkColumn", "fkValue", "whereEq"],
+          "required": ["checkKind", "id", "childTable", "matchEq"],
           "properties": {
             "checkKind": { "const": "related_exists" },
             "id": { "type": "string", "minLength": 1 },
             "childTable": { "type": "string", "minLength": 1 },
-            "fkColumn": { "type": "string", "minLength": 1 },
-            "fkValue": { "type": "string" },
-            "whereEq": {
+            "matchEq": {
               "type": "array",
-              "items": { "$ref": "#/$defs/resolvedRelationalWhereEqPlain" }
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/identityEqPair" }
             }
           }
         },
@@ -333,6 +365,38 @@
             },
             "expectOp": { "type": "string", "enum": ["eq", "gte", "lte"] },
             "expectValue": { "type": "number" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "checkKind",
+            "id",
+            "anchorTable",
+            "lookupTable",
+            "anchorColumn",
+            "lookupColumn",
+            "lookupPresenceColumn",
+            "filterEqAnchor",
+            "filterEqLookup"
+          ],
+          "properties": {
+            "checkKind": { "const": "anti_join" },
+            "id": { "type": "string", "minLength": 1 },
+            "anchorTable": { "type": "string", "minLength": 1 },
+            "lookupTable": { "type": "string", "minLength": 1 },
+            "anchorColumn": { "type": "string", "minLength": 1 },
+            "lookupColumn": { "type": "string", "minLength": 1 },
+            "lookupPresenceColumn": { "type": "string", "minLength": 1 },
+            "filterEqAnchor": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/identityEqPair" }
+            },
+            "filterEqLookup": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/identityEqPair" }
+            }
           }
         }
       ]
@@ -412,6 +476,7 @@
               "oneOf": [
                 { "type": "null" },
                 { "$ref": "#/$defs/verificationRequestSqlRow" },
+                { "$ref": "#/$defs/verificationRequestSqlRowAbsent" },
                 { "$ref": "#/$defs/verificationRequestSqlEffects" },
                 { "$ref": "#/$defs/verificationRequestSqlRelational" }
               ]

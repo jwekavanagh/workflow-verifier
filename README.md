@@ -1,76 +1,112 @@
-# execution-truth-layer
+# Verify agent workflows against your database—not just the logs
 
-## The problem (and cost of ignoring it)
+**One-sentence value:** After each run, this tool uses read-only SQL to check whether your database actually matches what the tool calls said should be true.
 
-Agent workflows call tools that **claim** they wrote to CRMs, tickets, or internal databases. In practice, retries, partial failures, bad IDs, and race conditions mean the **log line that says “success” is not proof** the row you care about exists with the right values.
+**Why that matters:** That means a green trace is no longer your only proof that customer data actually updated.
 
-If you ignore that gap, you ship automations that **look** healthy in traces while **customers never got the update**, **downstream jobs read stale state**, or **audits cannot reconstruct what actually landed in the database**.
+*NPM package name: `execution-truth-layer`.*
 
-**Why logs and dashboards do not fix this:** they show that a tool was *invoked* or returned OK—not that **specific SQL state** matches what the workflow intended.
+## Canonical use case
 
-## Is this for you?
+**Verify that an AI support or CRM workflow really persisted the intended update.**
 
-**This is for you if** you run agent or automation workflows against **real databases** (SQLite, Postgres, or anything you can mirror into SQL), you own **reliability or compliance**, and you have seen symptoms like “the assistant said it saved, but the record is wrong or missing.”
+The agent says the ticket or contact was updated; logs show success. This tool checks the **actual database row**. If status, owner, priority, or other required fields do not match what the tool calls said should be true, the run is marked **inconsistent**—even when the narrative looked fine.
 
-**This is not for you if** you only need generic request tracing with no notion of **expected rows/fields**, or you have no **SQL-accessible ground truth** to compare against.
+---
 
-## One idea, one example
+## Core workflow verification
 
-**Idea:** After a workflow runs, take the **observed tool calls** (as NDJSON), derive **what should be true in SQL** from a small **`tools.json` registry**, and **read the database** to see if reality matches—without trusting the model’s own summary.
+Everything below is what most teams need to try the idea and wire it into a pipeline. Optional capabilities (bundles, compare, UI, contracts) live under **[Advanced features](#advanced-features)**.
 
-**Example:** The log says `crm.upsert_contact` ran for contact `c_ok` with name Alice. This tool checks the **`contacts`** table for that id and fields. If the row is missing or `name` is not Alice, you get a **clear mismatch** even when the agent transcript looked fine.
+### Example: before and after
 
-## How this differs from logs, tests, and observability
+| Before | After |
+|--------|--------|
+| The trace says `crm.upsert_contact` ran and returned OK. You assume the row exists with the right fields. | You replay the same tool log against your DB. If the row is missing or fields do not match, you get a **clear mismatch**—even when the agent transcript looked fine. |
 
-| Approach | What it tells you |
-|----------|-------------------|
-| **Logs / traces** | A step ran, duration, errors—**not** “row X has columns Y.” |
-| **Unit / integration tests** | Code paths in **your** repo—**not** production agent runs against live DB state. |
-| **Metrics / APM** | Health and latency—**not** semantic equality of persisted records. |
-| **Execution truth layer** | For each step, **whether the database matches the declared intent** from the tool log, using **read-only SQL**. |
+The bundled demo uses workflow **`wf_complete`** (log and DB agree) and **`wf_missing`** (the tool calls imply a contact id that is **not** in the database).
 
-## When to run it and what you need
+### Quickstart
 
-Run it **after** a workflow (or CI replay of its NDJSON log), **before** you treat outcomes as safe for customer-facing or regulated actions.
+**Prerequisite:** **Node.js ≥ 22.13** (uses built-in [`node:sqlite`](https://nodejs.org/api/sqlite.html)).
 
-**Inputs:** append-only **NDJSON** of tool observations, a **`tools.json`** registry (maps `toolId` → how to build a verification query from `params`), and **read-only** access to **SQLite** or **Postgres**.
-
-**Relational verification (`sql_relational`):** normative semantics are documented only in [`docs/relational-verification.md`](docs/relational-verification.md).
-
-**Decisions it enables:** block release, trigger human review, open an incident, or attach a signed verification artifact to an audit trail.
-
-**Trust:** Verdicts come from **parameterized `SELECT`s** against real rows, not from the agent’s natural-language conclusion. Structured **`workflowTruthReport`** on stdout JSON holds machine-stable labels; the **human report** (stderr from the CLI, or stdout in the demo below) spells out what was expected, what was checked, and what failed in plain language.
-
-## Try it in under five minutes
-
-**Requirements**
-
-- **Node.js ≥ 22.13** (uses built-in [`node:sqlite`](https://nodejs.org/api/sqlite.html))
-- **Runtime dependency [`pg`](https://node-postgres.com/)** when using Postgres verification paths
+1. **`npm install`** in the repo root.
+2. **`npm start`** — runs a build, seeds **`examples/demo.db`**, then runs the two demo workflows from **`examples/events.ndjson`** and **`examples/tools.json`**.
+3. **Scan the output** — first case should end in **`complete` / `verified`**; second in **`inconsistent` / `missing`** with reason **`ROW_ABSENT`**. That contrast is the product in one screen.
 
 ```bash
 npm install
 npm start
 ```
 
-**`npm install`** does **not** run TypeScript compilation (there is no **`prepare`** hook). After clone, run **`npm run build`** before **`node dist/cli.js`** so **`dist/`** exists and FailureOrigin types are synced from the schema.
+`npm install` does not compile TypeScript. For **`node dist/cli.js`** without `npm start`, run **`npm run build`** first so **`dist/`** exists.
 
-**`npm start`** runs **`npm run build`** then **`node scripts/first-run.mjs`**: it seeds **`examples/demo.db`** from **`examples/seed.sql`**, then runs two workflows from bundled **`examples/events.ndjson`** and **`examples/tools.json`** (below). **`npm run first-run`** alone only runs that demo step—use it when **`dist/`** is already built.
+### Sample output
 
-**Workflow result stdout:** emitted JSON uses **`schemaVersion` `13`**. The **`runLevelCodes`** property is **not** present on v13 objects; use **`runLevelReasons[].code`** when you need run-level codes. Frozen **v9** documents (with **`runLevelCodes`**) exist **only** for compare ingress and corpus bundles—see [`schemas/workflow-result-v9.schema.json`](schemas/workflow-result-v9.schema.json) and compare-input **`oneOf`** in [`schemas/workflow-result-compare-input.schema.json`](schemas/workflow-result-compare-input.schema.json) (**engine v7 → frozen v9 → stdout v13**). CI machine I/O contract: [`test/ci-workflow-truth-postgres-contract.test.mjs`](test/ci-workflow-truth-postgres-contract.test.mjs) / **`npm run test:workflow-truth-contract`**.
+The demo prints a **human verification report** and **workflow result JSON** per workflow. (The demo sends both to **stdout**; for normal CLI behavior, see the **[Human truth report](docs/execution-truth-layer.md#human-truth-report)** section in the authoritative reference.)
 
-1. **`wf_complete`** — the log matches the database → **complete** / **verified** in the JSON.
-2. **`wf_missing`** — the log claims a contact id that **does not exist** in the DB → **inconsistent** / **missing** with reason code **`ROW_ABSENT`** in the JSON (a failure that is easy to miss if you only read the agent’s narrative).
+#### Success case (`wf_complete`)
 
-You get short framing text, a **human verification report** on **stdout** (demo only—the CLI sends the same text to **stderr**; see SSOT), and **workflow result JSON** per run.
+Human report (excerpt):
 
-**Why SQLite first:** no Docker or hosted DB—file-backed ground truth so you can judge the idea immediately.
+```text
+workflow_id: wf_complete
+workflow_status: complete
+trust: TRUSTED: Every step matched the database under the configured verification rules.
+steps:
+  - seq=0 tool=crm.upsert_contact result=Matched the database.
+```
 
-**Permissions (demo):** read/write only to create **`examples/demo.db`**; verification uses read-only SQLite as in the spec.
+Machine result (excerpt):
 
-## Use it on your own system (smallest path)
+```json
+{
+  "schemaVersion": 14,
+  "workflowId": "wf_complete",
+  "status": "complete",
+  "steps": [{ "seq": 0, "toolId": "crm.upsert_contact", "status": "verified" }]
+}
+```
 
-1. **Emit one NDJSON line per tool call** after each observation (shape in **[Event line schema](docs/execution-truth-layer.md#event-line-schema)**).
+*Interpretation:* The workflow is safe to trust for this step because **what the tool calls said should be true** matches the database.
+
+#### Failure case (`wf_missing`)
+
+Human report (excerpt):
+
+```text
+workflow_id: wf_missing
+workflow_status: inconsistent
+steps:
+  - seq=0 tool=crm.upsert_contact result=Expected row is missing from the database (the log implies a write that is not present).
+    reference_code: ROW_ABSENT
+```
+
+Machine result (excerpt):
+
+```json
+{
+  "schemaVersion": 14,
+  "workflowId": "wf_missing",
+  "status": "inconsistent",
+  "steps": [
+    {
+      "seq": 0,
+      "toolId": "crm.upsert_contact",
+      "status": "missing",
+      "reasons": [{ "code": "ROW_ABSENT" }]
+    }
+  ]
+}
+```
+
+*Interpretation:* The workflow claimed a write, but the **expected row is not there**, so the run is flagged **inconsistent**—the kind of gap traces alone often miss.
+
+Run **`npm start`** to see the full reports and JSON on your machine.
+
+### Use it on your own system
+
+1. **Emit one NDJSON line per tool call** after each observation (shape: [Event line schema](docs/execution-truth-layer.md#event-line-schema) in the authoritative reference).
 2. **Add a registry entry** for each `toolId` (start from **`examples/templates/`**).
 3. **Run verification** against your DB:
 
@@ -79,68 +115,79 @@ npm run build
 node dist/cli.js --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
 ```
 
-Postgres: exactly one of **`--db`** or **`--postgres-url`**:
+**Postgres** (exactly one of **`--db`** or **`--postgres-url`**):
 
 ```bash
 node dist/cli.js --workflow-id <id> --events <path> --registry <path> --postgres-url "postgresql://user:pass@host:5432/dbname"
 ```
 
-**Execution trace (model + tools + control in one NDJSON):** `node dist/cli.js execution-trace --workflow-id <id> --events <path>` emits **`ExecutionTraceView`** JSON (optional `--workflow-result` / `--format text`). Spec: [End-to-end execution visibility](docs/execution-truth-layer.md#end-to-end-execution-visibility-normative).
-
-**In-process (SQLite only):** **`npm run example:workflow-hook`** — **`await withWorkflowVerification`** at the workflow root; see **[Low-friction integration (in-process)](docs/execution-truth-layer.md#low-friction-integration-in-process)**.
-
-## Canonical agent run bundle
-
-Saved runs that the Debug Console (or **`loadCorpusRun`**) can load as **`ok`** require **`events.ndjson`**, **`workflow-result.json`**, and **`agent-run.json`** (a SHA-256 manifest—no separate **`meta.json`**). Optional **Ed25519 signing** adds **`workflow-result.sig.json`** and manifest **`schemaVersion` `2`** via **`--write-run-bundle <dir>`** with **`--sign-ed25519-private-key`**, **`persistBundle.ed25519PrivateKeyPemPath`**, or **`writeAgentRunBundle`**. Verify signed bundles with **`node dist/cli.js verify-bundle-signature --run-dir <dir> --public-key <path>`** or **`verifyRunBundleSignature`** from the package entry. Normative trust model, key formats, verification order, and machine codes: **[Cryptographic signing of workflow-result (normative)](docs/execution-truth-layer.md#cryptographic-signing-of-workflow-result-normative)**. Full bundle contract, **`workflowVerdictSurface`**, retrieve path, and corpus error codes: **[Workflow verdict and audit](docs/execution-truth-layer.md#workflow-verdict-and-audit)** and **[Agent run record (canonical bundle)](docs/execution-truth-layer.md#agent-run-record-canonical-bundle)**.
-
-## Authoritative specification
-
-**[docs/execution-truth-layer.md](docs/execution-truth-layer.md)** is the single source of truth for schemas, CLI I/O, Postgres guards, and module roles.
-
-**CI workflow truth contract** (Postgres CLI, machine-readable **`verify-workflow`** I/O): **[CI workflow truth contract (Postgres CLI)](docs/execution-truth-layer.md#ci-workflow-truth-contract-postgres-cli)**.
-
-## Automation and CLI (short)
-
-For **`verify-workflow`**, a **human-readable verification report** is written to **stderr** and the machine-readable **workflow result JSON** to **stdout** on verdict exits **0–2**; operational failures use exit **3** with a **single-line JSON error** on stderr (see [CLI operational errors](docs/execution-truth-layer.md#cli-operational-errors)). Full format: **[Human truth report](docs/execution-truth-layer.md#human-truth-report)**. Use **`--no-truth-report`** for empty stderr on verdict paths when piping logs. Use **`--write-run-bundle <dir>`** on verdict exits **0–2** to write a sealed **[canonical bundle](docs/execution-truth-layer.md#agent-run-record-canonical-bundle)**. Exit codes: **0** complete, **1** inconsistent, **2** incomplete, **3** operational.
-
-After **`npm start`**, replay the demo workflows:
+Replay the bundled demo without `npm start`:
 
 ```bash
+npm run build
 node dist/cli.js --workflow-id wf_complete --events examples/events.ndjson --registry examples/tools.json --db examples/demo.db
 ```
 
-**Cross-run comparison:** `node dist/cli.js compare --prior earlier.json --current latest.json` — [Cross-run comparison (normative)](docs/execution-truth-layer.md#cross-run-comparison-normative).
+**Why SQLite in the demo:** file-backed ground truth with no Docker. **Permissions (demo):** creates **`examples/demo.db`**; verification still uses read-only SQL against that file.
 
-## Compare and trust surfaces
+## Who this is for
 
-Compare **stdout** is **`RunComparisonReport`** with **`schemaVersion` `4`** only (see [Cross-run comparison (normative)](docs/execution-truth-layer.md#cross-run-comparison-normative) for breaking change from saved v2 compare outputs). The Debug Console serves **server-rendered HTML** for the compare panel and run-trust panel (`comparePanelHtml`, `runTrustPanelHtml`); success response key sets are specified in [Compare runs and independent verification](docs/execution-truth-layer.md#compare-runs-and-independent-verification) in the SSOT. End-to-end UI coverage: **`npm run test:debug-ui`** (Playwright; **`npm run test:ci`** installs Chromium and runs it last).
+**This is for you if** you run agent or automation workflows against **real databases** (SQLite, Postgres, or anything you can mirror into SQL), you own **reliability or compliance**, and you have seen symptoms like “the assistant said it saved, but the record is wrong or missing.”
 
-**Plan transition (git + plan markdown):** `node dist/cli.js plan-transition --repo <dir> --before <ref> --after <ref> --plan <path>` — validates `git diff -z --name-status` against rules from YAML front matter **`planValidation`**, a **`## Repository transition validation`** body YAML fence ([`plan-validation-core.schema.json`](schemas/plan-validation-core.schema.json)), or **derived path citations** from obligation **H2** sections (Implementation / Testing / Documentation / Validation) and **`todos[].content`** when neither is present (each cited path must appear in the diff — see SSOT). Emits **`WorkflowResult`** (default **`workflowId` `wf_plan_transition`**). Requires **Git ≥ 2.30.0**. Spec: [Plan transition validation (normative)](docs/execution-truth-layer.md#plan-transition-validation-normative).
+**This is not for you if** you only need generic request tracing with no notion of **expected rows/fields**, or you have no **SQL-accessible ground truth** to compare against.
 
-**Validate registry (no database):** `node dist/cli.js validate-registry --registry examples/tools.json` — [Registry validation (`validate-registry`) — normative](docs/execution-truth-layer.md#registry-validation-validate-registry--normative).
+## How it works
 
-## Local validation (no Postgres)
+Retries, partial failures, and race conditions mean a success log is not proof that the intended row exists with the right values. This tool takes **append-only NDJSON** tool observations plus a small **`tools.json`** registry, derives what should be true in SQL, and verifies that state with **read-only `SELECT`s**.
+
+## How this differs from logs, tests, and observability
+
+| Approach | What it tells you |
+|----------|-------------------|
+| **Logs / traces** | A step ran, duration, errors—**not** “row X has columns Y.” |
+| **Unit / integration tests** | Code paths in **your** repo—**not** production agent runs against live DB state. |
+| **Metrics / APM** | Health and latency—**not** semantic equality of persisted records. |
+| **Database-backed verification (this tool)** | For each step, **whether the database matches what the tool calls said should be true**, using **read-only SQL**. |
+
+## When to run it
+
+Run **after** a workflow (or CI replay of its log), **before** you treat the outcome as safe for customer-facing or regulated actions.
+
+**Inputs:** NDJSON observations, **`tools.json`**, and **read-only** access to **SQLite** or **Postgres**. Relational verification semantics: [`docs/relational-verification.md`](docs/relational-verification.md).
+
+**Typical uses:** block a release, trigger human review, open an incident, or attach a verification artifact to an audit trail.
+
+---
+
+## Advanced features
+
+The items below are **optional**. Full detail (schemas, CLI I/O, Postgres session guards, signing, compare inputs, Debug Console API, and more) is in the authoritative reference, **[docs/execution-truth-layer.md](docs/execution-truth-layer.md)**—not duplicated here.
+
+| Area | What it is |
+|------|------------|
+| **Signed run bundles** | Seal **`events`**, **`workflow-result`**, and a manifest (optional **Ed25519** signing) for audit and reload in tooling. See [Agent run record](docs/execution-truth-layer.md#agent-run-record-canonical-bundle) and [Signing](docs/execution-truth-layer.md#cryptographic-signing-of-workflow-result-normative). |
+| **Cross-run compare** | `verify-workflow compare` over saved results—trend and reliability summaries. See [Cross-run comparison](docs/execution-truth-layer.md#cross-run-comparison-normative). |
+| **Debug Console** | Local UI for corpus loads, compare panel, run-trust panel. See [Debug Console](docs/execution-truth-layer.md#debug-console-normative); UI tests: **`npm run test:debug-ui`**. |
+| **Execution trace view** | `execution-trace` CLI for model + tools + control in one NDJSON. See [End-to-end execution visibility](docs/execution-truth-layer.md#end-to-end-execution-visibility-normative). |
+| **In-process hook** | SQLite-only **`withWorkflowVerification`** — [Low-friction integration](docs/execution-truth-layer.md#low-friction-integration-in-process). |
+| **Registry-only check** | `validate-registry --registry <path>` — [Registry validation](docs/execution-truth-layer.md#registry-validation-validate-registry--normative). |
+| **Plan transition validation** | `plan-transition` subcommand for git + plan markdown checks (workflow-adjacent tooling). See [Plan transition validation](docs/execution-truth-layer.md#plan-transition-validation-normative). |
+
+**CLI reference** (streams, exit codes, human vs machine output, schema versions for compare/bundles): see **[Human truth report](docs/execution-truth-layer.md#human-truth-report)** and **[CLI operational errors](docs/execution-truth-layer.md#cli-operational-errors)** in the authoritative reference.
+
+## Development and testing
+
+### Local validation
 
 ```bash
 npm test
 ```
 
-Runs **`npm run build`**, **`npm run test:vitest`**, SQLite-only **`npm run test:node:sqlite`**, and **`scripts/first-run.mjs`**. No **`POSTGRES_*`** variables required.
+Runs build, Vitest, SQLite Node tests, and the first-run demo. No Postgres required.
 
-## Full CI suite (Postgres)
+### CI (Postgres + Debug Console)
 
-```bash
-docker run -d --name etl-pg -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:16
-export POSTGRES_ADMIN_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres
-export POSTGRES_VERIFICATION_URL=postgresql://verifier_ro:verifier@127.0.0.1:5432/postgres
-npm run test:ci
-```
-
-(On Windows PowerShell, use `$env:POSTGRES_ADMIN_URL="..."`.) Matches [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
-
-## Advanced topics (normative detail only in SSOT)
-
-Schema versions (**`schemaVersion` `13`** on emitted **`WorkflowResult`** without **`runLevelCodes`**, engine shape **`7`**, truth subtree **`schemaVersion` `6`** with **`failureAnalysis`**, **`actionableFailure`** (including **`recommendedAction`** and **`automationSafe`**), **`executionPathFindings`**, **`executionPathSummary`**, and **`verificationRunContext`**), **`workflowTruthReport`**, **`verificationPolicy`**, **`eventSequenceIntegrity`**, **`failureDiagnostic`**, CLI stderr envelope **`schemaVersion` `2`** with **`failureDiagnosis`** (including **`actionableFailure`**), **`verify-workflow compare`** inputs (**`workflow-result-compare-input.schema.json`**: engine v7 / frozen v9 / stdout v13) and **`RunComparisonReport`** v4 (**`reliabilityAssessment`**, **`compareHighlights`**, per-run remediation fields, plus prior aggregates), **strong** vs **eventual** consistency, Postgres session guards, and **`test:workflow-truth-contract`** / **`ci-workflow-truth-postgres-contract.test.mjs`** are specified in **[docs/execution-truth-layer.md](docs/execution-truth-layer.md)**—not duplicated here. Rationale and guardrails for remediation hints (data-only contract) live under **Recommended remediation** in [Actionable failure classification (normative)](docs/execution-truth-layer.md#actionable-failure-classification-normative), with **`test/docs-remediation-doctrine.test.mjs`** and related Vitest guards enforcing the doc text.
+For the full suite (matches [`.github/workflows/ci.yml`](.github/workflows/ci.yml)), set **`POSTGRES_ADMIN_URL`** and **`POSTGRES_VERIFICATION_URL`**, then **`npm run test:ci`** (includes Playwright for the Debug Console). Example local server: `docker run -d --name etl-pg -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:16` — then export the same URL pattern CI uses (see workflow file).
 
 ## License
 

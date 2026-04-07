@@ -91,6 +91,9 @@ const STEP_CODE_TO_CATEGORY: Record<string, ActionableFailureCategory> = {
   [SQL_VERIFICATION_OUTCOME_CODE.RELATIONAL_SCALAR_UNUSABLE]: "downstream_execution_failure",
   [SQL_VERIFICATION_OUTCOME_CODE.VALUE_MISMATCH]: "state_inconsistency",
   [SQL_VERIFICATION_OUTCOME_CODE.DUPLICATE_ROWS]: "state_inconsistency",
+  [SQL_VERIFICATION_OUTCOME_CODE.ROW_PRESENT_WHEN_FORBIDDEN]: "state_inconsistency",
+  [SQL_VERIFICATION_OUTCOME_CODE.ORPHAN_ROW_DETECTED]: "state_inconsistency",
+  [SQL_VERIFICATION_OUTCOME_CODE.FORBIDDEN_ROWS_STILL_PRESENT_WITHIN_WINDOW]: "downstream_execution_failure",
   [SQL_VERIFICATION_OUTCOME_CODE.ROW_NOT_OBSERVED_WITHIN_WINDOW]: "downstream_execution_failure",
   [SQL_VERIFICATION_OUTCOME_CODE.MULTI_EFFECT_UNCERTAIN_WITHIN_WINDOW]: "downstream_execution_failure",
   [SQL_VERIFICATION_OUTCOME_CODE.CONNECTOR_ERROR]: "downstream_execution_failure",
@@ -139,6 +142,18 @@ const STEP_CODE_TO_REMEDIATION: Record<string, RemediationRow> = {
     automationSafe: false,
   },
   [SQL_VERIFICATION_OUTCOME_CODE.DUPLICATE_ROWS]: { recommendedAction: "deduplicate", automationSafe: false },
+  [SQL_VERIFICATION_OUTCOME_CODE.ROW_PRESENT_WHEN_FORBIDDEN]: {
+    recommendedAction: "reconcile_downstream_state",
+    automationSafe: false,
+  },
+  [SQL_VERIFICATION_OUTCOME_CODE.ORPHAN_ROW_DETECTED]: {
+    recommendedAction: "reconcile_downstream_state",
+    automationSafe: false,
+  },
+  [SQL_VERIFICATION_OUTCOME_CODE.FORBIDDEN_ROWS_STILL_PRESENT_WITHIN_WINDOW]: {
+    recommendedAction: "improve_read_connectivity",
+    automationSafe: false,
+  },
   [SQL_VERIFICATION_OUTCOME_CODE.ROW_NOT_OBSERVED_WITHIN_WINDOW]: {
     recommendedAction: "improve_read_connectivity",
     automationSafe: false,

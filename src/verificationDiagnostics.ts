@@ -82,21 +82,37 @@ function fieldNamesSorted(requiredFields: Record<string, unknown>): string {
     .join(", ");
 }
 
+function identityEqOneLine(pairs: ReadonlyArray<{ column: string; value: string }> | undefined): string {
+  const list = Array.isArray(pairs) ? pairs : [];
+  return [...list]
+    .slice()
+    .sort((a, b) => compareUtf16Id(a.column, b.column))
+    .map((p) => `${sanitizeOneLine(p.column)}=${sanitizeOneLine(p.value)}`)
+    .join(", ");
+}
+
 /** One-line summary for human report; truncates like operational messages. */
 export function formatVerificationTargetSummary(req: StepVerificationRequest): string | null {
   if (req === null) return null;
   if (typeof req !== "object" || !("kind" in req)) return null;
   if (req.kind === "sql_row") {
     const keys = fieldNamesSorted(req.requiredFields);
-    const line = `table=${sanitizeOneLine(req.table)} ${req.keyColumn}=${sanitizeOneLine(req.keyValue)} required_fields=[${keys}]`;
+    const idLine = identityEqOneLine(req.identityEq);
+    const line = `table=${sanitizeOneLine(req.table)} identity=[${idLine}] required_fields=[${keys}]`;
+    return formatOperationalMessage(line);
+  }
+  if (req.kind === "sql_row_absent") {
+    const idLine = identityEqOneLine(req.identityEq);
+    const fLine = identityEqOneLine(req.filterEq);
+    const line = `sql_row_absent table=${sanitizeOneLine(req.table)} identity=[${idLine}] filter=[${fLine}]`;
     return formatOperationalMessage(line);
   }
   if (req.kind === "sql_relational") {
     const parts = [...req.checks]
       .sort((a, b) => compareUtf16Id(a.id, b.id))
       .map((c) => {
-        if (c.checkKind === "related_exists" && c.whereEq.length > 0) {
-          return `${c.id}:${sanitizeOneLine(c.checkKind)}:w${c.whereEq.length}`;
+        if (c.checkKind === "related_exists" && (c.matchEq?.length ?? 0) > 1) {
+          return `${c.id}:${sanitizeOneLine(c.checkKind)}:m${c.matchEq!.length}`;
         }
         return `${c.id}:${sanitizeOneLine(c.checkKind)}`;
       });
@@ -107,7 +123,7 @@ export function formatVerificationTargetSummary(req: StepVerificationRequest): s
   }
   const parts = [...req.effects]
     .sort((a, b) => compareUtf16Id(a.id, b.id))
-    .map((e) => `${e.id}:${sanitizeOneLine(e.table)}.${e.keyColumn}=${sanitizeOneLine(e.keyValue)}`);
+    .map((e) => `${e.id}:${sanitizeOneLine(e.table)} identity=[${identityEqOneLine(e.identityEq)}]`);
   const line = `sql_effects count=${req.effects.length} ` + parts.join("; ");
   const max = OPERATIONAL_MESSAGE_MAX_CHARS;
   if (line.length <= max) return line;

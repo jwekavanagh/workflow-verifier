@@ -2,6 +2,7 @@
   "headings": [
     "# Execution Truth Layer (MVP) — Single Source of Truth",
     "## Why this shape",
+    "## SSOT contract boundary (normative)",
     "## Audiences",
     "### Engineer",
     "### Engineer note: shared step core",

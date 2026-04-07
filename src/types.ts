@@ -80,14 +80,24 @@ export type RunEvent =
   | ControlRunEvent
   | ToolSkippedRunEvent;
 
-/** Registry row verification (table, key, requiredFields pointers) without discriminant. */
+/** Single equality pair in registry (column + scalar or pointer). */
+export type RegistryEqualityPair = {
+  column: { const: string } | { pointer: string };
+  value: { const: string | number | boolean | null } | { pointer: string };
+};
+
+/** Registry row verification (table, identityEq, requiredFields pointers) without discriminant. */
 export type SqlRowVerificationSpec = {
   table: { const: string } | { pointer: string };
-  key: {
-    column: { const: string } | { pointer: string };
-    value: { const: string | number | boolean | null } | { pointer: string };
-  };
+  identityEq: RegistryEqualityPair[];
   requiredFields: { pointer: string };
+};
+
+/** Registry negative row existence (no requiredFields). */
+export type SqlRowAbsentVerificationSpec = {
+  table: { const: string } | { pointer: string };
+  identityEq: RegistryEqualityPair[];
+  filterEq?: RegistryEqualityPair[];
 };
 
 /** Expectation for aggregate / join_count (numeric only). */
@@ -129,16 +139,23 @@ export type SqlRelationalCheckSpec =
       checkKind: "related_exists";
       id: string;
       childTable: { const: string } | { pointer: string };
-      fkColumn: { const: string } | { pointer: string };
-      fkValue: { const: string | number | boolean | null } | { pointer: string };
-      whereEq?: Array<{
-        column: { const: string } | { pointer: string };
-        value: { const: string | number | boolean | null } | { pointer: string };
-      }>;
+      matchEq: RegistryEqualityPair[];
+    }
+  | {
+      checkKind: "anti_join";
+      id: string;
+      anchorTable: { const: string } | { pointer: string };
+      lookupTable: { const: string } | { pointer: string };
+      anchorColumn: { const: string } | { pointer: string };
+      lookupColumn: { const: string } | { pointer: string };
+      lookupPresenceColumn: { const: string } | { pointer: string };
+      filterEqAnchor?: RegistryEqualityPair[];
+      filterEqLookup?: RegistryEqualityPair[];
     };
 
 export type ToolRegistryVerification =
   | ({ kind: "sql_row" } & SqlRowVerificationSpec)
+  | ({ kind: "sql_row_absent" } & SqlRowAbsentVerificationSpec)
   | {
       kind: "sql_effects";
       effects: Array<{ id: string } & SqlRowVerificationSpec>;
@@ -156,12 +173,21 @@ export type ToolRegistryEntry = {
 
 export type VerificationScalar = string | number | boolean | null;
 
+/** Resolved AND identity (unique columns, UTF-16 sorted by column name). */
+export type IdentityEqPair = { column: string; value: string };
+
 export type VerificationRequest = {
   kind: "sql_row";
   table: string;
-  keyColumn: string;
-  keyValue: string;
+  identityEq: IdentityEqPair[];
   requiredFields: Record<string, VerificationScalar>;
+};
+
+export type RowAbsentVerificationRequest = {
+  kind: "sql_row_absent";
+  table: string;
+  identityEq: IdentityEqPair[];
+  filterEq: IdentityEqPair[];
 };
 
 /** One resolved row check with stable id (registry `sql_effects` only). */
@@ -173,9 +199,7 @@ export type ResolvedRelationalCheck =
       checkKind: "related_exists";
       id: string;
       childTable: string;
-      fkColumn: string;
-      fkValue: string;
-      whereEq: Array<{ column: string; value: string }>;
+      matchEq: Array<{ column: string; value: string }>;
     }
   | {
       checkKind: "aggregate";
@@ -197,6 +221,17 @@ export type ResolvedRelationalCheck =
       whereEq: Array<{ side: "left" | "right"; column: string; value: string }>;
       expectOp: "eq" | "gte" | "lte";
       expectValue: number;
+    }
+  | {
+      checkKind: "anti_join";
+      id: string;
+      anchorTable: string;
+      lookupTable: string;
+      anchorColumn: string;
+      lookupColumn: string;
+      lookupPresenceColumn: string;
+      filterEqAnchor: Array<{ column: string; value: string }>;
+      filterEqLookup: Array<{ column: string; value: string }>;
     };
 
 /** One resolved relational check with stable id (registry `sql_relational`). */
@@ -210,8 +245,7 @@ export type SqlEffectsVerificationPayload = {
       id: string;
       kind: "sql_row";
       table: string;
-      keyColumn: string;
-      keyValue: string;
+      identityEq: IdentityEqPair[];
       requiredFields: Record<string, VerificationScalar>;
     }
   >;
@@ -225,6 +259,7 @@ export type SqlRelationalVerificationPayload = {
 
 export type StepVerificationRequest =
   | VerificationRequest
+  | RowAbsentVerificationRequest
   | SqlEffectsVerificationPayload
   | SqlRelationalVerificationPayload
   | null;
@@ -435,9 +470,9 @@ export type CliFailureDiagnosis = {
   actionableFailure: ActionableFailure;
 };
 
-/** Aggregated engine payload before truth report attachment (`schemaVersion` 7). */
+/** Aggregated engine payload before truth report attachment (`schemaVersion` 8). */
 export type WorkflowEngineResult = {
-  schemaVersion: 7;
+  schemaVersion: 8;
   workflowId: string;
   status: WorkflowStatus;
   runLevelReasons: Reason[];
@@ -526,9 +561,9 @@ export type WorkflowTruthReport = {
   executionPathSummary: string;
 };
 
-/** Emitted verification result on stdout / public API (`schemaVersion` 13). */
+/** Emitted verification result on stdout / public API (`schemaVersion` 14). */
 export type WorkflowResult = Omit<WorkflowEngineResult, "schemaVersion"> & {
-  schemaVersion: 13;
+  schemaVersion: 14;
   workflowTruthReport: WorkflowTruthReport;
 };
 

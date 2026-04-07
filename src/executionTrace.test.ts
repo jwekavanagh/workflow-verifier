@@ -148,7 +148,7 @@ describe("buildExecutionTraceView", () => {
       },
     ];
     const engine: WorkflowEngineResult = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "w",
       status: "complete",
       runLevelReasons: [],
@@ -178,8 +178,7 @@ describe("buildExecutionTraceView", () => {
           verificationRequest: {
             kind: "sql_row",
             table: "contacts",
-            keyColumn: "id",
-            keyValue: "c_ok",
+            identityEq: [{ column: "id", value: "c_ok" }],
             requiredFields: { name: "Alice" },
           },
           status: "verified",

@@ -20,7 +20,7 @@ steps:
     observations: evaluated=1 of 1 in_capture_order
     observed_execution: {"fieldsA":{"name":"Alice","status":"active"},"fieldsB":{"name":"Alice","status":"active"},"recordIdA":"c_ok","recordIdB":"c_partial"}
     intended: Multi "c_ok" "c_partial"
-    verify_target: sql_effects count=2 primary:contacts.id=c_ok; secondary:contacts.id=c_partial
+    verify_target: sql_effects count=2 primary:contacts identity=[id=c_ok]; secondary:contacts identity=[id=c_partial]
     category: workflow_execution
     detail: Verified 1 of 2 effects; not verified: secondary. Per effect: secondary (VALUE_MISMATCH)
     reference_code: MULTI_EFFECT_PARTIAL

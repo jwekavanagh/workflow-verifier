@@ -1,9 +1,12 @@
 import { getPointer } from "./jsonPointer.js";
 import type {
+  IdentityEqPair,
   RelationalExpectSpec,
   ResolvedEffect,
   ResolvedRelationalCheck,
+  RowAbsentVerificationRequest,
   SqlRelationalCheckSpec,
+  SqlRowAbsentVerificationSpec,
   SqlRowVerificationSpec,
   ToolRegistryEntry,
   VerificationRequest,
@@ -22,6 +25,7 @@ export function compareUtf16Id(a: string, b: string): number {
 
 export type ResolveResult =
   | { ok: true; verificationKind: "sql_row"; request: VerificationRequest }
+  | { ok: true; verificationKind: "sql_row_absent"; request: RowAbsentVerificationRequest }
   | { ok: true; verificationKind: "sql_effects"; effects: ResolvedEffect[] }
   | { ok: true; verificationKind: "sql_relational"; checks: ResolvedRelationalCheck[] }
   | { ok: false; code: string; message: string };
@@ -93,7 +97,50 @@ function resolveKeyValue(
     }
     return { ok: true, value: String(got) };
   }
-  return { ok: false, code: REGISTRY_RESOLVER_CODE.KEY_VALUE_SPEC_INVALID, message: "key.value: invalid spec" };
+  return { ok: false, code: REGISTRY_RESOLVER_CODE.KEY_VALUE_SPEC_INVALID, message: "value: invalid spec" };
+}
+
+function normalizeSortedIdentityEq(
+  pairs: Array<{ column: string; value: string }>,
+  labelPrefix: string,
+): { ok: true; identityEq: IdentityEqPair[] } | { ok: false; code: string; message: string } {
+  const sorted = [...pairs].sort((a, b) => compareUtf16Id(a.column, b.column));
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i]!.column === sorted[i - 1]!.column) {
+      return {
+        ok: false,
+        code: REGISTRY_RESOLVER_CODE.EQUALITY_DUPLICATE_COLUMN,
+        message: `${labelPrefix}duplicate equality column: ${sorted[i]!.column}`,
+      };
+    }
+  }
+  return { ok: true, identityEq: sorted };
+}
+
+function resolveRegistryEqualityList(
+  specs: SqlRowVerificationSpec["identityEq"],
+  params: Record<string, unknown>,
+  labelPrefix: string,
+): { ok: true; identityEq: IdentityEqPair[] } | { ok: false; code: string; message: string } {
+  const raw: Array<{ column: string; value: string }> = [];
+  for (let i = 0; i < specs.length; i++) {
+    const p = specs[i]!;
+    const colRes = resolveStringSpec(p.column, params, `${labelPrefix}identityEq[${i}].column`);
+    if (!colRes.ok) return colRes;
+    if (!IDENT.test(colRes.value)) {
+      return {
+        ok: false,
+        code: REGISTRY_RESOLVER_CODE.INVALID_IDENTIFIER,
+        message: `${labelPrefix}identityEq[${i}].column: ${colRes.value}`,
+      };
+    }
+    const valRes = resolveKeyValue(p.value, params);
+    if (!valRes.ok) {
+      return { ok: false, code: valRes.code, message: `${labelPrefix}identityEq[${i}]. ${valRes.message}` };
+    }
+    raw.push({ column: colRes.value, value: valRes.value });
+  }
+  return normalizeSortedIdentityEq(raw, labelPrefix);
 }
 
 function resolveSqlRowSpec(
@@ -125,13 +172,6 @@ function resolveSqlRowSpec(
 
   if (!tableRes.ok) return tableRes;
 
-  const colRes = resolveStringSpec(spec.key.column, params, `${labelPrefix}key.column`);
-  if (!colRes.ok) return colRes;
-  const valRes = resolveKeyValue(spec.key.value, params);
-  if (!valRes.ok) {
-    return { ok: false, code: valRes.code, message: `${labelPrefix}${valRes.message}` };
-  }
-
   if (!IDENT.test(tableRes.value)) {
     return {
       ok: false,
@@ -139,13 +179,9 @@ function resolveSqlRowSpec(
       message: `${labelPrefix}table: ${tableRes.value}`,
     };
   }
-  if (!IDENT.test(colRes.value)) {
-    return {
-      ok: false,
-      code: REGISTRY_RESOLVER_CODE.INVALID_IDENTIFIER,
-      message: `${labelPrefix}key.column: ${colRes.value}`,
-    };
-  }
+
+  const idRes = resolveRegistryEqualityList(spec.identityEq, params, labelPrefix);
+  if (!idRes.ok) return idRes;
 
   const fieldsRaw = getPointer(params, spec.requiredFields.pointer);
   if (fieldsRaw === undefined || fieldsRaw === null) {
@@ -203,9 +239,89 @@ function resolveSqlRowSpec(
     request: {
       kind: "sql_row",
       table: tableRes.value,
-      keyColumn: colRes.value,
-      keyValue: valRes.value,
+      identityEq: idRes.identityEq,
       requiredFields,
+    },
+  };
+}
+
+function resolveSqlRowAbsentSpec(
+  params: Record<string, unknown>,
+  spec: SqlRowAbsentVerificationSpec,
+  labelPrefix: string,
+): { ok: true; request: RowAbsentVerificationRequest } | { ok: false; code: string; message: string } {
+  const tableRes =
+    "const" in spec.table && !("pointer" in spec.table)
+      ? { ok: true as const, value: spec.table.const }
+      : "pointer" in spec.table
+        ? (() => {
+            const tptr = (spec.table as { pointer: string }).pointer;
+            const got = getPointer(params, tptr);
+            if (got === undefined || got === null || typeof got !== "string" || got.length === 0) {
+              return {
+                ok: false as const,
+                code: REGISTRY_RESOLVER_CODE.TABLE_POINTER_INVALID,
+                message: `${labelPrefix}table: expected non-empty string at ${tptr}`,
+              };
+            }
+            return { ok: true as const, value: got };
+          })()
+        : {
+            ok: false as const,
+            code: REGISTRY_RESOLVER_CODE.TABLE_SPEC_INVALID,
+            message: `${labelPrefix}table: invalid spec`,
+          };
+
+  if (!tableRes.ok) return tableRes;
+  if (!IDENT.test(tableRes.value)) {
+    return {
+      ok: false,
+      code: REGISTRY_RESOLVER_CODE.INVALID_IDENTIFIER,
+      message: `${labelPrefix}table: ${tableRes.value}`,
+    };
+  }
+
+  const idRes = resolveRegistryEqualityList(spec.identityEq, params, labelPrefix);
+  if (!idRes.ok) return idRes;
+
+  const identityCols = new Set(idRes.identityEq.map((p) => p.column));
+  const filterSpecs = spec.filterEq ?? [];
+  const filterRaw: Array<{ column: string; value: string }> = [];
+  for (let i = 0; i < filterSpecs.length; i++) {
+    const p = filterSpecs[i]!;
+    const colRes = resolveStringSpec(p.column, params, `${labelPrefix}filterEq[${i}].column`);
+    if (!colRes.ok) return colRes;
+    if (!IDENT.test(colRes.value)) {
+      return {
+        ok: false,
+        code: REGISTRY_RESOLVER_CODE.INVALID_IDENTIFIER,
+        message: `${labelPrefix}filterEq[${i}].column: ${colRes.value}`,
+      };
+    }
+    if (identityCols.has(colRes.value)) {
+      return {
+        ok: false,
+        code: REGISTRY_RESOLVER_CODE.FILTER_EQ_OVERLAPS_IDENTITY,
+        message: `${labelPrefix}filterEq column ${colRes.value} duplicates identityEq`,
+      };
+    }
+    const valRes = resolveKeyValue(p.value, params);
+    if (!valRes.ok) {
+      return { ok: false, code: valRes.code, message: `${labelPrefix}filterEq[${i}]. ${valRes.message}` };
+    }
+    filterRaw.push({ column: colRes.value, value: valRes.value });
+  }
+
+  const filterNorm = normalizeSortedIdentityEq(filterRaw, `${labelPrefix}filterEq: `);
+  if (!filterNorm.ok) return filterNorm;
+
+  return {
+    ok: true,
+    request: {
+      kind: "sql_row_absent",
+      table: tableRes.value,
+      identityEq: idRes.identityEq,
+      filterEq: filterNorm.identityEq,
     },
   };
 }
@@ -287,49 +403,111 @@ function resolveSqlRelationalCheck(
   spec: SqlRelationalCheckSpec,
   labelPrefix: string,
 ): { ok: true; check: ResolvedRelationalCheck } | { ok: false; code: string; message: string } {
-  if (spec.checkKind === "related_exists") {
-    const child = resolveTableIdent(spec.childTable, params, `${labelPrefix}childTable`);
-    if (!child.ok) return child;
-    const fkCol = resolveStringSpec(spec.fkColumn, params, `${labelPrefix}fkColumn`);
-    if (!fkCol.ok) return fkCol;
-    if (!IDENT.test(fkCol.value)) {
+  if (spec.checkKind === "anti_join") {
+    const anchor = resolveTableIdent(spec.anchorTable, params, `${labelPrefix}anchorTable`);
+    if (!anchor.ok) return anchor;
+    const lookup = resolveTableIdent(spec.lookupTable, params, `${labelPrefix}lookupTable`);
+    if (!lookup.ok) return lookup;
+    const ac = resolveStringSpec(spec.anchorColumn, params, `${labelPrefix}anchorColumn`);
+    if (!ac.ok) return ac;
+    if (!IDENT.test(ac.value)) {
       return {
         ok: false,
         code: REGISTRY_RESOLVER_CODE.INVALID_IDENTIFIER,
-        message: `${labelPrefix}fkColumn: ${fkCol.value}`,
+        message: `${labelPrefix}anchorColumn: ${ac.value}`,
       };
     }
-    const fkVal = resolveKeyValue(spec.fkValue, params);
-    if (!fkVal.ok) {
-      return { ok: false, code: fkVal.code, message: `${labelPrefix}${fkVal.message}` };
+    const lc = resolveStringSpec(spec.lookupColumn, params, `${labelPrefix}lookupColumn`);
+    if (!lc.ok) return lc;
+    if (!IDENT.test(lc.value)) {
+      return {
+        ok: false,
+        code: REGISTRY_RESOLVER_CODE.INVALID_IDENTIFIER,
+        message: `${labelPrefix}lookupColumn: ${lc.value}`,
+      };
     }
-    const whereEq: Array<{ column: string; value: string }> = [];
-    for (let i = 0; i < (spec.whereEq?.length ?? 0); i++) {
-      const w = spec.whereEq![i]!;
-      const col = resolveStringSpec(w.column, params, `${labelPrefix}whereEq[${i}].column`);
+    const pc = resolveStringSpec(spec.lookupPresenceColumn, params, `${labelPrefix}lookupPresenceColumn`);
+    if (!pc.ok) return pc;
+    if (!IDENT.test(pc.value)) {
+      return {
+        ok: false,
+        code: REGISTRY_RESOLVER_CODE.INVALID_IDENTIFIER,
+        message: `${labelPrefix}lookupPresenceColumn: ${pc.value}`,
+      };
+    }
+
+    const fa = spec.filterEqAnchor ?? [];
+    const anchorFilters: Array<{ column: string; value: string }> = [];
+    for (let i = 0; i < fa.length; i++) {
+      const w = fa[i]!;
+      const col = resolveStringSpec(w.column, params, `${labelPrefix}filterEqAnchor[${i}].column`);
       if (!col.ok) return col;
       if (!IDENT.test(col.value)) {
         return {
           ok: false,
           code: REGISTRY_RESOLVER_CODE.INVALID_IDENTIFIER,
-          message: `${labelPrefix}whereEq[${i}].column: ${col.value}`,
+          message: `${labelPrefix}filterEqAnchor[${i}].column: ${col.value}`,
         };
       }
       const val = resolveKeyValue(w.value, params);
       if (!val.ok) {
-        return { ok: false, code: val.code, message: `${labelPrefix}whereEq[${i}]. ${val.message}` };
+        return { ok: false, code: val.code, message: `${labelPrefix}filterEqAnchor[${i}]. ${val.message}` };
       }
-      whereEq.push({ column: col.value, value: val.value });
+      anchorFilters.push({ column: col.value, value: val.value });
     }
+    const fl = spec.filterEqLookup ?? [];
+    const lookupFilters: Array<{ column: string; value: string }> = [];
+    for (let i = 0; i < fl.length; i++) {
+      const w = fl[i]!;
+      const col = resolveStringSpec(w.column, params, `${labelPrefix}filterEqLookup[${i}].column`);
+      if (!col.ok) return col;
+      if (!IDENT.test(col.value)) {
+        return {
+          ok: false,
+          code: REGISTRY_RESOLVER_CODE.INVALID_IDENTIFIER,
+          message: `${labelPrefix}filterEqLookup[${i}].column: ${col.value}`,
+        };
+      }
+      const val = resolveKeyValue(w.value, params);
+      if (!val.ok) {
+        return { ok: false, code: val.code, message: `${labelPrefix}filterEqLookup[${i}]. ${val.message}` };
+      }
+      lookupFilters.push({ column: col.value, value: val.value });
+    }
+
+    const anchorNorm = normalizeSortedIdentityEq(anchorFilters, `${labelPrefix}filterEqAnchor: `);
+    if (!anchorNorm.ok) return anchorNorm;
+    const lookupNorm = normalizeSortedIdentityEq(lookupFilters, `${labelPrefix}filterEqLookup: `);
+    if (!lookupNorm.ok) return lookupNorm;
+
+    return {
+      ok: true,
+      check: {
+        checkKind: "anti_join",
+        id: spec.id,
+        anchorTable: anchor.value,
+        lookupTable: lookup.value,
+        anchorColumn: ac.value,
+        lookupColumn: lc.value,
+        lookupPresenceColumn: pc.value,
+        filterEqAnchor: anchorNorm.identityEq,
+        filterEqLookup: lookupNorm.identityEq,
+      },
+    };
+  }
+
+  if (spec.checkKind === "related_exists") {
+    const child = resolveTableIdent(spec.childTable, params, `${labelPrefix}childTable`);
+    if (!child.ok) return child;
+    const matchRes = resolveRegistryEqualityList(spec.matchEq, params, labelPrefix);
+    if (!matchRes.ok) return matchRes;
     return {
       ok: true,
       check: {
         checkKind: "related_exists",
         id: spec.id,
         childTable: child.value,
-        fkColumn: fkCol.value,
-        fkValue: fkVal.value,
-        whereEq,
+        matchEq: matchRes.identityEq,
       },
     };
   }
@@ -464,6 +642,11 @@ export function resolveVerificationRequest(entry: ToolRegistryEntry, params: Rec
     const row = resolveSqlRowSpec(params, v, "");
     if (!row.ok) return row;
     return { ok: true, verificationKind: "sql_row", request: row.request };
+  }
+  if (v.kind === "sql_row_absent") {
+    const absent = resolveSqlRowAbsentSpec(params, v, "");
+    if (!absent.ok) return absent;
+    return { ok: true, verificationKind: "sql_row_absent", request: absent.request };
   }
   if (v.kind === "sql_relational") {
     const seen = new Set<string>();

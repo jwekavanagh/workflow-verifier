@@ -14,10 +14,13 @@ function req(id: string, fields: Record<string, string | number | boolean | null
   return {
     kind: "sql_row",
     table: "contacts",
-    keyColumn: "id",
-    keyValue: id,
+    identityEq: [{ column: "id", value: id }],
     requiredFields: fields,
   };
+}
+
+function idFromRequest(r: VerificationRequest): string {
+  return r.identityEq.find((p) => p.column === "id")?.value ?? r.identityEq[0]!.value;
 }
 
 describe("computeMultiCheckRollupStatus", () => {
@@ -58,7 +61,7 @@ describe("rollupMultiEffectsSync", () => {
 
   it("partially_verified when one value mismatches", () => {
     vi.mocked(reconcileSqlRow).mockImplementation((_db, r) => {
-      if (r.keyValue === "ok1") {
+      if (idFromRequest(r) === "ok1") {
         return { status: "verified", reasons: [], evidenceSummary: { rowCount: 1 } };
       }
       return {
@@ -102,7 +105,7 @@ describe("rollupMultiEffectsSync", () => {
 
   it("incomplete_verification when any effect incomplete", () => {
     vi.mocked(reconcileSqlRow).mockImplementation((_db, r) => {
-      if (r.keyValue === "ok") {
+      if (idFromRequest(r) === "ok") {
         return { status: "verified", reasons: [], evidenceSummary: { rowCount: 1 } };
       }
       return {

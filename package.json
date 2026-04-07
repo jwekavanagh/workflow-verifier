@@ -1,7 +1,7 @@
 {
   "name": "execution-truth-layer",
   "version": "0.1.0",
-  "description": "Verify agent workflow outcomes against external SQL ground truth",
+  "description": "After each agent or automation run, verify your SQLite or Postgres rows match the tool-call log—not just OK responses",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",

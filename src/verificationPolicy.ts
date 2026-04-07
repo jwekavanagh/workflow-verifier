@@ -10,11 +10,16 @@ import {
 import type { ResolveResult } from "./resolveExpectation.js";
 import { compareUtf16Id } from "./resolveExpectation.js";
 import { reconcileRelationalSqlite } from "./relationalInvariant.js";
-import { reconcileSqlRow, type ReconcileOutput } from "./reconciler.js";
+import {
+  reconcileSqlRow,
+  reconcileSqlRowAbsent,
+  type ReconcileOutput,
+} from "./reconciler.js";
 import type {
   Reason,
   ResolvedEffect,
   ResolvedRelationalCheck,
+  RowAbsentVerificationRequest,
   StepStatus,
   StepVerificationRequest,
   VerificationPolicy,
@@ -41,6 +46,7 @@ const defaultTiming: TimingDeps = {
 
 export type PolicyReconcileContext = {
   reconcileRow: (req: VerificationRequest) => Promise<ReconcileOutput>;
+  reconcileRowAbsent: (req: RowAbsentVerificationRequest) => Promise<ReconcileOutput>;
   reconcileRelationalCheck: (check: ResolvedRelationalCheck) => Promise<ReconcileOutput>;
 };
 
@@ -116,8 +122,7 @@ function reconcileRowsToEffectInput(
   reasons: Reason[];
   evidenceSummary: Record<string, unknown>;
   table: string;
-  keyColumn: string;
-  keyValue: string;
+  identityEq: VerificationRequest["identityEq"];
   requiredFields: VerificationRequest["requiredFields"];
 }> {
   return effects.map((e, i) => {
@@ -128,8 +133,7 @@ function reconcileRowsToEffectInput(
       reasons: rec.reasons,
       evidenceSummary: rec.evidenceSummary,
       table: e.request.table,
-      keyColumn: e.request.keyColumn,
-      keyValue: e.request.keyValue,
+      identityEq: e.request.identityEq,
       requiredFields: e.request.requiredFields,
     };
   });
@@ -210,6 +214,37 @@ function buildUncertainSqlRow(
   };
 }
 
+function buildUncertainSqlRowAbsent(
+  request: RowAbsentVerificationRequest,
+  attempts: number,
+  elapsedMs: number,
+  policy: VerificationPolicy,
+  lastRec: ReconcileOutput,
+): PolicyExecutionOutput {
+  const { verificationWindowMs, pollIntervalMs } = policy;
+  const mc = lastRec.evidenceSummary.matchedRowCount;
+  const sr = lastRec.evidenceSummary.sampleRows;
+  return {
+    verificationRequest: request,
+    status: "uncertain",
+    reasons: [
+      {
+        code: SQL_VERIFICATION_OUTCOME_CODE.FORBIDDEN_ROWS_STILL_PRESENT_WITHIN_WINDOW,
+        message:
+          "Forbidden row(s) still present within the verification window; replication or processing delay is possible.",
+      },
+    ],
+    evidenceSummary: {
+      attempts,
+      elapsedMs,
+      verificationWindowMs,
+      pollIntervalMs,
+      matchedRowCount: typeof mc === "number" && mc >= 1 ? mc : 1,
+      sampleRows: Array.isArray(sr) ? sr : [],
+    },
+  };
+}
+
 function buildUncertainSqlEffects(
   effects: ResolvedEffect[],
   recs: ReconcileOutput[],
@@ -227,8 +262,7 @@ function buildUncertainSqlEffects(
       id: r.id,
       kind: "sql_row" as const,
       table: r.table,
-      keyColumn: r.keyColumn,
-      keyValue: r.keyValue,
+      identityEq: r.identityEq,
       requiredFields: r.requiredFields,
     })),
   };
@@ -355,6 +389,44 @@ async function executeSqlRowEventual(
     }
     if (timing.now() - start >= verificationWindowMs) {
       return buildUncertainSqlRow(request, attempts, timing.now() - start, policy);
+    }
+    await timing.sleep(pollIntervalMs);
+  }
+}
+
+async function executeSqlRowAbsentEventual(
+  request: RowAbsentVerificationRequest,
+  policy: VerificationPolicy,
+  ctx: PolicyReconcileContext,
+  timing: TimingDeps,
+): Promise<PolicyExecutionOutput> {
+  const { verificationWindowMs, pollIntervalMs } = policy;
+  const start = timing.now();
+  let attempts = 0;
+  for (;;) {
+    attempts++;
+    const rec = await ctx.reconcileRowAbsent(request);
+    if (rec.status === "verified") {
+      return {
+        verificationRequest: request,
+        status: rec.status,
+        reasons: rec.reasons,
+        evidenceSummary: rec.evidenceSummary,
+      };
+    }
+    if (
+      rec.status !== "inconsistent" ||
+      rec.reasons[0]?.code !== SQL_VERIFICATION_OUTCOME_CODE.ROW_PRESENT_WHEN_FORBIDDEN
+    ) {
+      return {
+        verificationRequest: request,
+        status: rec.status,
+        reasons: rec.reasons,
+        evidenceSummary: rec.evidenceSummary,
+      };
+    }
+    if (timing.now() - start >= verificationWindowMs) {
+      return buildUncertainSqlRowAbsent(request, attempts, timing.now() - start, policy, rec);
     }
     await timing.sleep(pollIntervalMs);
   }
@@ -487,6 +559,15 @@ export function executeVerificationWithPolicySync(
       evidenceSummary: rolled.evidenceSummary,
     };
   }
+  if (resolved.verificationKind === "sql_row_absent") {
+    const rec = reconcileSqlRowAbsent(db, resolved.request);
+    return {
+      verificationRequest: resolved.request,
+      status: rec.status,
+      reasons: rec.reasons,
+      evidenceSummary: rec.evidenceSummary,
+    };
+  }
   const rec = reconcileSqlRow(db, resolved.request);
   return {
     verificationRequest: resolved.request,
@@ -536,6 +617,15 @@ export async function executeVerificationWithPolicyAsync(
         evidenceSummary: out.evidenceSummary,
       };
     }
+    if (resolved.verificationKind === "sql_row_absent") {
+      const rec = await ctx.reconcileRowAbsent(resolved.request);
+      return {
+        verificationRequest: resolved.request,
+        status: rec.status,
+        reasons: rec.reasons,
+        evidenceSummary: rec.evidenceSummary,
+      };
+    }
     const rec = await ctx.reconcileRow(resolved.request);
     return {
       verificationRequest: resolved.request,
@@ -545,6 +635,9 @@ export async function executeVerificationWithPolicyAsync(
     };
   }
 
+  if (resolved.verificationKind === "sql_row_absent") {
+    return executeSqlRowAbsentEventual(resolved.request, p, ctx, t);
+  }
   if (resolved.verificationKind === "sql_row") {
     return executeSqlRowEventual(resolved.request, p, ctx, t);
   }
@@ -561,6 +654,7 @@ export async function executeVerificationWithPolicyAsync(
 export function createSqlitePolicyContext(db: DatabaseSync): PolicyReconcileContext {
   return {
     reconcileRow: (req) => Promise.resolve(reconcileSqlRow(db, req)),
+    reconcileRowAbsent: (req) => Promise.resolve(reconcileSqlRowAbsent(db, req)),
     reconcileRelationalCheck: (check) => Promise.resolve(reconcileRelationalSqlite(db, check)),
   };
 }

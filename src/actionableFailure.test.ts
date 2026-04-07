@@ -23,7 +23,7 @@ const strongPolicy = {
 
 function baseEngine(partial: Partial<WorkflowEngineResult>): WorkflowEngineResult {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     workflowId: "w",
     status: "incomplete",
     runLevelReasons: [],
@@ -78,8 +78,7 @@ describe("deriveSeverityWorkflow", () => {
               verificationRequest: {
                 kind: "sql_row",
                 table: "t",
-                keyColumn: "id",
-                keyValue: "1",
+                identityEq: [{ column: "id", value: "1" }],
                 requiredFields: {},
               },
               status: "uncertain",
@@ -228,8 +227,7 @@ describe("ambiguous category with high severity (workflow)", () => {
           verificationRequest: {
             kind: "sql_row",
             table: "t",
-            keyColumn: "id",
-            keyValue: "1",
+            identityEq: [{ column: "id", value: "1" }],
             requiredFields: {},
           },
           status: "missing",

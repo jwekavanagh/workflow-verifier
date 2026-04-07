@@ -41,7 +41,7 @@ export function aggregateWorkflow(
   const enrichedSteps = enrichStepsWithFailureDiagnostics(steps);
 
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     workflowId,
     status,
     runLevelReasons: [...runLevelReasons],

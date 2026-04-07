@@ -13,7 +13,7 @@ describe("agentRunRecord", () => {
   });
 
   it("buildAgentRunRecordForBundle produces schema-valid record", () => {
-    const wr = Buffer.from('{"schemaVersion":13,"workflowId":"w"}', "utf8");
+    const wr = Buffer.from('{"schemaVersion":14,"workflowId":"w"}', "utf8");
     const ev = Buffer.from("{}\n", "utf8");
     const rec = buildAgentRunRecordForBundle({
       runId: "r1",

@@ -25,8 +25,7 @@ function sqlRowStep(
     verificationRequest: {
       kind: "sql_row",
       table: "contacts",
-      keyColumn: "id",
-      keyValue,
+      identityEq: [{ column: "id", value: keyValue }],
       requiredFields: {},
     },
     status: verified ? "verified" : "missing",
@@ -41,7 +40,7 @@ function sqlRowStep(
 function wf(steps: StepOutcome[], id = "wf_compare_ac"): WorkflowResult {
   const bad = steps.some((s) => s.status !== "verified");
   const engine: WorkflowEngineResult = {
-    schemaVersion: 7,
+    schemaVersion: 8,
     workflowId: id,
     status: bad ? "inconsistent" : "complete",
     runLevelReasons: [],
@@ -75,7 +74,7 @@ describe("Run comparison acceptance tests", () => {
     const r1 = wf([sqlRowStep(0, "t1", "b", true), sqlRowStep(1, "t1", "a", false)]);
     const report = buildRunComparisonReport([r0, r1], ["r0", "r1"]);
     expect(v(report)).toBe(true);
-    expect(report.compareHighlights.introducedLogicalStepKeys).toContain("sql_row|contacts|id|a");
+    expect(report.compareHighlights.introducedLogicalStepKeys).toContain("sql_row|contacts|id=a");
     expect(report.compareHighlights.resolvedLogicalStepKeys.length).toBeGreaterThanOrEqual(0);
   });
 

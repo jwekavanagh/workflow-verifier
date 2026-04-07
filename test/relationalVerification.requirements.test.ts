@@ -91,8 +91,7 @@ describe("relationalVerification requirements (fixtures)", () => {
         reasons: [] as { code: string; message: string }[],
         evidenceSummary: {},
         table: "t",
-        keyColumn: "id",
-        keyValue: "b",
+        identityEq: [{ column: "id", value: "b" }],
         requiredFields: {},
       },
       {
@@ -101,8 +100,7 @@ describe("relationalVerification requirements (fixtures)", () => {
         reasons: [{ code: "ROW_ABSENT", message: "m" }],
         evidenceSummary: {},
         table: "t",
-        keyColumn: "id",
-        keyValue: "a",
+        identityEq: [{ column: "id", value: "a" }],
         requiredFields: {},
       },
     ];
@@ -120,12 +118,12 @@ describe("relationalVerification requirements (fixtures)", () => {
     expect(rolled.reasons[0]?.code).toBe(direct.reasons[0]?.code);
   });
 
-  it("related_exists whereEq pass → verified", async () => {
+  it("related_exists matchEq pass → verified", async () => {
     const r = await runWf("wf_rel_exists_where_pass");
     expect(r.steps[0]?.status).toBe("verified");
   });
 
-  it("related_exists whereEq fail → missing RELATED_ROWS_ABSENT", async () => {
+  it("related_exists matchEq fail → missing RELATED_ROWS_ABSENT", async () => {
     const r = await runWf("wf_rel_exists_where_fail");
     expect(r.steps[0]?.status).toBe("missing");
     expect(r.steps[0]?.reasons[0]?.code).toBe(SQL_VERIFICATION_OUTCOME_CODE.RELATED_ROWS_ABSENT);
@@ -183,32 +181,33 @@ describe("eventual policy parity (sql_effects vs sql_relational)", () => {
     const baseReq: VerificationRequest = {
       kind: "sql_row",
       table: "t",
-      keyColumn: "id",
-      keyValue: "1",
+      identityEq: [{ column: "id", value: "1" }],
       requiredFields: {},
     };
     const effects: ResolvedEffect[] = [
-      { id: "a", request: { ...baseReq, keyValue: "a" } },
-      { id: "b", request: { ...baseReq, keyValue: "b" } },
+      { id: "a", request: { ...baseReq, identityEq: [{ column: "id", value: "a" }] } },
+      { id: "b", request: { ...baseReq, identityEq: [{ column: "id", value: "b" }] } },
     ];
     const checks: ResolvedRelationalCheck[] = [
       {
         checkKind: "related_exists",
         id: "a",
         childTable: "c",
-        fkColumn: "k",
-        fkValue: "a",
-        whereEq: [],
+        matchEq: [{ column: "k", value: "a" }],
       },
       {
         checkKind: "related_exists",
         id: "b",
         childTable: "c",
-        fkColumn: "k",
-        fkValue: "b",
-        whereEq: [],
+        matchEq: [{ column: "k", value: "b" }],
       },
     ];
+
+    const absentOk = async () => ({
+      status: "verified" as const,
+      reasons: [] as { code: string; message: string }[],
+      evidenceSummary: {},
+    });
 
     let callsE = 0;
     const ctxE = {
@@ -217,12 +216,14 @@ describe("eventual policy parity (sql_effects vs sql_relational)", () => {
         const wave = Math.floor((callsE - 1) / 2);
         return wave === 0 ? missRow : okRow;
       },
+      reconcileRowAbsent: absentOk,
       reconcileRelationalCheck: async () => okRow,
     };
 
     let callsR = 0;
     const ctxR = {
       reconcileRow: async () => okRow,
+      reconcileRowAbsent: absentOk,
       reconcileRelationalCheck: async () => {
         callsR++;
         const wave = Math.floor((callsR - 1) / 2);

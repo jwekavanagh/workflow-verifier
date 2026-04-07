@@ -15,12 +15,26 @@
           {
             "type": "object",
             "additionalProperties": false,
-            "required": ["kind", "table", "key", "requiredFields"],
+            "required": ["kind", "table", "identityEq", "requiredFields"],
             "properties": {
               "kind": { "const": "sql_row" },
               "table": { "$ref": "#/$defs/tableSpec" },
-              "key": { "$ref": "#/$defs/keySpec" },
+              "identityEq": { "$ref": "#/$defs/identityEqSpec" },
               "requiredFields": { "$ref": "#/$defs/requiredFieldsPointer" }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "table", "identityEq"],
+            "properties": {
+              "kind": { "const": "sql_row_absent" },
+              "table": { "$ref": "#/$defs/tableSpec" },
+              "identityEq": { "$ref": "#/$defs/identityEqSpec" },
+              "filterEq": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/equalityPair" }
+              }
             }
           },
           {
@@ -35,11 +49,11 @@
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": ["id", "table", "key", "requiredFields"],
+                  "required": ["id", "table", "identityEq", "requiredFields"],
                   "properties": {
                     "id": { "type": "string", "minLength": 1 },
                     "table": { "$ref": "#/$defs/tableSpec" },
-                    "key": { "$ref": "#/$defs/keySpec" },
+                    "identityEq": { "$ref": "#/$defs/identityEqSpec" },
                     "requiredFields": { "$ref": "#/$defs/requiredFieldsPointer" }
                   }
                 }
@@ -80,46 +94,19 @@
         }
       ]
     },
-    "keySpec": {
+    "equalityPair": {
       "type": "object",
       "additionalProperties": false,
       "required": ["column", "value"],
       "properties": {
-        "column": {
-          "oneOf": [
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["const"],
-              "properties": { "const": { "type": "string", "minLength": 1 } }
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["pointer"],
-              "properties": { "pointer": { "type": "string", "pattern": "^/" } }
-            }
-          ]
-        },
-        "value": {
-          "oneOf": [
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["const"],
-              "properties": {
-                "const": { "type": ["string", "number", "boolean", "null"] }
-              }
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["pointer"],
-              "properties": { "pointer": { "type": "string", "pattern": "^/" } }
-            }
-          ]
-        }
+        "column": { "$ref": "#/$defs/columnSpec" },
+        "value": { "$ref": "#/$defs/scalarOrPointer" }
       }
+    },
+    "identityEqSpec": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/equalityPair" }
     },
     "requiredFieldsPointer": {
       "type": "object",
@@ -253,24 +240,41 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["checkKind", "id", "childTable", "fkColumn", "fkValue"],
+          "required": ["checkKind", "id", "childTable", "matchEq"],
           "properties": {
             "checkKind": { "const": "related_exists" },
             "id": { "type": "string", "minLength": 1 },
             "childTable": { "$ref": "#/$defs/tableSpec" },
-            "fkColumn": { "$ref": "#/$defs/columnSpec" },
-            "fkValue": { "$ref": "#/$defs/scalarOrPointer" },
-            "whereEq": {
+            "matchEq": { "$ref": "#/$defs/identityEqSpec" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "checkKind",
+            "id",
+            "anchorTable",
+            "lookupTable",
+            "anchorColumn",
+            "lookupColumn",
+            "lookupPresenceColumn"
+          ],
+          "properties": {
+            "checkKind": { "const": "anti_join" },
+            "id": { "type": "string", "minLength": 1 },
+            "anchorTable": { "$ref": "#/$defs/tableSpec" },
+            "lookupTable": { "$ref": "#/$defs/tableSpec" },
+            "anchorColumn": { "$ref": "#/$defs/columnSpec" },
+            "lookupColumn": { "$ref": "#/$defs/columnSpec" },
+            "lookupPresenceColumn": { "$ref": "#/$defs/columnSpec" },
+            "filterEqAnchor": {
               "type": "array",
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["column", "value"],
-                "properties": {
-                  "column": { "$ref": "#/$defs/columnSpec" },
-                  "value": { "$ref": "#/$defs/scalarOrPointer" }
-                }
-              }
+              "items": { "$ref": "#/$defs/equalityPair" }
+            },
+            "filterEqLookup": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/equalityPair" }
             }
           }
         }

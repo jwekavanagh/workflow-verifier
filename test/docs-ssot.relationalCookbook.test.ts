@@ -15,6 +15,11 @@ describe("docs SSOT relational cookbook", () => {
     expect(md).toContain("## Invariant cookbook (product vocabulary)");
     for (const s of [
       "exists_related",
+      "composite_exists_related",
+      "orphan_rows",
+      "anti_join",
+      "matchEq",
+      "ORPHAN_ROW_DETECTED",
       "count_equals",
       "count_gte",
       "aggregate_match",

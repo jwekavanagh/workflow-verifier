@@ -399,6 +399,7 @@ export async function verifyWorkflow(options: {
     const backend = createPostgresSqlReadBackend(client);
     const ctx: PolicyReconcileContext = {
       reconcileRow: (req) => reconcileSqlRowAsync(backend, req),
+      reconcileRowAbsent: (req) => backend.reconcileRowAbsent(req),
       reconcileRelationalCheck: (check) => reconcileRelationalPostgres(client, check),
     };
     try {

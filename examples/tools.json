@@ -5,10 +5,12 @@
     "verification": {
       "kind": "sql_row",
       "table": { "const": "contacts" },
-      "key": {
-        "column": { "const": "id" },
-        "value": { "pointer": "/recordId" }
-      },
+      "identityEq": [
+        {
+          "column": { "const": "id" },
+          "value": { "pointer": "/recordId" }
+        }
+      ],
       "requiredFields": { "pointer": "/fields" }
     }
   },
@@ -21,19 +23,23 @@
         {
           "id": "primary",
           "table": { "const": "contacts" },
-          "key": {
-            "column": { "const": "id" },
-            "value": { "pointer": "/primaryRecordId" }
-          },
+          "identityEq": [
+            {
+              "column": { "const": "id" },
+              "value": { "pointer": "/primaryRecordId" }
+            }
+          ],
           "requiredFields": { "pointer": "/primaryFields" }
         },
         {
           "id": "secondary",
           "table": { "const": "contacts" },
-          "key": {
-            "column": { "const": "id" },
-            "value": { "pointer": "/secondaryRecordId" }
-          },
+          "identityEq": [
+            {
+              "column": { "const": "id" },
+              "value": { "pointer": "/secondaryRecordId" }
+            }
+          ],
           "requiredFields": { "pointer": "/secondaryFields" }
         }
       ]
@@ -45,10 +51,12 @@
     "verification": {
       "kind": "sql_row",
       "table": { "const": "dups" },
-      "key": {
-        "column": { "const": "k" },
-        "value": { "pointer": "/key" }
-      },
+      "identityEq": [
+        {
+          "column": { "const": "k" },
+          "value": { "pointer": "/key" }
+        }
+      ],
       "requiredFields": { "pointer": "/fields" }
     }
   }

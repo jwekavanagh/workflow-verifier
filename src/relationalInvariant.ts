@@ -1,6 +1,8 @@
 import type { DatabaseSync } from "node:sqlite";
 import { formatOperationalMessage } from "./failureCatalog.js";
+import { compareUtf16Id } from "./resolveExpectation.js";
 import type { ResolvedRelationalCheck } from "./types.js";
+import { MAX_VERIFICATION_SAMPLE_ROWS } from "./reconciler.js";
 import { SQL_VERIFICATION_OUTCOME_CODE } from "./wireReasonCodes.js";
 import type { ReconcileOutput } from "./reconciler.js";
 
@@ -8,7 +10,7 @@ function quoteIdent(id: string): string {
   return `"${id.replace(/"/g, '""')}"`;
 }
 
-/** Exported for tests: EXISTS SQL shape for `related_exists` (no extra `whereEq`). */
+/** Exported for tests: EXISTS SQL shape for `related_exists` (single-column match). */
 export function buildRelatedExistsSql(
   dialect: "sqlite" | "postgres",
   childTable: string,
@@ -18,11 +20,13 @@ export function buildRelatedExistsSql(
     checkKind: "related_exists",
     id: "_",
     childTable,
-    fkColumn,
-    fkValue: "_",
-    whereEq: [],
+    matchEq: [{ column: fkColumn, value: "_" }],
   });
   return { text };
+}
+
+function nextPlaceholder(dialect: "sqlite" | "postgres", p: { n: number }): string {
+  return dialect === "postgres" ? `$${p.n++}` : "?";
 }
 
 export function buildRelationalScalarSql(
@@ -33,14 +37,32 @@ export function buildRelationalScalarSql(
     const t = quoteIdent(check.childTable);
     const conds: string[] = [];
     const values: string[] = [];
-    let p = 1;
-    conds.push(`${t}.${quoteIdent(check.fkColumn)} = ${dialect === "postgres" ? `$${p++}` : "?"}`);
-    values.push(check.fkValue);
-    for (const w of check.whereEq) {
-      conds.push(`${t}.${quoteIdent(w.column)} = ${dialect === "postgres" ? `$${p++}` : "?"}`);
+    const p = { n: 1 };
+    for (const w of check.matchEq) {
+      conds.push(`${t}.${quoteIdent(w.column)} = ${nextPlaceholder(dialect, p)}`);
       values.push(w.value);
     }
     const text = `SELECT EXISTS (SELECT 1 FROM ${t} WHERE ${conds.join(" AND ")} LIMIT 1) AS v`;
+    return { text, values };
+  }
+
+  if (check.checkKind === "anti_join") {
+    const at = quoteIdent(check.anchorTable);
+    const lt = quoteIdent(check.lookupTable);
+    const condsOn: string[] = [];
+    const values: string[] = [];
+    const p = { n: 1 };
+    condsOn.push(`A.${quoteIdent(check.anchorColumn)} = L.${quoteIdent(check.lookupColumn)}`);
+    for (const w of check.filterEqLookup) {
+      condsOn.push(`L.${quoteIdent(w.column)} = ${nextPlaceholder(dialect, p)}`);
+      values.push(w.value);
+    }
+    const whereParts: string[] = [`L.${quoteIdent(check.lookupPresenceColumn)} IS NULL`];
+    for (const w of check.filterEqAnchor) {
+      whereParts.push(`A.${quoteIdent(w.column)} = ${nextPlaceholder(dialect, p)}`);
+      values.push(w.value);
+    }
+    const text = `SELECT COUNT(*) AS v FROM ${at} AS A LEFT JOIN ${lt} AS L ON ${condsOn.join(" AND ")} WHERE ${whereParts.join(" AND ")}`;
     return { text, values };
   }
 
@@ -60,8 +82,8 @@ export function buildRelationalScalarSql(
       return { text: selectPart, values: [] };
     }
     const conds = check.whereEq.map((w, i) => {
-      const p = dialect === "postgres" ? `$${i + 1}` : "?";
-      return `${tbl}.${quoteIdent(w.column)} = ${p}`;
+      const ph = dialect === "postgres" ? `$${i + 1}` : "?";
+      return `${tbl}.${quoteIdent(w.column)} = ${ph}`;
     });
     return {
       text: `${selectPart} WHERE ${conds.join(" AND ")}`,
@@ -69,22 +91,55 @@ export function buildRelationalScalarSql(
     };
   }
 
-  const lt = quoteIdent(check.leftTable);
-  const rt = quoteIdent(check.rightTable);
-  const base =
-    `SELECT COUNT(*) AS v FROM ${lt} AS L INNER JOIN ${rt} AS R ON L.${quoteIdent(check.leftJoinColumn)} = R.${quoteIdent(check.rightJoinColumn)}`;
-  if (check.whereEq.length === 0) {
-    return { text: base, values: [] };
+  if (check.checkKind === "join_count") {
+    const lt = quoteIdent(check.leftTable);
+    const rt = quoteIdent(check.rightTable);
+    const base =
+      `SELECT COUNT(*) AS v FROM ${lt} AS L INNER JOIN ${rt} AS R ON L.${quoteIdent(check.leftJoinColumn)} = R.${quoteIdent(check.rightJoinColumn)}`;
+    if (check.whereEq.length === 0) {
+      return { text: base, values: [] };
+    }
+    const conds = check.whereEq.map((w, i) => {
+      const ph = dialect === "postgres" ? `$${i + 1}` : "?";
+      const alias = w.side === "left" ? "L" : "R";
+      return `${alias}.${quoteIdent(w.column)} = ${ph}`;
+    });
+    return {
+      text: `${base} WHERE ${conds.join(" AND ")}`,
+      values: check.whereEq.map((w) => w.value),
+    };
   }
-  const conds = check.whereEq.map((w, i) => {
-    const p = dialect === "postgres" ? `$${i + 1}` : "?";
-    const alias = w.side === "left" ? "L" : "R";
-    return `${alias}.${quoteIdent(w.column)} = ${p}`;
-  });
-  return {
-    text: `${base} WHERE ${conds.join(" AND ")}`,
-    values: check.whereEq.map((w) => w.value),
-  };
+
+  const _exhaustive: never = check;
+  return _exhaustive;
+}
+
+/** Sample SELECT for anti_join failures (anchor columns only). */
+export function buildAntiJoinSampleSql(
+  dialect: "sqlite" | "postgres",
+  check: ResolvedRelationalCheck & { checkKind: "anti_join" },
+): { text: string; values: string[] } {
+  const at = quoteIdent(check.anchorTable);
+  const lt = quoteIdent(check.lookupTable);
+  const condsOn: string[] = [];
+  const values: string[] = [];
+  const p = { n: 1 };
+  condsOn.push(`A.${quoteIdent(check.anchorColumn)} = L.${quoteIdent(check.lookupColumn)}`);
+  for (const w of check.filterEqLookup) {
+    condsOn.push(`L.${quoteIdent(w.column)} = ${nextPlaceholder(dialect, p)}`);
+    values.push(w.value);
+  }
+  const whereParts: string[] = [`L.${quoteIdent(check.lookupPresenceColumn)} IS NULL`];
+  for (const w of check.filterEqAnchor) {
+    whereParts.push(`A.${quoteIdent(w.column)} = ${nextPlaceholder(dialect, p)}`);
+    values.push(w.value);
+  }
+  const anchorColSet = new Set<string>([check.anchorColumn]);
+  for (const w of check.filterEqAnchor) anchorColSet.add(w.column);
+  const proj = [...anchorColSet].sort((a, b) => compareUtf16Id(a, b));
+  const selectList = proj.map((c) => `A.${quoteIdent(c)}`).join(", ");
+  const text = `SELECT ${selectList} FROM ${at} AS A LEFT JOIN ${lt} AS L ON ${condsOn.join(" AND ")} WHERE ${whereParts.join(" AND ")} LIMIT ${MAX_VERIFICATION_SAMPLE_ROWS}`;
+  return { text, values };
 }
 
 function normalizeNumericActual(raw: unknown, ctx: string): { ok: true; n: number } | { ok: false } {
@@ -160,6 +215,43 @@ export function reconcileRelationalRow(
     };
   }
 
+  if (check.checkKind === "anti_join") {
+    const norm = normalizeNumericActual(vRaw, id);
+    if (!norm.ok) {
+      return {
+        status: "incomplete_verification",
+        reasons: [
+          {
+            code: SQL_VERIFICATION_OUTCOME_CODE.RELATIONAL_SCALAR_UNUSABLE,
+            message: formatOperationalMessage(`Relational check ${id}: non-numeric anti_join count`),
+          },
+        ],
+        evidenceSummary: { checkId: id, checkKind: check.checkKind, raw: vRaw },
+      };
+    }
+    if (norm.n === 0) {
+      return {
+        status: "verified",
+        reasons: [],
+        evidenceSummary: { checkId: id, checkKind: check.checkKind, orphanRowCount: 0 },
+      };
+    }
+    return {
+      status: "inconsistent",
+      reasons: [
+        {
+          code: SQL_VERIFICATION_OUTCOME_CODE.ORPHAN_ROW_DETECTED,
+          message: formatOperationalMessage(`Relational check ${id}: ${norm.n} orphan row(s)`),
+        },
+      ],
+      evidenceSummary: {
+        checkId: id,
+        checkKind: check.checkKind,
+        orphanRowCount: norm.n,
+      },
+    };
+  }
+
   const norm = normalizeNumericActual(vRaw, id);
   if (!norm.ok) {
     return {
@@ -209,6 +301,16 @@ export function reconcileRelationalRow(
   };
 }
 
+function mergeAntiJoinSamples(base: ReconcileOutput, sampleRows: Record<string, unknown>[]): ReconcileOutput {
+  return {
+    ...base,
+    evidenceSummary: {
+      ...base.evidenceSummary,
+      sampleRows,
+    },
+  };
+}
+
 export function reconcileRelationalSqlite(db: DatabaseSync, check: ResolvedRelationalCheck): ReconcileOutput {
   const { text, values } = buildRelationalScalarSql("sqlite", check);
   try {
@@ -218,7 +320,21 @@ export function reconcileRelationalSqlite(db: DatabaseSync, check: ResolvedRelat
       row === undefined
         ? undefined
         : Object.fromEntries(Object.entries(row).map(([k, v]) => [k.toLowerCase(), v]));
-    return reconcileRelationalRow(lowered, check);
+    let out = reconcileRelationalRow(lowered, check);
+    if (
+      check.checkKind === "anti_join" &&
+      out.status === "inconsistent" &&
+      out.reasons[0]?.code === SQL_VERIFICATION_OUTCOME_CODE.ORPHAN_ROW_DETECTED
+    ) {
+      const { text: st, values: sv } = buildAntiJoinSampleSql("sqlite", check);
+      const sampleStmt = db.prepare(st);
+      const sampleRaw = sampleStmt.all(...sv) as Record<string, unknown>[];
+      const sampleRows = sampleRaw.map((r) =>
+        Object.fromEntries(Object.entries(r).map(([k, v]) => [k.toLowerCase(), v])),
+      );
+      out = mergeAntiJoinSamples(out, sampleRows);
+    }
+    return out;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return {
@@ -248,7 +364,20 @@ export async function reconcileRelationalPostgres(
       row0 === undefined
         ? undefined
         : Object.fromEntries(Object.entries(row0).map(([k, v]) => [k.toLowerCase(), v]));
-    return reconcileRelationalRow(lowered, check);
+    let out = reconcileRelationalRow(lowered, check);
+    if (
+      check.checkKind === "anti_join" &&
+      out.status === "inconsistent" &&
+      out.reasons[0]?.code === SQL_VERIFICATION_OUTCOME_CODE.ORPHAN_ROW_DETECTED
+    ) {
+      const { text: st, values: sv } = buildAntiJoinSampleSql("postgres", check);
+      const sr = await client.query(st, sv);
+      const sampleRows = sr.rows.map((row) =>
+        Object.fromEntries(Object.entries(row).map(([k, v]) => [k.toLowerCase(), v])),
+      );
+      out = mergeAntiJoinSamples(out, sampleRows);
+    }
+    return out;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return {

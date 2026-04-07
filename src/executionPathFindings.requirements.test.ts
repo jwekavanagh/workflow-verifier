@@ -25,7 +25,7 @@ function baseEngine(
     Pick<WorkflowEngineResult, "workflowId" | "status" | "steps">,
 ): WorkflowEngineResult {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     runLevelReasons: [],
     verificationPolicy: strongPolicy,
     eventSequenceIntegrity: { kind: "normal" },
@@ -43,8 +43,7 @@ function verifiedStep(seq: number, toolId: string): StepOutcome {
     verificationRequest: {
       kind: "sql_row",
       table: "t",
-      keyColumn: "id",
-      keyValue: "1",
+      identityEq: [{ column: "id", value: "1" }],
       requiredFields: {},
     },
     status: "verified",
@@ -228,8 +227,7 @@ describe("buildExecutionPathFindings (product requirements)", () => {
       verificationRequest: {
         kind: "sql_row",
         table: "t",
-        keyColumn: "id",
-        keyValue: "1",
+        identityEq: [{ column: "id", value: "1" }],
         requiredFields: {},
       },
       status: "missing",

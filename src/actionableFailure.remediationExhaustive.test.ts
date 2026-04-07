@@ -33,7 +33,7 @@ const strongPolicy = {
 
 function baseEngine(partial: Partial<WorkflowEngineResult>): WorkflowEngineResult {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     workflowId: "w",
     status: "inconsistent",
     runLevelReasons: [],
@@ -99,8 +99,7 @@ function sqlRowStep(
     verificationRequest: {
       kind: "sql_row",
       table: "contacts",
-      keyColumn: "id",
-      keyValue,
+      identityEq: [{ column: "id", value: keyValue }],
       requiredFields: {},
     },
     status: verified ? "verified" : "missing",
@@ -114,7 +113,7 @@ function sqlRowStep(
 
 function wfComplete(): WorkflowResult {
   const engine: WorkflowEngineResult = {
-    schemaVersion: 7,
+    schemaVersion: 8,
     workflowId: "w",
     status: "complete",
     runLevelReasons: [],
@@ -128,7 +127,7 @@ function wfComplete(): WorkflowResult {
 
 function engMalformed(): WorkflowEngineResult {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     workflowId: "w",
     status: "incomplete",
     runLevelReasons: [{ code: "MALFORMED_EVENT_LINE", message: "bad" }],
@@ -141,7 +140,7 @@ function engMalformed(): WorkflowEngineResult {
 
 function engDuplicateRows(): WorkflowEngineResult {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     workflowId: "w",
     status: "inconsistent",
     runLevelReasons: [],
@@ -157,8 +156,7 @@ function engDuplicateRows(): WorkflowEngineResult {
         verificationRequest: {
           kind: "sql_row",
           table: "c",
-          keyColumn: "id",
-          keyValue: "1",
+          identityEq: [{ column: "id", value: "1" }],
           requiredFields: {},
         },
         status: "inconsistent",

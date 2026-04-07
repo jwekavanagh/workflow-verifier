@@ -361,22 +361,29 @@ function getEffectRows(step: StepOutcome): EffectRow[] | null {
   return out.length > 0 ? out : null;
 }
 
+function canonicalEqKey(pairs: ReadonlyArray<{ column: string; value: string }>): string {
+  return [...pairs]
+    .slice()
+    .sort((a, b) => compareUtf16Id(a.column, b.column))
+    .map((x) => `${x.column}=${x.value}`)
+    .join("&");
+}
+
 /** Normative: see docs — sql_row / sql_effects key. */
 export function logicalStepKeyFromStep(step: StepOutcome): string | null {
   const vr = step.verificationRequest;
   if (vr === null) return null;
   if (vr.kind === "sql_row") {
-    return `sql_row|${vr.table}|${vr.keyColumn}|${vr.keyValue}`;
+    return `sql_row|${vr.table}|${canonicalEqKey(vr.identityEq)}`;
+  }
+  if (vr.kind === "sql_row_absent") {
+    return `sql_row_absent|${vr.table}|${canonicalEqKey(vr.identityEq)}|${canonicalEqKey(vr.filterEq)}`;
   }
   if (vr.kind === "sql_relational") {
     const parts = [...vr.checks].sort((a, b) => compareUtf16Id(a.id, b.id));
     const segs = parts.map((c) => {
       if (c.checkKind === "related_exists") {
-        const w = [...c.whereEq]
-          .map((x) => `${x.column}=${x.value}`)
-          .sort((a, b) => compareUtf16Id(a, b))
-          .join("&");
-        return `id|${c.id}|related_exists|${c.childTable}|${c.fkColumn}|${c.fkValue}|${w}|`;
+        return `id|${c.id}|related_exists|${c.childTable}|${canonicalEqKey(c.matchEq)}|`;
       }
       if (c.checkKind === "aggregate") {
         const w = [...c.whereEq]
@@ -384,6 +391,9 @@ export function logicalStepKeyFromStep(step: StepOutcome): string | null {
           .sort((a, b) => compareUtf16Id(a, b))
           .join("&");
         return `id|${c.id}|aggregate|${c.table}|${c.fn}|${c.sumColumn ?? ""}|${c.expectOp}|${c.expectValue}|${w}|`;
+      }
+      if (c.checkKind === "anti_join") {
+        return `id|${c.id}|anti_join|${c.anchorTable}|${c.lookupTable}|${c.anchorColumn}|${c.lookupColumn}|${c.lookupPresenceColumn}|fa:${canonicalEqKey(c.filterEqAnchor)}|fl:${canonicalEqKey(c.filterEqLookup)}|`;
       }
       const w = [...c.whereEq]
         .map((x) => `${x.side}.${x.column}=${x.value}`)
@@ -395,7 +405,7 @@ export function logicalStepKeyFromStep(step: StepOutcome): string | null {
   }
   const parts = [...vr.effects].sort((a, b) => compareUtf16Id(a.id, b.id));
   const segs = parts.map(
-    (ef) => `id|${ef.id}|${ef.table}|${ef.keyColumn}|${ef.keyValue}|`,
+    (ef) => `id|${ef.id}|${ef.table}|${canonicalEqKey(ef.identityEq)}|`,
   );
   return `sql_effects|${segs.join("")}`;
 }

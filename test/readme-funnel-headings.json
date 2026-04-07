@@ -1,0 +1,13 @@
+{
+  "description": "README conversion funnel: sections must appear in this order (product requirement).",
+  "headings": [
+    "## Canonical use case",
+    "## Core workflow verification",
+    "### Example: before and after",
+    "### Quickstart",
+    "### Sample output",
+    "### Use it on your own system",
+    "## Who this is for",
+    "## How it works"
+  ]
+}

@@ -54,8 +54,7 @@ describe("Postgres session read-only (applyPostgresVerificationSessionGuards)", 
     const out = await reconcileSqlRowAsync(backend, {
       kind: "sql_row",
       table: "contacts",
-      keyColumn: "id",
-      keyValue: "c_ok",
+      identityEq: [{ column: "id", value: "c_ok" }],
       requiredFields: { name: "Alice", status: "active" },
     });
     assert.equal(out.status, "verified");
@@ -72,8 +71,7 @@ describe("Postgres session read-only (applyPostgresVerificationSessionGuards)", 
     const out = await reconcileSqlRowAsync(backend, {
       kind: "sql_row",
       table: "contacts",
-      keyColumn: "id",
-      keyValue: "c_ok",
+      identityEq: [{ column: "id", value: "c_ok" }],
       requiredFields: { qty: 0 },
     });
     assert.equal(out.status, "verified");
@@ -90,8 +88,7 @@ describe("Postgres session read-only (applyPostgresVerificationSessionGuards)", 
     const out = await reconcileSqlRowAsync(backend, {
       kind: "sql_row",
       table: "contacts",
-      keyColumn: "id",
-      keyValue: "c_ok",
+      identityEq: [{ column: "id", value: "c_ok" }],
       requiredFields: { qty: 1 },
     });
     assert.equal(out.status, "inconsistent");

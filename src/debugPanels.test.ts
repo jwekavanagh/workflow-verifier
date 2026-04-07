@@ -28,8 +28,7 @@ function sqlRowStep(seq: number, keyValue: string, verified: boolean): StepOutco
     verificationRequest: {
       kind: "sql_row",
       table: "contacts",
-      keyColumn: "id",
-      keyValue,
+      identityEq: [{ column: "id", value: keyValue }],
       requiredFields: {},
     },
     status: verified ? "verified" : "missing",
@@ -44,7 +43,7 @@ function sqlRowStep(seq: number, keyValue: string, verified: boolean): StepOutco
 function wf(steps: StepOutcome[]): WorkflowResult {
   const bad = steps.some((s) => s.status !== "verified");
   const engine: WorkflowEngineResult = {
-    schemaVersion: 7,
+    schemaVersion: 8,
     workflowId: "w",
     status: bad ? "inconsistent" : "complete",
     runLevelReasons: [],
@@ -63,7 +62,7 @@ function wf(steps: StepOutcome[]): WorkflowResult {
 function wfPlanTransition(steps: StepOutcome[]): WorkflowResult {
   const bad = steps.some((s) => s.status !== "verified");
   const engine: WorkflowEngineResult = {
-    schemaVersion: 7,
+    schemaVersion: 8,
     workflowId: PLAN_TRANSITION_WORKFLOW_ID,
     status: bad ? "inconsistent" : "complete",
     runLevelReasons: [],
@@ -108,8 +107,18 @@ describe("debugPanels", () => {
       verificationRequest: {
         kind: "sql_relational",
         checks: [
-          { checkKind: "related_exists", id: "a", childTable: "c", fkColumn: "k", fkValue: "1", whereEq: [] },
-          { checkKind: "related_exists", id: "b", childTable: "c", fkColumn: "k", fkValue: "2", whereEq: [] },
+          {
+            checkKind: "related_exists",
+            id: "a",
+            childTable: "c",
+            matchEq: [{ column: "k", value: "1" }],
+          },
+          {
+            checkKind: "related_exists",
+            id: "b",
+            childTable: "c",
+            matchEq: [{ column: "k", value: "2" }],
+          },
         ],
       },
       status: "verified",
@@ -129,7 +138,9 @@ describe("debugPanels", () => {
       observedExecution: { paramsCanonical: "{}" },
       verificationRequest: {
         kind: "sql_relational",
-        checks: [{ checkKind: "related_exists", id: "x", childTable: "c", fkColumn: "k", fkValue: "1", whereEq: [] }],
+        checks: [
+          { checkKind: "related_exists", id: "x", childTable: "c", matchEq: [{ column: "k", value: "1" }] },
+        ],
       },
       status: "verified",
       reasons: [],

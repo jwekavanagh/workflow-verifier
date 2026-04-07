@@ -9,6 +9,18 @@ This document is the authoritative specification for the MVP. The product verifi
 - **SQLite via `node:sqlite`**: Read-only `SELECT` against a file path gives reproducible ground truth in CI. The reference plan named `better-sqlite3`; this repo uses Node’s built-in module (**Node ≥ 22.13**) to avoid native compilation on constrained environments while preserving the same reconciliation rules as Postgres (see [SQL connector contract](#sql-connector-contract)).
 - **Postgres via `pg` (batch/CLI only)**: `verifyWorkflow` can target PostgreSQL using a single `pg.Client` per run, session read-only guards (`applyPostgresVerificationSessionGuards`), then verification `SELECT`s only. The in-process hook does **not** use Postgres (see [Postgres verification (batch and CLI)](#postgres-verification-batch-and-cli)).
 
+## SSOT contract boundary (normative)
+
+This table defines **where** each concern is authoritative. Other markdown may summarize but **must not** contradict these boundaries or invent wire fields absent from the JSON Schemas.
+
+| Concern | Single source of truth | Others |
+|--------|-------------------------|--------|
+| **Emitted wire shape** (property names, types, `schemaVersion`, `verificationRequest` variants, `evidenceSummary` keys as JSON) | [`schemas/workflow-engine-result.schema.json`](../schemas/workflow-engine-result.schema.json), [`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json), [`schemas/tools-registry.schema.json`](../schemas/tools-registry.schema.json) | Markdown describes behavior; it must not introduce fields or types absent from these schemas. |
+| **Reason code literals** | `src/wireReasonCodes.ts` (exported constants) | Docs list the same strings; no duplicate definitions with different meanings. |
+| **Runtime semantics — row verification** (`sql_row`, `sql_effects`, `sql_row_absent`: SQL shapes, `identityEq` / `filterEq`, count + `sampleRows` for absent failures, strong vs eventual polling, `ROW_PRESENT_WHEN_FORBIDDEN`, `FORBIDDEN_ROWS_STILL_PRESENT_WITHIN_WINDOW`, `matchedRowCount` on absent paths) | **This document only** | [`relational-verification.md`](relational-verification.md) must **not** define or duplicate row-absent or row-level evidence semantics; it links here for row semantics instead. |
+| **Runtime semantics — relational verification** (`sql_relational`: `related_exists` / `matchEq`, `aggregate`, `join_count`, `anti_join`; parameter order; `ORPHAN_ROW_DETECTED`; `orphanRowCount` + relational `sampleRows`) | [`relational-verification.md`](relational-verification.md) **only** | This document references relational checks at a high level and links there for normative relational SQL and outcomes—**no** second normative definition of `anti_join` / `matchEq` behavior. |
+| **Cross-cutting** (consumer migration for `verificationRequest` shapes, registry authoring overview) | **This document** | Schemas remain structural-only for behavior. |
+
 ## Product requirements: outcome verification
 
 This subsection maps **outcome verification** product acceptance criteria to this MVP’s emitted artifacts. **Structural SSOT** remains [`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json) and [`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json); do not treat the bullets below as a second field catalog.
@@ -47,7 +59,7 @@ This subsection maps **workflow-level verdict** and **auditable run records** ac
 
 - **`agentRunBundle.ts`**: **`writeAgentRunBundle`** writes each final file via a temp name in the run directory then **rename** into place. Order: **`events.ndjson`** → **`workflow-result.json`** → (when signing) **`workflow-result.sig.json`** → **`agent-run.json`** (manifest last). **Unsigned** path: three finals only (**`schemaVersion` `1`**). **Signed** path: on thrown error after some renames, the implementation **best-effort unlinks** completed finals in **reverse order** (sig → workflow-result → events) for that invocation only, then rethrows—see [Cryptographic signing](#cryptographic-signing-of-workflow-result-normative). On failure mid-write, temp files for the current attempt are removed; **process crash** can still leave an inconsistent directory—only **successful return** guarantees consistency for the signed path.
 - **`workflowTruthReport.ts`**: **`buildWorkflowVerdictSurface(WorkflowResult)`** for API/UI only.
-- **`pipeline.ts`**: **`withWorkflowVerification`** optional **`persistBundle: { outDir, ed25519PrivateKeyPemPath? }`**. After a successful run, **`captureNdjsonUtf8()`** serializes **`bufferedRunEvents`** in strict **`observeStep` enqueue order** (`JSON.stringify(event) + "\n"` per line), then **`writeAgentRunBundle`** is called with the **final** **`WorkflowResult`** (v13 + truth report). When **`ed25519PrivateKeyPemPath`** is set, the bundle is written as **v2** with a signature sidecar. No bundle is written if **`run`** throws or **`buildWorkflowResult`** fails.
+- **`pipeline.ts`**: **`withWorkflowVerification`** optional **`persistBundle: { outDir, ed25519PrivateKeyPemPath? }`**. After a successful run, **`captureNdjsonUtf8()`** serializes **`bufferedRunEvents`** in strict **`observeStep` enqueue order** (`JSON.stringify(event) + "\n"` per line), then **`writeAgentRunBundle`** is called with the **final** **`WorkflowResult`** (stdout **`schemaVersion` 14** + truth report). When **`ed25519PrivateKeyPemPath`** is set, the bundle is written as **v2** with a signature sidecar. No bundle is written if **`run`** throws or **`buildWorkflowResult`** fails.
 
 ### Workflow verdict — Integrator
 
@@ -287,8 +299,8 @@ Exit codes match batch verify (**0** / **1** / **2** / **3**). Operational codes
 | `resolveExpectation.ts` | Registry + params → `VerificationRequest` / `sql_effects` / `sql_relational` resolution; `renderIntendedEffect` for step `intendedEffect.narrative` |
 | `valueVerification.ts` | Canonical display strings + `verificationScalarsEqual` (single scalar comparison table) |
 | `sqlConnector.ts` | SQLite parameterized read; lowercase column keys |
-| `sqlReadBackend.ts` | `buildSelectByKeySql`, Postgres `SqlReadBackend`, `connectPostgresVerificationClient`, `applyPostgresVerificationSessionGuards` |
-| `reconciler.ts` | `reconcileFromRows` (pure rule table), `reconcileSqlRow` (SQLite sync), `reconcileSqlRowAsync` (Postgres) |
+| `sqlReadBackend.ts` | Parameterized row reads + **`reconcileRowAbsent`**; Postgres `SqlReadBackend`, `connectPostgresVerificationClient`, `applyPostgresVerificationSessionGuards` |
+| `reconciler.ts` | `reconcileFromRows` (pure rule table), `reconcileSqlRow` / `reconcileSqlRowAbsent` (SQLite sync), async Postgres paths; shared **`buildRowAbsentSqlPlan`** |
 | `multiEffectRollup.ts` | `rollupMultiEffectsSync` / `rollupMultiEffectsAsync`; `rollupSqlRelationalSync` / `rollupSqlRelationalAsync`; shared `computeMultiCheckRollupStatus` for multi-check `sql_effects` and `sql_relational` |
 | `aggregate.ts` | Workflow status precedence |
 | `actionableFailure.ts` | Actionable failure **`category`** / **`severity`** (workflow + operational), compare **`categoryHistogram`** / **`actionableCategoryRecurrence`**, P-CAT-1–4 and workflow S-1–S4; **`productionStepReasonCodeToActionableCategory`** + operational severity table |
@@ -296,9 +308,9 @@ Exit codes match batch verify (**0** / **1** / **2** / **3**). Operational codes
 | `agentRunBundle.ts` | `writeAgentRunBundle` — canonical run directory (three files, or four when signing) with per-file temp+rename; CLI `--write-run-bundle` / `--sign-ed25519-private-key`; optional `withWorkflowVerification` `persistBundle` |
 | `workflowTruthReport.ts` | `buildWorkflowTruthReport`, `buildWorkflowVerdictSurface`, `finalizeEmittedWorkflowResult`, `formatWorkflowTruthReportStruct`, `formatWorkflowTruthReport`, `HUMAN_REPORT_RESULT_PHRASE`, `HUMAN_REPORT_PLAN_TRANSITION_PHRASE`, `STEP_STATUS_TRUTH_LABELS`, `TRUST_LINE_EVENT_SEQUENCE_IRREGULAR_SUFFIX`; human report text is rendering of structured truth with plain `result=` / `detail:` lines; plan-transition trust/result phrasing when **`workflowId === wf_plan_transition`** |
 | `executionPathFindings.ts` | `buildExecutionPathFindings`, `buildExecutionPathSummary`, `ACTION_INPUT_REASON_CODES`, `RECONCILER_STEP_REASON_CODES` — execution-path layer orthogonal to SQL reconciliation (internal; not re-exported from package entry) |
-| `workflowResultNormalize.ts` | `normalizeToEmittedWorkflowResult`, `workflowEngineResultFromEmitted` (compare ingress: engine **v7** / frozen **v9** / stdout **v13**; strip legacy **`runLevelCodes`**; inject empty **`verificationRunContext`** where needed) |
+| `workflowResultNormalize.ts` | `normalizeToEmittedWorkflowResult`, `workflowEngineResultFromEmitted` (compare ingress: engine **v8** / frozen **v9** / stdout **v14**; strip legacy **`runLevelCodes`**; inject empty **`verificationRunContext`** where needed) |
 | `runComparison.ts` | `buildRunComparisonReport`, `formatRunComparisonReport`, `logicalStepKeyFromStep`, `recurrenceSignature`; cross-run comparison |
-| `verificationPolicy.ts` | `VerificationPolicy` normalization/validation; `executeVerificationWithPolicySync` / `executeVerificationWithPolicyAsync` (strong vs eventual polling; `sql_row` / `sql_effects` / `sql_relational`); `createSqlitePolicyContext` |
+| `verificationPolicy.ts` | `VerificationPolicy` normalization/validation; `executeVerificationWithPolicySync` / `executeVerificationWithPolicyAsync` (strong vs eventual polling; `sql_row` / `sql_effects` / `sql_row_absent` / `sql_relational`); `PolicyReconcileContext.reconcileRowAbsent`; `createSqlitePolicyContext` |
 | `executionTrace.ts` | `assertValidRunEventParentGraph`, `buildExecutionTraceView`, `formatExecutionTraceText`; `traceStepKind` derivation and `backwardPaths` |
 | `pipeline.ts` | Orchestration: `runLogicalStepsVerification` (internal), async `verifyWorkflow`, sync `verifyToolObservedStep`, `withWorkflowVerification` (SQLite `dbPath` only); default `truthReport` / `logStep` |
 | `cli.ts` | CLI entry: verify (**optional **`--write-run-bundle <dir>`** / **`--sign-ed25519-private-key`**), **`verify-bundle-signature`**, `compare`, `execution-trace`, `validate-registry`, **`debug`**, **`plan-transition`** |
@@ -729,19 +741,30 @@ Each entry:
 
 - `toolId` (unique)
 - `effectDescriptionTemplate`: string with `{/json/pointer}` tokens → replaced with `JSON.stringify(value)` or `MISSING` (audit string only; **not** used for reconciliation).
-- `verification`: either
-  - `{ "kind": "sql_row", "table", "key", "requiredFields" }` (same pointer/const rules as before), or
-  - `{ "kind": "sql_effects", "effects": [ … ] }` with **at least two** items. Each item has **`id`** (non-empty string, unique within the array) plus the same `table` / `key` / `requiredFields` shape as a `sql_row` entry (no nested `kind` on the item).
+- `verification`: one of:
+  - `{ "kind": "sql_row", "table", "identityEq", "requiredFields" }` — **`identityEq`** is a non-empty array of `{ "column", "value" }` entries (each **`column`** / **`value`** is a `columnSpec` + `scalarOrPointer` per `tools-registry.schema.json`). Columns must be unique in the list; resolver sorts by UTF-16 `localeCompare` for deterministic SQL and wire output.
+  - `{ "kind": "sql_effects", "effects": [ … ] }` with **at least two** items. Each item has **`id`** (non-empty string, unique within the array) plus the same `table` / **`identityEq`** / `requiredFields` shape as a `sql_row` entry (no nested `kind` on the item).
+  - `{ "kind": "sql_row_absent", "table", "identityEq", "filterEq" }` — optional **`filterEq`** is additional equality conjuncts on the **same** table; resolver rejects columns that also appear in **`identityEq`**.
 
-**Resolved internal row shape** (one keyed `SELECT` per effect):
+**Resolved internal row shape** (one read per `sql_row` / `sql_effects` item):
 
 ```json
 {
   "kind": "sql_row",
   "table": "string",
-  "keyColumn": "string",
-  "keyValue": "string",
+  "identityEq": [{ "column": "string", "value": "string" }],
   "requiredFields": { "col": "string | number | boolean | null }
+}
+```
+
+**Resolved absent-row shape** (`sql_row_absent`):
+
+```json
+{
+  "kind": "sql_row_absent",
+  "table": "string",
+  "identityEq": [{ "column": "string", "value": "string" }],
+  "filterEq": [{ "column": "string", "value": "string" }]
 }
 ```
 
@@ -761,7 +784,9 @@ Each entry:
 | `KEY_VALUE_POINTER_MISSING` | Key value pointer missing or null |
 | `KEY_VALUE_NOT_SCALAR` | Key value is object/array |
 | `KEY_VALUE_SPEC_INVALID` | Key value spec shape invalid |
-| `UNSUPPORTED_VERIFICATION_KIND` | Verification kind is not `sql_row` |
+| `UNSUPPORTED_VERIFICATION_KIND` | Verification kind is not one of the supported kinds for the entry |
+| `EQUALITY_DUPLICATE_COLUMN` | Duplicate `column` in `identityEq`, `matchEq`, `filterEq`, or relational filter lists |
+| `FILTER_EQ_OVERLAPS_IDENTITY` | `sql_row_absent.filterEq` reuses a column from `identityEq` |
 | `TABLE_SPEC_INVALID` | Table spec shape invalid |
 | `TABLE_POINTER_INVALID` | Table pointer did not resolve to a non-empty string |
 | `REQUIRED_FIELDS_POINTER_MISSING` | `requiredFields` pointer missing or null |
@@ -844,8 +869,7 @@ When the registry used `sql_effects`, the step’s **`verificationRequest`** on 
       "id": "string",
       "kind": "sql_row",
       "table": "string",
-      "keyColumn": "string",
-      "keyValue": "string",
+      "identityEq": [{ "column": "string", "value": "string" }],
       "requiredFields": {}
     }
   ]
@@ -876,16 +900,18 @@ with **`effects`** sorted by **`id`** (UTF-16 lexicographic). Single-`sql_row` s
 
 ### SQLite (`node:sqlite`)
 
-- Only query: `SELECT * FROM "<table>" WHERE "<keyColumn>" = ? LIMIT 2` with `String(keyValue)` bound.
+- Positive row (`sql_row` / `sql_effects` item): `SELECT * FROM "<table>" WHERE <conjuncts> LIMIT 2` where `<conjuncts>` is `AND` of `"<col>" = ?` for each resolved **`identityEq`** pair, bindings in **sorted column order** (same order as resolved `identityEq`).
+- Row absent (`sql_row_absent`): parameterized **`COUNT(*)`** over the same predicate as identity + `filterEq`; on failure (**count ≥ 1**), a second read-only **`SELECT`** of only the columns named in **`identityEq` ∪ `filterEq`**, same predicate, **`LIMIT 3`**, always run (see `reconciler.ts`).
 
 ### Postgres (`pg.Client`)
 
-- Only query: `SELECT * FROM "<table>" WHERE "<keyColumn>" = $1 LIMIT 2` with one text parameter `String(keyValue)`.
+- Same shapes as SQLite with numbered placeholders (`$1`, `$2`, …).
 - Session: **`SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY`** before any verification statement, then mandatory `SELECT 1`, then verification `SELECT`s.
 
 ### Shared
 
 - Column names in results are normalized to **lowercase** before reconciliation.
+- No `OR`, ranges, or free-text SQL in registry-driven row verification—only **AND** of column = parameter.
 
 ## Reconciler rule table (`sql_row`)
 
@@ -932,9 +958,36 @@ Used for `<expected>` and `<actual>`:
 
 Coercion is **only** what this section defines; there is no separate `String(row[col]).trim()` equality path.
 
+### Absent row verification (sql_row_absent) — normative
+
+Applies when the registry **`verification.kind`** is **`sql_row_absent`**. Reconciliation uses **`PolicyReconcileContext.reconcileRowAbsent`** (SQLite: `reconcileSqlRowAbsent` in `reconciler.ts`; Postgres: `SqlReadBackend.reconcileRowAbsent` using the shared **`buildRowAbsentSqlPlan`**). Policy code **never** imports `reconciler` directly for absent checks except via that context.
+
+- **Predicate:** conjunction of all **`identityEq`** and **`filterEq`** equalities on **`table`** (same AND semantics as positive row reads).
+- **Pass:** **zero** matching rows → step **`verified`**.
+- **Fail (strong, or a single poll in eventual mode):** **≥ 1** matching row → step **`inconsistent`**, first reason **`ROW_PRESENT_WHEN_FORBIDDEN`**, **`evidenceSummary.matchedRowCount`** set, **`evidenceSummary.sampleRows`** always populated: a JSON array of row objects with **only** columns named in **`identityEq` ∪ `filterEq`**, length **`min(matchedRowCount, 3)`**. Implementation **always** runs a second read-only **`SELECT`** with the same predicate and **`LIMIT 3`** after the count query when **`matchedRowCount` ≥ 1** (no conditional omission). Constant **`3`** is **`MAX_VERIFICATION_SAMPLE_ROWS`** in `reconciler.ts`.
+
+**Eventual consistency (`consistencyMode: "eventual"`):** After each attempt, if reconciliation returns **`verified`**, stop with success. If it returns **`inconsistent`** and **`reasons[0].code === ROW_PRESENT_WHEN_FORBIDDEN`**, continue polling until **`now - start >= verificationWindowMs`**. Any other reconciliation status (**`incomplete_verification`**, **`CONNECTOR_ERROR`**, etc.) stops immediately with that output (no further polls). When the window expires and the **last** attempt still had **`ROW_PRESENT_WHEN_FORBIDDEN`**, the step is **`uncertain`** with **`FORBIDDEN_ROWS_STILL_PRESENT_WITHIN_WINDOW`** and message **`Forbidden row(s) still present within the verification window; replication or processing delay is possible.`**, **`verificationRequest`** the resolved absent payload, and **`evidenceSummary`** including **`attempts`**, **`elapsedMs`**, **`verificationWindowMs`**, **`pollIntervalMs`**, **`matchedRowCount`** (from the last count query, ≥ 1), and **`sampleRows`** from the **last** attempt (same projection and **`LIMIT 3`** rule as strong failure).
+
+### Row verification cookbook (normative)
+
+| Product phrase | Registry | Resolved / wire fields |
+|----------------|----------|-------------------------|
+| Row must exist with expected column values | **`kind`: `sql_row`** | **`table`**, **`identityEq`** (≥1 equality; AND), **`requiredFields`** |
+| Multiple row writes in one tool call | **`kind`: `sql_effects`** | Each effect: **`id`**, **`kind`: `sql_row`**, **`table`**, **`identityEq`**, **`requiredFields`** |
+| Row must **not** exist (negative existence) | **`kind`: `sql_row_absent`** | **`table`**, **`identityEq`**, **`filterEq`** (may be empty) |
+| Composite / business key | Same kinds as above | List **every** equality column you need in **`identityEq`**; the engine does not infer missing tenant or scope columns—authors are responsible for a complete key. |
+
+### Consumer migration: stdout `WorkflowResult` v14
+
+Emitters set **`schemaVersion`: `14`**. Consumers upgrading from v13 should accept:
+
+- **`verificationRequest`** for **`sql_row`** and **`sql_effects`** items: **`identityEq`** arrays replace **`keyColumn`** / **`keyValue`**.
+- New step kind **`sql_row_absent`** on **`verificationRequest`** where applicable.
+- Relational steps: **`related_exists`** uses **`matchEq`** on the child table (not **`fkColumn`** / **`fkValue`** + **`whereEq`**). New relational **`checkKind` `anti_join`** may appear under **`sql_relational`** (see [`relational-verification.md`](relational-verification.md)).
+
 ## Verification policy (normative)
 
-**`WorkflowResult.verificationPolicy`** is always emitted (see schema). **`strong`:** timing fields are **`0`**; one SQL read per logical step (or one multi-effect rollup per step). **`eventual`:** **`verificationWindowMs`** and **`pollIntervalMs`** are integers ≥ **1** with **`pollIntervalMs` ≤ `verificationWindowMs`**. The executor repeats reads until a terminal outcome or the window elapses. Row absence alone until the window ends → step **`uncertain`** (not **`missing`**). Determinate outcomes (**`inconsistent`**, **`incomplete_verification`**, **`partially_verified`**) stop polling immediately. **SQLite:** `strong` uses the synchronous runner; `eventual` uses the async runner with real delays between polls. **Postgres:** always the async path.
+**`WorkflowResult.verificationPolicy`** is always emitted (see schema). **`strong`:** timing fields are **`0`**; one SQL read per logical step (or one multi-effect rollup per step). **`eventual`:** **`verificationWindowMs`** and **`pollIntervalMs`** are integers ≥ **1** with **`pollIntervalMs` ≤ `verificationWindowMs`**. The executor repeats reads until a terminal outcome or the window elapses. For **positive** `sql_row` / `sql_effects`, row absence alone until the window ends → step **`uncertain`** (not **`missing`**). For **`sql_row_absent`**, polling while forbidden rows remain present is specified under **Absent row verification (sql_row_absent)** above; terminal **`uncertain`** uses **`FORBIDDEN_ROWS_STILL_PRESENT_WITHIN_WINDOW`**. Determinate outcomes (**`inconsistent`**, **`incomplete_verification`**, **`partially_verified`**) stop polling immediately (except as qualified for absent checks above). **SQLite:** `strong` uses the synchronous runner; `eventual` uses the async runner with real delays between polls. **Postgres:** always the async path.
 
 ## Workflow status (PRD-aligned)
 
@@ -1100,14 +1153,15 @@ If **`agentRunRecord.capturedAt`** parses as a valid date, use that instant. **E
 
 ## Cross-run comparison (normative)
 
-This section defines **cross-run comparison**: comparing saved workflow artifacts locally (no hosted backend). **Inputs** are validated with **`schemas/workflow-result-compare-input.schema.json`**: each file is exactly one of **`WorkflowEngineResult`** (**`schemaVersion` 7**, or legacy **5** upgraded with empty **`verificationRunContext`**), **frozen v9** **`WorkflowResult`** ([`schemas/workflow-result-v9.schema.json`](../schemas/workflow-result-v9.schema.json); requires **`runLevelCodes`** + **`runLevelReasons`** with per-index alignment), or emitted stdout **`WorkflowResult`** (**`schemaVersion` 13**, or legacy **6–8** / **12** upgraded). The **`oneOf`** order in the schema is **engine v7 → frozen v9 → stdout v13**. Before AJV, v9-shaped inputs must pass the same **`runLevelCodes` / `runLevelReasons`** index rule; failure → exit **3**, **`COMPARE_INPUT_RUN_LEVEL_INCONSISTENT`**, **`message`** **`Compare input workflow result: runLevelCodes and runLevelReasons are inconsistent.`** The CLI normalizes each input to emitted v10 (`finalizeEmittedWorkflowResult`; legacy inputs upgraded as in [Failure analysis](#failure-analysis-normative) and [Actionable failure classification](#actionable-failure-classification-normative)). For **`workflowTruthReport.schemaVersion` ≥ **3**, recomputed truth must match the file (**`util.isDeepStrictEqual`**) — mismatch → exit **3**, **`COMPARE_WORKFLOW_TRUTH_MISMATCH`**). The machine output is **`RunComparisonReport`** (`schemas/run-comparison-report.schema.json`, **`schemaVersion` `3`**), including prior aggregates (**`perRunActionableFailures`**, **`categoryHistogram`**, **`actionableCategoryRecurrence`**) plus required **`reliabilityAssessment`** and **`compareHighlights`**. **Breaking:** saved compare **stdout** files with **`schemaVersion` `2`** are not valid v3 output; re-run compare or upgrade tooling. Behavioral semantics below are authoritative—the schema is structural only (see [`$comment`](../schemas/run-comparison-report.schema.json)).
+This section defines **cross-run comparison**: comparing saved workflow artifacts locally (no hosted backend). **Inputs** are validated with **`schemas/workflow-result-compare-input.schema.json`**: each file is exactly one of **`WorkflowEngineResult`** (**`schemaVersion` 8**, or legacy **5–7** upgraded with empty **`verificationRunContext`** where needed), **frozen v9** **`WorkflowResult`** ([`schemas/workflow-result-v9.schema.json`](../schemas/workflow-result-v9.schema.json); requires **`runLevelCodes`** + **`runLevelReasons`** with per-index alignment), or emitted stdout **`WorkflowResult`** (**`schemaVersion` 14**, or legacy **6–8** / **12–13** upgraded). The **`oneOf`** order in the schema follows engine → frozen v9 → stdout (see schema **`$comment`**). Before AJV, v9-shaped inputs must pass the same **`runLevelCodes` / `runLevelReasons`** index rule; failure → exit **3**, **`COMPARE_INPUT_RUN_LEVEL_INCONSISTENT`**, **`message`** **`Compare input workflow result: runLevelCodes and runLevelReasons are inconsistent.`** The CLI normalizes each input to the current emitted shape (`finalizeEmittedWorkflowResult`; legacy inputs upgraded as in [Failure analysis](#failure-analysis-normative) and [Actionable failure classification](#actionable-failure-classification-normative)). For **`workflowTruthReport.schemaVersion` ≥ **3**, recomputed truth must match the file (**`util.isDeepStrictEqual`**) — mismatch → exit **3**, **`COMPARE_WORKFLOW_TRUTH_MISMATCH`**). The machine output is **`RunComparisonReport`** (`schemas/run-comparison-report.schema.json`, **`schemaVersion` `3`**), including prior aggregates (**`perRunActionableFailures`**, **`categoryHistogram`**, **`actionableCategoryRecurrence`**) plus required **`reliabilityAssessment`** and **`compareHighlights`**. **Breaking:** saved compare **stdout** files with **`schemaVersion` `2`** are not valid v3 output; re-run compare or upgrade tooling. Behavioral semantics below are authoritative—the schema is structural only (see [`$comment`](../schemas/run-comparison-report.schema.json)).
 
 ### `logicalStepKey`
 
 For a step with **`verificationRequest !== null`**:
 
-- **`sql_row`:** `sql_row|${table}|${keyColumn}|${keyValue}` (field values from the resolved request on the step outcome).
-- **`sql_effects`:** `sql_effects|` followed by one segment per effect, **sorted by effect `id` in UTF-16 lexicographic order** (same ordering as `compareUtf16Id` / object key sort elsewhere in this doc). Each segment is: `id|${id}|${table}|${keyColumn}|${keyValue}|`.
+- **`sql_row`:** `sql_row|${table}|${identityCanon}` where **`identityCanon`** is **`canonicalEqKey(identityEq)`** in `runComparison.ts`: sort pairs by **`column` UTF-16 (`compareUtf16Id`)**, render **`col=value`**, join with **`&`**.
+- **`sql_row_absent`:** `sql_row_absent|${table}|${identityCanon}|${filterCanon}` with the same **`canonicalEqKey`** for identity and filter (empty **`filterEq`** → empty **`filterCanon`** string).
+- **`sql_effects`:** `sql_effects|` followed by one segment per effect, **sorted by effect `id` in UTF-16 lexicographic order** (same ordering as `compareUtf16Id` / object key sort elsewhere in this doc). Each segment is: `id|${id}|${table}|${identityCanon}` (**`identityCanon`** = **`canonicalEqKey`** for that effect’s **`identityEq`**).
 
 **Duplicate `logicalStepKey` in one run:** If two steps produce the same key, **keep the step with the lower `seq`** for that key. Emit **`ambiguousLogicalKeyResolutions`** on the report with `chosenSeq` and `droppedSeq`.
 

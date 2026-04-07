@@ -17,7 +17,7 @@ export function workflowEngineResultFromEmitted(emitted: WorkflowResult): Workfl
   };
   return {
     ...engineFields,
-    schemaVersion: 7,
+    schemaVersion: 8,
     verificationRunContext: ctxIn ?? createEmptyVerificationRunContext(),
   };
 }
@@ -37,7 +37,7 @@ export function normalizeToEmittedWorkflowResult(
     const { schemaVersion: _s, ...rest } = p5;
     return finalizeEmittedWorkflowResult({
       ...rest,
-      schemaVersion: 7,
+      schemaVersion: 8,
       verificationRunContext: createEmptyVerificationRunContext(),
     });
   }

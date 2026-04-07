@@ -79,8 +79,7 @@ describe("registryValidation", () => {
                 checkKind: "related_exists",
                 id: "same",
                 childTable: { const: "c" },
-                fkColumn: { const: "p" },
-                fkValue: { const: "1" },
+                matchEq: [{ column: { const: "p" }, value: { const: "1" } }],
               },
               {
                 checkKind: "aggregate",
@@ -116,13 +115,13 @@ describe("registryValidation", () => {
               {
                 id: "a",
                 table: { const: "t1" },
-                key: { column: { const: "id" }, value: { const: "1" } },
+                identityEq: [{ column: { const: "id" }, value: { const: "1" } }],
                 requiredFields: { pointer: "/f" },
               },
               {
                 id: "a",
                 table: { const: "t2" },
-                key: { column: { const: "id" }, value: { const: "2" } },
+                identityEq: [{ column: { const: "id" }, value: { const: "2" } }],
                 requiredFields: { pointer: "/f" },
               },
             ],

@@ -99,7 +99,7 @@ describe("JSON Schemas (SSOT)", () => {
   it("validates workflow result shape from golden pipeline output", () => {
     const v = loadSchemaValidator("workflow-result");
     const engine: WorkflowEngineResult = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "wf_complete",
       status: "complete",
       runLevelReasons: [],
@@ -119,8 +119,7 @@ describe("JSON Schemas (SSOT)", () => {
           verificationRequest: {
             kind: "sql_row",
             table: "contacts",
-            keyColumn: "id",
-            keyValue: "c_ok",
+            identityEq: [{ column: "id", value: "c_ok" }],
             requiredFields: { name: "Alice" },
           },
           status: "verified",
@@ -137,7 +136,7 @@ describe("JSON Schemas (SSOT)", () => {
   it("validates multi-effect workflow result (sql_effects + evidenceSummary.effects)", () => {
     const v = loadSchemaValidator("workflow-result");
     const engine: WorkflowEngineResult = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "wf_multi",
       status: "inconsistent",
       runLevelReasons: [],
@@ -161,16 +160,14 @@ describe("JSON Schemas (SSOT)", () => {
                 id: "a",
                 kind: "sql_row",
                 table: "contacts",
-                keyColumn: "id",
-                keyValue: "c1",
+                identityEq: [{ column: "id", value: "c1" }],
                 requiredFields: { name: "A" },
               },
               {
                 id: "b",
                 kind: "sql_row",
                 table: "contacts",
-                keyColumn: "id",
-                keyValue: "c2",
+                identityEq: [{ column: "id", value: "c2" }],
                 requiredFields: { name: "B" },
               },
             ],
@@ -216,7 +213,7 @@ describe("JSON Schemas (SSOT)", () => {
   it("rejects single-effect step evidenceSummary with effectCount", () => {
     const v = loadSchemaValidator("workflow-engine-result");
     const bad = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "w",
       status: "complete",
       runLevelReasons: [],
@@ -236,8 +233,7 @@ describe("JSON Schemas (SSOT)", () => {
           verificationRequest: {
             kind: "sql_row",
             table: "contacts",
-            keyColumn: "id",
-            keyValue: "1",
+            identityEq: [{ column: "id", value: "1" }],
             requiredFields: {},
           },
           status: "verified",
@@ -261,8 +257,7 @@ describe("JSON Schemas (SSOT)", () => {
       verificationRequest: {
         kind: "sql_row",
         table: "contacts",
-        keyColumn: "id",
-        keyValue: kv,
+        identityEq: [{ column: "id", value: kv }],
         requiredFields: {},
       },
       status: ok ? "verified" : "missing",
@@ -273,7 +268,7 @@ describe("JSON Schemas (SSOT)", () => {
       ...(ok ? {} : { failureDiagnostic: "workflow_execution" as const }),
     });
     const engine0: WorkflowEngineResult = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "w",
       status: "complete",
       runLevelReasons: [],
@@ -299,7 +294,7 @@ describe("JSON Schemas (SSOT)", () => {
     const vTruth = loadSchemaValidator("workflow-truth-report");
     const vResult = loadSchemaValidator("workflow-result");
     const engine: WorkflowEngineResult = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "wf_complete",
       status: "complete",
       runLevelReasons: [],
@@ -319,8 +314,7 @@ describe("JSON Schemas (SSOT)", () => {
           verificationRequest: {
             kind: "sql_row",
             table: "contacts",
-            keyColumn: "id",
-            keyValue: "1",
+            identityEq: [{ column: "id", value: "1" }],
             requiredFields: {},
           },
           status: "verified",
@@ -354,10 +348,10 @@ describe("JSON Schemas (SSOT)", () => {
     expect(v(v5only)).toBe(false);
   });
 
-  it("workflow-result-compare-input accepts v7 engine, v9 frozen, and v13 emitted", () => {
+  it("workflow-result-compare-input accepts v8 engine, v9 frozen, and v14 emitted", () => {
     const vCmp = loadSchemaValidator("workflow-result-compare-input");
     const engine: WorkflowEngineResult = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "w",
       status: "complete",
       runLevelReasons: [],
@@ -377,8 +371,7 @@ describe("JSON Schemas (SSOT)", () => {
           verificationRequest: {
             kind: "sql_row",
             table: "c",
-            keyColumn: "id",
-            keyValue: "1",
+            identityEq: [{ column: "id", value: "1" }],
             requiredFields: {},
           },
           status: "verified",
@@ -400,10 +393,10 @@ describe("JSON Schemas (SSOT)", () => {
     expect(vCmp(v9Compat)).toBe(true);
   });
 
-  it("workflow-result v13 rejects stray runLevelCodes", () => {
+  it("workflow-result v14 rejects stray runLevelCodes", () => {
     const v = loadSchemaValidator("workflow-result");
     const engine: WorkflowEngineResult = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "w",
       status: "complete",
       runLevelReasons: [],
@@ -423,8 +416,7 @@ describe("JSON Schemas (SSOT)", () => {
           verificationRequest: {
             kind: "sql_row",
             table: "c",
-            keyColumn: "id",
-            keyValue: "1",
+            identityEq: [{ column: "id", value: "1" }],
             requiredFields: {},
           },
           status: "verified",

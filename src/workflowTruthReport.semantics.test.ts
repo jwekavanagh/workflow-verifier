@@ -31,8 +31,7 @@ function verifiedStep(seq: number, toolId: string): StepOutcome {
     verificationRequest: {
       kind: "sql_row",
       table: "t",
-      keyColumn: "id",
-      keyValue: "1",
+      identityEq: [{ column: "id", value: "1" }],
       requiredFields: {},
     },
     status: "verified",
@@ -46,7 +45,7 @@ function verifiedStep(seq: number, toolId: string): StepOutcome {
 describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
   it("complete all verified: trust line and VERIFIED labels", () => {
     const engine: WorkflowEngineResult = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "w",
       status: "complete",
       runLevelReasons: [],
@@ -78,8 +77,7 @@ describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
     const vr = {
       kind: "sql_row" as const,
       table: "contacts",
-      keyColumn: "id",
-      keyValue: "x",
+      identityEq: [{ column: "id", value: "x" }],
       requiredFields: {},
     };
     const step: StepOutcome = {
@@ -96,7 +94,7 @@ describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
       failureDiagnostic: "workflow_execution",
     };
     const engine: WorkflowEngineResult = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "w",
       status: "inconsistent",
       runLevelReasons: [],
@@ -126,7 +124,7 @@ describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
 
   it("run-level issue: runLevelIssues mirror reasons with categories", () => {
     const engine: WorkflowEngineResult = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "w",
       status: "incomplete",
       runLevelReasons: [
@@ -164,8 +162,7 @@ describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
       verificationRequest: {
         kind: "sql_row",
         table: "t",
-        keyColumn: "id",
-        keyValue: "1",
+        identityEq: [{ column: "id", value: "1" }],
         requiredFields: {},
       },
       status: "uncertain",
@@ -176,7 +173,7 @@ describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
       failureDiagnostic: "observation_uncertainty",
     };
     const engine: WorkflowEngineResult = {
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "w",
       status: "incomplete",
       runLevelReasons: [],

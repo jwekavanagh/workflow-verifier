@@ -4,6 +4,7 @@ import { reconcileRelationalSqlite } from "./relationalInvariant.js";
 import { reconcileSqlRow, reconcileSqlRowAsync } from "./reconciler.js";
 import type { SqlReadBackend } from "./sqlReadBackend.js";
 import type {
+  IdentityEqPair,
   Reason,
   ResolvedEffect,
   ResolvedRelationalCheck,
@@ -109,8 +110,7 @@ function buildRollup(
     reasons: Reason[];
     evidenceSummary: Record<string, unknown>;
     table: string;
-    keyColumn: string;
-    keyValue: string;
+    identityEq: IdentityEqPair[];
     requiredFields: Record<string, string | number | boolean | null>;
   }>,
 ): MultiEffectRollupOutput {
@@ -121,8 +121,7 @@ function buildRollup(
       id: r.id,
       kind: "sql_row" as const,
       table: r.table,
-      keyColumn: r.keyColumn,
-      keyValue: r.keyValue,
+      identityEq: r.identityEq,
       requiredFields: r.requiredFields,
     })),
   };
@@ -155,8 +154,7 @@ export function rollupMultiEffectsFromReconciledRows(
     reasons: Reason[];
     evidenceSummary: Record<string, unknown>;
     table: string;
-    keyColumn: string;
-    keyValue: string;
+    identityEq: IdentityEqPair[];
     requiredFields: Record<string, VerificationScalar>;
   }>,
 ): MultiEffectRollupOutput {
@@ -173,8 +171,7 @@ export function rollupMultiEffectsSync(db: DatabaseSync, effects: ResolvedEffect
       reasons: rec.reasons,
       evidenceSummary: rec.evidenceSummary,
       table: e.request.table,
-      keyColumn: e.request.keyColumn,
-      keyValue: e.request.keyValue,
+      identityEq: e.request.identityEq,
       requiredFields: e.request.requiredFields,
     };
   });
@@ -195,8 +192,7 @@ export async function rollupMultiEffectsAsync(
         reasons: rec.reasons,
         evidenceSummary: rec.evidenceSummary,
         table: e.request.table,
-        keyColumn: e.request.keyColumn,
-        keyValue: e.request.keyValue,
+        identityEq: e.request.identityEq,
         requiredFields: e.request.requiredFields,
       };
     }),

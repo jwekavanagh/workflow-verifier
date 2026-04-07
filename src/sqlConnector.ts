@@ -13,11 +13,26 @@ function quoteIdent(id: string): string {
   return `"${id.replace(/"/g, '""')}"`;
 }
 
+/** Shared SELECT * … LIMIT 2 for positive row verification (SQLite `?`). */
+export function buildSelectByIdentitySqlSqlite(req: VerificationRequest): { text: string; values: string[] } {
+  const table = quoteIdent(req.table);
+  const conds: string[] = [];
+  const values: string[] = [];
+  for (const pair of req.identityEq) {
+    conds.push(`${table}.${quoteIdent(pair.column)} = ?`);
+    values.push(String(pair.value));
+  }
+  return {
+    text: `SELECT * FROM ${table} WHERE ${conds.join(" AND ")} LIMIT 2`,
+    values,
+  };
+}
+
 export function fetchRowsForVerification(db: DatabaseSync, req: VerificationRequest): Record<string, unknown>[] {
-  const sql = `SELECT * FROM ${quoteIdent(req.table)} WHERE ${quoteIdent(req.keyColumn)} = ? LIMIT 2`;
+  const { text, values } = buildSelectByIdentitySqlSqlite(req);
   try {
-    const stmt = db.prepare(sql);
-    const rows = stmt.all(String(req.keyValue)) as Record<string, unknown>[];
+    const stmt = db.prepare(text);
+    const rows = stmt.all(...values) as Record<string, unknown>[];
     return rows.map((row) =>
       Object.fromEntries(Object.entries(row).map(([k, v]) => [k.toLowerCase(), v])),
     );

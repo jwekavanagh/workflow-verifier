@@ -1,25 +1,32 @@
 import pg from "pg";
 import { ConnectorError } from "./sqlConnector.js";
-import type { VerificationRequest } from "./types.js";
+import { executeRowAbsentPostgres } from "./reconciler.js";
+import type { ReconcileOutput } from "./reconciler.js";
+import type { RowAbsentVerificationRequest, VerificationRequest } from "./types.js";
 
 export type SqlReadBackend = {
   fetchRows(req: VerificationRequest): Promise<Record<string, unknown>[]>;
+  reconcileRowAbsent(req: RowAbsentVerificationRequest): Promise<ReconcileOutput>;
 };
 
 function quoteIdent(id: string): string {
   return `"${id.replace(/"/g, '""')}"`;
 }
 
-/** Parameterized verification SELECT for SQLite (`?`) or Postgres (`$1`). */
-export function buildSelectByKeySql(
-  dialect: "sqlite" | "postgres",
-  req: VerificationRequest,
-): { text: string; values: string[] } {
+/** Parameterized verification SELECT for Postgres (`$1`, `$2`, …). */
+export function buildSelectByIdentitySqlPostgres(req: VerificationRequest): { text: string; values: string[] } {
   const table = quoteIdent(req.table);
-  const keyCol = quoteIdent(req.keyColumn);
-  const placeholder = dialect === "postgres" ? "$1" : "?";
-  const text = `SELECT * FROM ${table} WHERE ${keyCol} = ${placeholder} LIMIT 2`;
-  return { text, values: [String(req.keyValue)] };
+  const conds: string[] = [];
+  const values: string[] = [];
+  let p = 1;
+  for (const pair of req.identityEq) {
+    conds.push(`${table}.${quoteIdent(pair.column)} = $${p++}`);
+    values.push(String(pair.value));
+  }
+  return {
+    text: `SELECT * FROM ${table} WHERE ${conds.join(" AND ")} LIMIT 2`,
+    values,
+  };
 }
 
 export async function applyPostgresVerificationSessionGuards(client: pg.Client): Promise<void> {
@@ -53,7 +60,7 @@ export async function connectPostgresVerificationClient(connectionString: string
 export function createPostgresSqlReadBackend(client: pg.Client): SqlReadBackend {
   return {
     async fetchRows(req: VerificationRequest): Promise<Record<string, unknown>[]> {
-      const { text, values } = buildSelectByKeySql("postgres", req);
+      const { text, values } = buildSelectByIdentitySqlPostgres(req);
       try {
         const r = await client.query(text, values);
         return r.rows.map((row) =>
@@ -62,6 +69,9 @@ export function createPostgresSqlReadBackend(client: pg.Client): SqlReadBackend 
       } catch (e) {
         throw new ConnectorError(e instanceof Error ? e.message : String(e), { cause: e });
       }
+    },
+    async reconcileRowAbsent(req: RowAbsentVerificationRequest): Promise<ReconcileOutput> {
+      return executeRowAbsentPostgres((text, values) => client.query(text, values), req);
     },
   };
 }

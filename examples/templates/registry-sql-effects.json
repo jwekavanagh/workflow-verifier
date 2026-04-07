@@ -8,19 +8,23 @@
         {
           "id": "order_header",
           "table": { "const": "orders" },
-          "key": {
-            "column": { "const": "id" },
-            "value": { "pointer": "/orderId" }
-          },
+          "identityEq": [
+            {
+              "column": { "const": "id" },
+              "value": { "pointer": "/orderId" }
+            }
+          ],
           "requiredFields": { "pointer": "/orderFields" }
         },
         {
           "id": "order_line",
           "table": { "const": "order_lines" },
-          "key": {
-            "column": { "const": "id" },
-            "value": { "pointer": "/lineId" }
-          },
+          "identityEq": [
+            {
+              "column": { "const": "id" },
+              "value": { "pointer": "/lineId" }
+            }
+          ],
           "requiredFields": { "pointer": "/lineFields" }
         }
       ]

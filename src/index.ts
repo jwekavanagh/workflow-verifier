@@ -107,7 +107,7 @@ export {
 export { fetchRowsForVerification, ConnectorError } from "./sqlConnector.js";
 export {
   applyPostgresVerificationSessionGuards,
-  buildSelectByKeySql,
+  buildSelectByIdentitySqlPostgres,
   connectPostgresVerificationClient,
   createPostgresSqlReadBackend,
 } from "./sqlReadBackend.js";

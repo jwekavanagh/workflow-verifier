@@ -191,14 +191,14 @@ describe("formatVerificationTargetSummary", () => {
   const sqlRowReq: StepVerificationRequest = {
     kind: "sql_row",
     table: "contacts",
-    keyColumn: "id",
-    keyValue: "c1",
+    identityEq: [{ column: "id", value: "c1" }],
     requiredFields: { name: "A", status: "ok" },
   };
 
-  it("sql_row includes table, key, sorted field names", () => {
+  it("sql_row includes table, identity, sorted field names", () => {
     const s = formatVerificationTargetSummary(sqlRowReq);
     expect(s).toContain("table=contacts");
+    expect(s).toContain("identity=[");
     expect(s).toContain("id=c1");
     expect(s).toContain("name");
     expect(s).toContain("status");
@@ -212,7 +212,12 @@ describe("formatVerificationTargetSummary", () => {
     const req: StepVerificationRequest = {
       kind: "sql_relational",
       checks: [
-        { checkKind: "related_exists", id: "b", childTable: "c", fkColumn: "k", fkValue: "1", whereEq: [] },
+        {
+          checkKind: "related_exists",
+          id: "b",
+          childTable: "c",
+          matchEq: [{ column: "k", value: "1" }],
+        },
         { checkKind: "aggregate", id: "a", table: "t", fn: "COUNT_STAR", whereEq: [], expectOp: "eq", expectValue: 0 },
       ],
     };
@@ -220,10 +225,10 @@ describe("formatVerificationTargetSummary", () => {
     expect(s).toContain("sql_relational count=2");
     expect(s).toContain("a:aggregate");
     expect(s).toContain("b:related_exists");
-    expect(s).not.toContain("b:related_exists:w");
+    expect(s).not.toContain("b:related_exists:m");
   });
 
-  it("sql_relational related_exists with whereEq uses wN suffix", () => {
+  it("sql_relational related_exists with composite matchEq uses mN suffix", () => {
     const req: StepVerificationRequest = {
       kind: "sql_relational",
       checks: [
@@ -231,9 +236,8 @@ describe("formatVerificationTargetSummary", () => {
           checkKind: "related_exists",
           id: "b",
           childTable: "c",
-          fkColumn: "k",
-          fkValue: "1",
-          whereEq: [
+          matchEq: [
+            { column: "k", value: "1" },
             { column: "a", value: "1" },
             { column: "b", value: "2" },
           ],
@@ -241,7 +245,7 @@ describe("formatVerificationTargetSummary", () => {
       ],
     };
     const s = formatVerificationTargetSummary(req);
-    expect(s).toContain("b:related_exists:w2");
+    expect(s).toContain("b:related_exists:m3");
   });
 });
 
@@ -251,12 +255,11 @@ describe("stderr category parity with JSON failureDiagnostic", () => {
     const vr: StepVerificationRequest = {
       kind: "sql_row",
       table: "t",
-      keyColumn: "id",
-      keyValue: "1",
+      identityEq: [{ column: "id", value: "1" }],
       requiredFields: { a: "b" },
     };
     const result = {
-      schemaVersion: 7 as const,
+      schemaVersion: 8 as const,
       workflowId: "w",
       status: "inconsistent" as const,
       runLevelReasons: [] as { code: string; message: string }[],

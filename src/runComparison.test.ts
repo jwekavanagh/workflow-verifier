@@ -38,8 +38,7 @@ function sqlRowStep(
     verificationRequest: {
       kind: "sql_row",
       table: "contacts",
-      keyColumn: "id",
-      keyValue,
+      identityEq: [{ column: "id", value: keyValue }],
       requiredFields: {},
     },
     status: verified ? "verified" : "missing",
@@ -54,7 +53,7 @@ function sqlRowStep(
 function wf(steps: StepOutcome[], id = "wf_cmp"): WorkflowResult {
   const bad = steps.some((s) => s.status !== "verified");
   const engine: WorkflowEngineResult = {
-    schemaVersion: 7,
+    schemaVersion: 8,
     workflowId: id,
     status: bad ? "inconsistent" : "complete",
     runLevelReasons: [],
@@ -98,7 +97,7 @@ describe("runComparison", () => {
     });
   });
 
-  it("logicalStepKeyFromStep: related_exists whereEq is canonical under permutation", () => {
+  it("logicalStepKeyFromStep: related_exists matchEq is canonical under permutation", () => {
     const base = {
       seq: 0,
       toolId: "t",
@@ -119,9 +118,8 @@ describe("runComparison", () => {
             checkKind: "related_exists",
             id: "x",
             childTable: "c",
-            fkColumn: "k",
-            fkValue: "1",
-            whereEq: [
+            matchEq: [
+              { column: "k", value: "1" },
               { column: "b", value: "2" },
               { column: "a", value: "3" },
             ],
@@ -138,11 +136,10 @@ describe("runComparison", () => {
             checkKind: "related_exists",
             id: "x",
             childTable: "c",
-            fkColumn: "k",
-            fkValue: "1",
-            whereEq: [
+            matchEq: [
               { column: "a", value: "3" },
               { column: "b", value: "2" },
+              { column: "k", value: "1" },
             ],
           },
         ],
@@ -157,9 +154,10 @@ describe("runComparison", () => {
             checkKind: "related_exists",
             id: "x",
             childTable: "c",
-            fkColumn: "k",
-            fkValue: "1",
-            whereEq: [{ column: "a", value: "3" }],
+            matchEq: [
+              { column: "k", value: "1" },
+              { column: "a", value: "3" },
+            ],
           },
         ],
       },
@@ -244,8 +242,7 @@ describe("runComparison", () => {
           id: "e1",
           kind: "sql_row" as const,
           table: "contacts",
-          keyColumn: "id",
-          keyValue: "1",
+          identityEq: [{ column: "id", value: "1" }],
           requiredFields: {},
         },
       ],
@@ -358,7 +355,7 @@ describe("runComparison", () => {
 
   it("actionableCategoryRecurrence: streaks and indices along compare order", () => {
     const engMalformed = (): WorkflowEngineResult => ({
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "w",
       status: "incomplete",
       runLevelReasons: [{ code: "MALFORMED_EVENT_LINE", message: "bad" }],
@@ -372,7 +369,7 @@ describe("runComparison", () => {
       steps: [],
     });
     const engDup = (): WorkflowEngineResult => ({
-      schemaVersion: 7,
+      schemaVersion: 8,
       workflowId: "w",
       status: "inconsistent",
       runLevelReasons: [],
@@ -392,8 +389,7 @@ describe("runComparison", () => {
           verificationRequest: {
             kind: "sql_row",
             table: "c",
-            keyColumn: "id",
-            keyValue: "1",
+            identityEq: [{ column: "id", value: "1" }],
             requiredFields: {},
           },
           status: "inconsistent",

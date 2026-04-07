@@ -15,12 +15,17 @@ import {
 const baseReq: VerificationRequest = {
   kind: "sql_row",
   table: "t",
-  keyColumn: "id",
-  keyValue: "1",
+  identityEq: [{ column: "id", value: "1" }],
   requiredFields: {},
 };
 
 const unusedRelationalOk = async () => ({
+  status: "verified" as const,
+  reasons: [] as { code: string; message: string }[],
+  evidenceSummary: {},
+});
+
+const unusedReconcileRowAbsent = async () => ({
   status: "verified" as const,
   reasons: [] as { code: string; message: string }[],
   evidenceSummary: {},
@@ -87,6 +92,7 @@ describe("verificationPolicy", () => {
           evidenceSummary: { rowCount: 1 },
         };
       },
+      reconcileRowAbsent: unusedReconcileRowAbsent,
       reconcileRelationalCheck: unusedRelationalOk,
     };
     const out = await executeVerificationWithPolicyAsync(
@@ -122,6 +128,7 @@ describe("verificationPolicy", () => {
           evidenceSummary: { rowCount: 1 },
         };
       },
+      reconcileRowAbsent: unusedReconcileRowAbsent,
       reconcileRelationalCheck: unusedRelationalOk,
     };
     const timing = {
@@ -157,6 +164,7 @@ describe("verificationPolicy", () => {
           evidenceSummary: { rowCount: 0 },
         };
       },
+      reconcileRowAbsent: unusedReconcileRowAbsent,
       reconcileRelationalCheck: unusedRelationalOk,
     };
     const timing = {
@@ -194,6 +202,7 @@ describe("verificationPolicy", () => {
           evidenceSummary: {},
         };
       },
+      reconcileRowAbsent: unusedReconcileRowAbsent,
       reconcileRelationalCheck: unusedRelationalOk,
     };
     const timing = {
@@ -228,6 +237,7 @@ describe("verificationPolicy", () => {
           evidenceSummary: {},
         };
       },
+      reconcileRowAbsent: unusedReconcileRowAbsent,
       reconcileRelationalCheck: unusedRelationalOk,
     };
     const out = await executeVerificationWithPolicyAsync(
@@ -241,8 +251,8 @@ describe("verificationPolicy", () => {
 
   it("eventual sql_effects: all missing until window yields MULTI_EFFECT_UNCERTAIN_WITHIN_WINDOW", async () => {
     const effects: ResolvedEffect[] = [
-      { id: "a", request: { ...baseReq, keyValue: "a" } },
-      { id: "b", request: { ...baseReq, keyValue: "b" } },
+      { id: "a", request: { ...baseReq, identityEq: [{ column: "id", value: "a" }] } },
+      { id: "b", request: { ...baseReq, identityEq: [{ column: "id", value: "b" }] } },
     ];
     let calls = 0;
     let t = 0;
@@ -260,6 +270,7 @@ describe("verificationPolicy", () => {
           evidenceSummary: { rowCount: 0 },
         };
       },
+      reconcileRowAbsent: unusedReconcileRowAbsent,
       reconcileRelationalCheck: unusedRelationalOk,
     };
     const timing = {

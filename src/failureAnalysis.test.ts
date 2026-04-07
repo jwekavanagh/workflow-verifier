@@ -29,7 +29,7 @@ function engine(
 ): WorkflowEngineResult {
   const { verificationRunContext: ctx, ...rest } = partial;
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     workflowId: "w",
     status: "incomplete",
     runLevelReasons: [],
@@ -88,8 +88,7 @@ describe("buildFailureAnalysis precedence", () => {
             verificationRequest: {
               kind: "sql_row",
               table: "t",
-              keyColumn: "id",
-              keyValue: "1",
+              identityEq: [{ column: "id", value: "1" }],
               requiredFields: {},
             },
             reasons: [{ code: "ROW_ABSENT", message: "m" }],
@@ -126,8 +125,7 @@ describe("buildFailureAnalysis precedence", () => {
             verificationRequest: {
               kind: "sql_row",
               table: "t",
-              keyColumn: "id",
-              keyValue: "1",
+              identityEq: [{ column: "id", value: "1" }],
               requiredFields: {},
             },
             reasons: [{ code: "ROW_ABSENT", message: "m" }],
@@ -163,8 +161,7 @@ describe("buildFailureAnalysis precedence", () => {
             verificationRequest: {
               kind: "sql_row",
               table: "t",
-              keyColumn: "id",
-              keyValue: "1",
+              identityEq: [{ column: "id", value: "1" }],
               requiredFields: {},
             },
             reasons: [{ code: "ROW_ABSENT", message: "m" }],
@@ -188,8 +185,7 @@ describe("buildFailureAnalysis precedence", () => {
             verificationRequest: {
               kind: "sql_row",
               table: "t",
-              keyColumn: "id",
-              keyValue: "1",
+              identityEq: [{ column: "id", value: "1" }],
               requiredFields: {},
             },
             reasons: [{ code: "ROW_ABSENT", message: "m" }],
@@ -215,8 +211,7 @@ describe("buildFailureAnalysis precedence", () => {
               verificationRequest: {
                 kind: "sql_row",
                 table: "t",
-                keyColumn: "id",
-                keyValue: "1",
+                identityEq: [{ column: "id", value: "1" }],
                 requiredFields: {},
               },
             }),

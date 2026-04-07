@@ -10,7 +10,7 @@ const baseEntry: ToolRegistryEntry = {
   verification: {
     kind: "sql_row",
     table: { const: "contacts" },
-    key: { column: { const: "id" }, value: { const: "1" } },
+    identityEq: [{ column: { const: "id" }, value: { const: "1" } }],
     requiredFields: { pointer: "/fields" },
   },
 };
@@ -64,15 +64,17 @@ describe("resolver code catalog", () => {
     const entry = {
       ...baseEntry,
       verification: {
-        ...baseEntry.verification,
-        key: { column: { const: "" } as { const: string }, value: { const: "1" } },
+        kind: "sql_row" as const,
+        table: { const: "contacts" },
+        identityEq: [{ column: { const: "" }, value: { const: "1" } }],
+        requiredFields: { pointer: "/fields" },
       },
     } as ToolRegistryEntry;
     const r = resolveVerificationRequest(entry, { fields: {} });
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.code).toBe("CONST_STRING_EMPTY");
-      expect(r.message).toBe("key.column: const must be non-empty string");
+      expect(r.message).toBe("identityEq[0].column: const must be non-empty string");
     }
   });
 
@@ -81,8 +83,10 @@ describe("resolver code catalog", () => {
       {
         ...baseEntry,
         verification: {
-          ...baseEntry.verification,
-          key: { column: { pointer: "/missing" }, value: { const: "1" } },
+          kind: "sql_row" as const,
+          table: { const: "contacts" },
+          identityEq: [{ column: { pointer: "/missing" }, value: { const: "1" } }],
+          requiredFields: { pointer: "/fields" },
         },
       } as ToolRegistryEntry,
       {},
@@ -90,7 +94,7 @@ describe("resolver code catalog", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.code).toBe("STRING_SPEC_POINTER_MISSING");
-      expect(r.message).toBe("key.column: missing at /missing");
+      expect(r.message).toBe("identityEq[0].column: missing at /missing");
     }
   });
 
@@ -99,8 +103,10 @@ describe("resolver code catalog", () => {
       {
         ...baseEntry,
         verification: {
-          ...baseEntry.verification,
-          key: { column: { pointer: "/n" }, value: { const: "1" } },
+          kind: "sql_row" as const,
+          table: { const: "contacts" },
+          identityEq: [{ column: { pointer: "/n" }, value: { const: "1" } }],
+          requiredFields: { pointer: "/fields" },
         },
       } as ToolRegistryEntry,
       { n: 3 },
@@ -108,7 +114,7 @@ describe("resolver code catalog", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.code).toBe("STRING_SPEC_TYPE");
-      expect(r.message).toBe("key.column: expected string at /n");
+      expect(r.message).toBe("identityEq[0].column: expected string at /n");
     }
   });
 
@@ -117,8 +123,10 @@ describe("resolver code catalog", () => {
       {
         ...baseEntry,
         verification: {
-          ...baseEntry.verification,
-          key: { column: { pointer: "/s" }, value: { const: "1" } },
+          kind: "sql_row" as const,
+          table: { const: "contacts" },
+          identityEq: [{ column: { pointer: "/s" }, value: { const: "1" } }],
+          requiredFields: { pointer: "/fields" },
         },
       } as ToolRegistryEntry,
       { s: "" },
@@ -126,7 +134,7 @@ describe("resolver code catalog", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.code).toBe("STRING_SPEC_EMPTY");
-      expect(r.message).toBe("key.column: empty string at /s");
+      expect(r.message).toBe("identityEq[0].column: empty string at /s");
     }
   });
 
@@ -135,8 +143,10 @@ describe("resolver code catalog", () => {
       {
         ...baseEntry,
         verification: {
-          ...baseEntry.verification,
-          key: { column: { const: "id" }, value: { pointer: "/kv" } },
+          kind: "sql_row" as const,
+          table: { const: "contacts" },
+          identityEq: [{ column: { const: "id" }, value: { pointer: "/kv" } }],
+          requiredFields: { pointer: "/fields" },
         },
       } as ToolRegistryEntry,
       { fields: {} },
@@ -144,7 +154,7 @@ describe("resolver code catalog", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.code).toBe("KEY_VALUE_POINTER_MISSING");
-      expect(r.message).toBe("key.value missing at /kv");
+      expect(r.message).toBe("identityEq[0]. key.value missing at /kv");
     }
   });
 
@@ -153,8 +163,10 @@ describe("resolver code catalog", () => {
       {
         ...baseEntry,
         verification: {
-          ...baseEntry.verification,
-          key: { column: { const: "id" }, value: { pointer: "/kv" } },
+          kind: "sql_row" as const,
+          table: { const: "contacts" },
+          identityEq: [{ column: { const: "id" }, value: { pointer: "/kv" } }],
+          requiredFields: { pointer: "/fields" },
         },
       } as ToolRegistryEntry,
       { fields: {}, kv: { a: 1 } },
@@ -162,7 +174,7 @@ describe("resolver code catalog", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.code).toBe("KEY_VALUE_NOT_SCALAR");
-      expect(r.message).toBe("key.value must be scalar at /kv");
+      expect(r.message).toBe("identityEq[0]. key.value must be scalar at /kv");
     }
   });
 
@@ -170,15 +182,17 @@ describe("resolver code catalog", () => {
     const entry = {
       ...baseEntry,
       verification: {
-        ...baseEntry.verification,
-        key: { column: { const: "id" }, value: {} as never },
+        kind: "sql_row" as const,
+        table: { const: "contacts" },
+        identityEq: [{ column: { const: "id" }, value: {} as never }],
+        requiredFields: { pointer: "/fields" },
       },
     } as ToolRegistryEntry;
     const r = resolveVerificationRequest(entry, {});
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.code).toBe("KEY_VALUE_SPEC_INVALID");
-      expect(r.message).toBe("key.value: invalid spec");
+      expect(r.message).toBe("identityEq[0]. value: invalid spec");
     }
   });
 
@@ -199,8 +213,10 @@ describe("resolver code catalog", () => {
     const entry = {
       ...baseEntry,
       verification: {
-        ...baseEntry.verification,
+        kind: "sql_row" as const,
         table: {} as never,
+        identityEq: [{ column: { const: "id" }, value: { const: "1" } }],
+        requiredFields: { pointer: "/fields" },
       },
     } as ToolRegistryEntry;
     const r = resolveVerificationRequest(entry, { fields: {} });
@@ -216,8 +232,10 @@ describe("resolver code catalog", () => {
       {
         ...baseEntry,
         verification: {
-          ...baseEntry.verification,
+          kind: "sql_row" as const,
           table: { pointer: "/tbl" },
+          identityEq: [{ column: { const: "id" }, value: { const: "1" } }],
+          requiredFields: { pointer: "/fields" },
         },
       } as ToolRegistryEntry,
       { tbl: "", fields: {} },
@@ -267,13 +285,13 @@ describe("sql_effects", () => {
         {
           id: "z_last",
           table: { const: "contacts" },
-          key: { column: { const: "id" }, value: { const: "z" } },
+          identityEq: [{ column: { const: "id" }, value: { const: "z" } }],
           requiredFields: { pointer: "/fieldsZ" },
         },
         {
           id: "a_first",
           table: { const: "contacts" },
-          key: { column: { const: "id" }, value: { const: "a" } },
+          identityEq: [{ column: { const: "id" }, value: { const: "a" } }],
           requiredFields: { pointer: "/fieldsA" },
         },
       ],
@@ -288,8 +306,8 @@ describe("sql_effects", () => {
     expect(r.ok).toBe(true);
     if (!r.ok || r.verificationKind !== "sql_effects") return;
     expect(r.effects.map((e) => e.id)).toEqual(["a_first", "z_last"]);
-    expect(r.effects[0]!.request.keyValue).toBe("a");
-    expect(r.effects[1]!.request.keyValue).toBe("z");
+    expect(r.effects[0]!.request.identityEq).toEqual([{ column: "id", value: "a" }]);
+    expect(r.effects[1]!.request.identityEq).toEqual([{ column: "id", value: "z" }]);
   });
 
   it("rejects DUPLICATE_EFFECT_ID", () => {
@@ -301,13 +319,13 @@ describe("sql_effects", () => {
           {
             id: "dup",
             table: { const: "contacts" },
-            key: { column: { const: "id" }, value: { const: "1" } },
+            identityEq: [{ column: { const: "id" }, value: { const: "1" } }],
             requiredFields: { pointer: "/f" },
           },
           {
             id: "dup",
             table: { const: "contacts" },
-            key: { column: { const: "id" }, value: { const: "2" } },
+            identityEq: [{ column: { const: "id" }, value: { const: "2" } }],
             requiredFields: { pointer: "/f" },
           },
         ],
@@ -342,8 +360,7 @@ describe("sql_relational", () => {
             checkKind: "related_exists",
             id: "dup",
             childTable: { const: "c" },
-            fkColumn: { const: "k" },
-            fkValue: { const: "1" },
+            matchEq: [{ column: { const: "k" }, value: { const: "1" } }],
           },
           {
             checkKind: "aggregate",
@@ -362,7 +379,7 @@ describe("sql_relational", () => {
     }
   });
 
-  it("related_exists resolves whereEq and sorts checks by id", () => {
+  it("related_exists resolves matchEq and sorts checks by id", () => {
     const entry: ToolRegistryEntry = {
       toolId: "rel",
       effectDescriptionTemplate: "x",
@@ -373,9 +390,8 @@ describe("sql_relational", () => {
             checkKind: "related_exists",
             id: "z",
             childTable: { const: "c" },
-            fkColumn: { const: "k" },
-            fkValue: { pointer: "/a" },
-            whereEq: [
+            matchEq: [
+              { column: { const: "k" }, value: { pointer: "/a" } },
               { column: { const: "s" }, value: { pointer: "/b" } },
               { column: { const: "t" }, value: { const: "2" } },
             ],
@@ -390,8 +406,8 @@ describe("sql_relational", () => {
       const c = r.checks[0]!;
       expect(c.checkKind).toBe("related_exists");
       if (c.checkKind === "related_exists") {
-        expect(c.fkValue).toBe("1");
-        expect(c.whereEq).toEqual([
+        expect(c.matchEq).toEqual([
+          { column: "k", value: "1" },
           { column: "s", value: "x" },
           { column: "t", value: "2" },
         ]);
@@ -399,7 +415,7 @@ describe("sql_relational", () => {
     }
   });
 
-  it("related_exists whereEq bad column identifier fails", () => {
+  it("related_exists matchEq bad column identifier fails", () => {
     const entry: ToolRegistryEntry = {
       toolId: "rel",
       effectDescriptionTemplate: "x",
@@ -410,9 +426,7 @@ describe("sql_relational", () => {
             checkKind: "related_exists",
             id: "x",
             childTable: { const: "c" },
-            fkColumn: { const: "k" },
-            fkValue: { const: "1" },
-            whereEq: [{ column: { const: "bad-col" }, value: { const: "v" } }],
+            matchEq: [{ column: { const: "bad-col" }, value: { const: "v" } }],
           },
         ],
       },
@@ -421,11 +435,11 @@ describe("sql_relational", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.code).toBe("INVALID_IDENTIFIER");
-      expect(r.message).toContain("whereEq[0].column");
+      expect(r.message).toContain("checks[x].identityEq[0].column");
     }
   });
 
-  it("related_exists whereEq missing pointer fails", () => {
+  it("related_exists matchEq missing pointer fails", () => {
     const entry: ToolRegistryEntry = {
       toolId: "rel",
       effectDescriptionTemplate: "x",
@@ -436,9 +450,7 @@ describe("sql_relational", () => {
             checkKind: "related_exists",
             id: "x",
             childTable: { const: "c" },
-            fkColumn: { const: "k" },
-            fkValue: { const: "1" },
-            whereEq: [{ column: { const: "s" }, value: { pointer: "/missing" } }],
+            matchEq: [{ column: { const: "s" }, value: { pointer: "/missing" } }],
           },
         ],
       },
@@ -446,7 +458,7 @@ describe("sql_relational", () => {
     const r = resolveVerificationRequest(entry, {});
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.message).toContain("whereEq[0]");
+      expect(r.message).toContain("checks[x].identityEq[0]");
     }
   });
 });
