@@ -30,7 +30,7 @@ export const PLAN_TRANSITION_OBLIGATION_H2_TITLE_RE =
 
 /** Reference-only lines in obligation sections: do not harvest paths from these lines (todos exempt). */
 export const PLAN_TRANSITION_REFERENCE_ONLY_LINE_RE =
-  /\b(?:same\s+shape\s+as|similar\s+to|mirrors(?:\s+existing)?|for\s+example|e\.g\.)\b/i;
+  /\b(?:same\s+shape\s+as|similar\s+to|mirrors(?:\s+existing)?|for\s+example|hypothetical|chosen\s+in\s+fixture)\b|(?:e\.g\.|i\.e\.)(?=\s|,|$)/i;
 
 function stripUtf8Bom(s: string): string {
   return s.charCodeAt(0) === 0xfeff ? s.slice(1) : s;
