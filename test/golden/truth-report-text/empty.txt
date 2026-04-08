@@ -12,7 +12,7 @@ diagnosis:
   - evidence: scope=run_level codes=NO_STEPS_FOR_WORKFLOW
 failure_explanation:
 expected: Verification expected a valid captured run for workflowId=no_such_workflow under policy [consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0] with no run-level ingest or planning failures.
-observed: Run-level failure: code=NO_STEPS_FOR_WORKFLOW detail=No tool_observed events for workflowId "no_such_workflow" after filtering. event_file_non_empty_lines=0 schema_valid_events=0 tool_observed_for_workflow=0 tool_observed_other_workflows=0..
+observed: Run-level failure: code=NO_STEPS_FOR_WORKFLOW detail=No tool_observed events for this workflow id after filtering..
 divergence: Divergence at run_level: code=NO_STEPS_FOR_WORKFLOW meaning=No tool_observed events for this workflow id after filtering.
 known_facts:
   - id=trust_summary value=NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
@@ -33,7 +33,7 @@ correctness_definition:
   enforceable_projection: {"projectionKind":"run_ingest_integrity","workflowId":"no_such_workflow","verificationPolicyFragment":"consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0","primaryFailureCodes":["NO_STEPS_FOR_WORKFLOW"],"ingestContractRequirement":"no_run_level_failures"}
   remediation_alignment: recommended_action=fix_event_ingest_and_steps automation_safe=false
 run_level:
-  - detail: No tool_observed events for workflowId "no_such_workflow" after filtering. event_file_non_empty_lines=0 schema_valid_events=0 tool_observed_for_workflow=0 tool_observed_other_workflows=0.
+  - detail: No tool_observed events for this workflow id after filtering.
     category: workflow_execution
     reference_code: NO_STEPS_FOR_WORKFLOW
     user_meaning: No tool_observed events for this workflow id after filtering.

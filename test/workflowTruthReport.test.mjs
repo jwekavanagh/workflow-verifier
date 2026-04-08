@@ -39,14 +39,7 @@ function loadTruthGolden(name) {
 
 const MALFORMED_MSG =
   "Event line was missing, invalid JSON, or failed schema validation for a tool observation.";
-const zeroCounts = {
-  eventFileNonEmptyLines: 0,
-  schemaValidEvents: 0,
-  toolObservedForRequestedWorkflowId: 0,
-  toolObservedForOtherWorkflowIds: 0,
-};
-const NO_STEPS_MSG_WF_COMPLETE = formatNoStepsForWorkflowMessage("wf_complete", zeroCounts);
-const NO_STEPS_MSG_NO_SUCH = formatNoStepsForWorkflowMessage("no_such_workflow", zeroCounts);
+const NO_STEPS_MSG = "No tool_observed events for this workflow id after filtering.";
 
 describe("formatWorkflowTruthReport", () => {
   it("golden complete / inconsistent missing / incomplete unknown tool", () => {

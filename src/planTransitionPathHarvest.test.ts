@@ -7,9 +7,10 @@ import { harvestQualifyingPathsFromPlan } from "./planTransitionPathHarvest.js";
 
 const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const CORPUS_PLAN_DIR = path.join(repoRoot, "test/fixtures/plan-derived-citations");
-
-const EXPECTED_HARVEST_PATH = path.join(CORPUS_PLAN_DIR, "expected-harvest.json");
+const EXPECTED_HARVEST_PATH = path.join(
+  repoRoot,
+  "test/fixtures/plan-derived-citations/expected-harvest.json",
+);
 
 function fmFromPlanMarkdown(md: string): Record<string, unknown> {
   const rest = md.slice(3).replace(/^\r?\n/, "");
@@ -24,11 +25,11 @@ describe("harvestQualifyingPathsFromPlan", () => {
     const expected = JSON.parse(raw) as Record<string, string[]>;
     const keys = Object.keys(expected).sort((a, b) => a.localeCompare(b));
     expect(keys).toEqual([
-      "test/fixtures/plan-derived-citations/compare_and_trust_3d5ea6c8.plan.md",
-      "test/fixtures/plan-derived-citations/outcome_verification_107174c5.plan.md",
-      "test/fixtures/plan-derived-citations/partial_effects_feedback_730cddce.plan.md",
-      "test/fixtures/plan-derived-citations/plan-transition_validation_91ae04db.plan.md",
-      "test/fixtures/plan-derived-citations/verdict_audit_ec74ff93.plan.md",
+      "plans/compare_and_trust_3d5ea6c8.plan.md",
+      "plans/outcome_verification_107174c5.plan.md",
+      "plans/partial_effects_feedback_730cddce.plan.md",
+      "plans/plan-transition_validation_91ae04db.plan.md",
+      "plans/verdict_audit_ec74ff93.plan.md",
     ]);
     for (const k of keys) {
       const md = readFileSync(path.join(repoRoot, k), "utf8");
@@ -37,7 +38,7 @@ describe("harvestQualifyingPathsFromPlan", () => {
   });
 
   it("PIN_PLAN_TRANSITION_VALIDATION: plan does not harvest narrative-only rename paths", () => {
-    const p = path.join(CORPUS_PLAN_DIR, "plan-transition_validation_91ae04db.plan.md");
+    const p = path.join(repoRoot, "plans", "plan-transition_validation_91ae04db.plan.md");
     const md = readFileSync(p, "utf8");
     const result = harvestQualifyingPathsFromPlan(md, fmFromPlanMarkdown(md));
     expect(result).not.toContain("src/copy.ts");
@@ -45,7 +46,7 @@ describe("harvestQualifyingPathsFromPlan", () => {
   });
 
   it("GOLD_OUTCOME_VERIFICATION: outcome verification plan does not harvest pipeline or reconciler citations", () => {
-    const p = path.join(CORPUS_PLAN_DIR, "outcome_verification_107174c5.plan.md");
+    const p = path.join(repoRoot, "plans", "outcome_verification_107174c5.plan.md");
     const md = readFileSync(p, "utf8");
     const result = harvestQualifyingPathsFromPlan(md, fmFromPlanMarkdown(md));
     expect(result).not.toContain("src/pipeline.ts");
@@ -53,7 +54,7 @@ describe("harvestQualifyingPathsFromPlan", () => {
   });
 
   it("GOLD_COMPARE_TRUST: compare/trust plan does not harvest runComparison schema or implementation-only citations", () => {
-    const p = path.join(CORPUS_PLAN_DIR, "compare_and_trust_3d5ea6c8.plan.md");
+    const p = path.join(repoRoot, "plans", "compare_and_trust_3d5ea6c8.plan.md");
     const md = readFileSync(p, "utf8");
     const result = harvestQualifyingPathsFromPlan(md, fmFromPlanMarkdown(md));
     expect(result).not.toContain("schemas/run-comparison-report.schema.json");

@@ -1,14 +1,14 @@
 {
-  "test/fixtures/plan-derived-citations/compare_and_trust_3d5ea6c8.plan.md": [
+  "plans/compare_and_trust_3d5ea6c8.plan.md": [
     "src/debugPanels.test.ts",
     "src/debugPanels.ts",
     "src/debugServer.test.ts"
   ],
-  "test/fixtures/plan-derived-citations/outcome_verification_107174c5.plan.md": [
+  "plans/outcome_verification_107174c5.plan.md": [
     "docs/workflow-verifier.md",
     "src/verificationAgainstSystemState.requirements.test.ts"
   ],
-  "test/fixtures/plan-derived-citations/partial_effects_feedback_730cddce.plan.md": [
+  "plans/partial_effects_feedback_730cddce.plan.md": [
     "docs/workflow-verifier.md",
     "examples/seed.sql",
     "src/failureAnalysis.ts",
@@ -16,11 +16,11 @@
     "src/multiEffectRollup.ts",
     "src/verificationAgainstSystemState.requirements.test.ts"
   ],
-  "test/fixtures/plan-derived-citations/plan-transition_validation_91ae04db.plan.md": [
+  "plans/plan-transition_validation_91ae04db.plan.md": [
     "schemas/plan-validation-frontmatter.schema.json",
     "src/schemaLoad.ts"
   ],
-  "test/fixtures/plan-derived-citations/verdict_audit_ec74ff93.plan.md": [
+  "plans/verdict_audit_ec74ff93.plan.md": [
     "src/agentRunBundle.ts",
     "src/cli.ts",
     "src/pipeline.ts",

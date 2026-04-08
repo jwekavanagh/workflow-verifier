@@ -13,10 +13,7 @@ const PC_EMPTY = "{}";
 const PC_MISSING = '{"fields":{"name":"X","status":"Y"},"recordId":"missing_id"}';
 const MALFORMED_MSG =
   "Event line was missing, invalid JSON, or failed schema validation for a tool observation.";
-const NO_STEPS_MSG_WF_COMPLETE =
-  'No tool_observed events for workflowId "wf_complete" after filtering. event_file_non_empty_lines=0 schema_valid_events=0 tool_observed_for_workflow=0 tool_observed_other_workflows=0.';
-const NO_STEPS_MSG_NO_SUCH =
-  'No tool_observed events for workflowId "no_such_workflow" after filtering. event_file_non_empty_lines=0 schema_valid_events=0 tool_observed_for_workflow=0 tool_observed_other_workflows=0.';
+const NO_STEPS_MSG = "No tool_observed events for this workflow id after filtering.";
 
 const engines = {
   complete: {
@@ -95,7 +92,7 @@ const engines = {
     status: "incomplete",
     runLevelReasons: [
       { code: "MALFORMED_EVENT_LINE", message: MALFORMED_MSG },
-      { code: "NO_STEPS_FOR_WORKFLOW", message: NO_STEPS_MSG_WF_COMPLETE },
+      { code: "NO_STEPS_FOR_WORKFLOW", message: NO_STEPS_MSG },
     ],
     verificationPolicy: vp,
     eventSequenceIntegrity: { kind: "normal" },
@@ -106,7 +103,7 @@ const engines = {
     verificationRunContext: emptyCtx,
     workflowId: "no_such_workflow",
     status: "incomplete",
-    runLevelReasons: [{ code: "NO_STEPS_FOR_WORKFLOW", message: NO_STEPS_MSG_NO_SUCH }],
+    runLevelReasons: [{ code: "NO_STEPS_FOR_WORKFLOW", message: NO_STEPS_MSG }],
     verificationPolicy: vp,
     eventSequenceIntegrity: { kind: "normal" },
     steps: [],
