@@ -12,11 +12,12 @@
     "eventSequence",
     "steps",
     "failureAnalysis",
+    "failureExplanation",
     "executionPathFindings",
     "executionPathSummary"
   ],
   "properties": {
-    "schemaVersion": { "const": 6 },
+    "schemaVersion": { "const": 7 },
     "workflowId": { "type": "string" },
     "workflowStatus": {
       "type": "string",
@@ -59,13 +60,111 @@
     "failureAnalysis": {
       "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/failureAnalysis" }]
     },
+    "failureExplanation": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/failureExplanationV1" }]
+    },
     "executionPathFindings": {
       "type": "array",
       "items": { "$ref": "#/$defs/executionPathFinding" }
     },
     "executionPathSummary": { "type": "string", "maxLength": 4096 }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "workflowStatus": { "const": "complete" } },
+        "required": ["workflowStatus"]
+      },
+      "then": {
+        "properties": {
+          "failureExplanation": { "type": "null" },
+          "failureAnalysis": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "workflowStatus": { "enum": ["incomplete", "inconsistent"] }
+        },
+        "required": ["workflowStatus"]
+      },
+      "then": {
+        "properties": {
+          "failureExplanation": { "$ref": "#/$defs/failureExplanationV1" },
+          "failureAnalysis": { "$ref": "#/$defs/failureAnalysis" }
+        }
+      }
+    }
+  ],
   "$defs": {
+    "failureExplanationFactId": {
+      "type": "string",
+      "enum": [
+        "trust_summary",
+        "workflow_status",
+        "verification_policy",
+        "primary_origin",
+        "classification_confidence",
+        "failure_analysis_summary",
+        "primary_scope",
+        "primary_codes",
+        "primary_ingest_index",
+        "primary_tool_id",
+        "primary_source",
+        "primary_run_event_id",
+        "primary_seq",
+        "primary_effect_id",
+        "verify_target",
+        "intended_effect_narrative",
+        "evidence_summary_field",
+        "evidence_summary_expected",
+        "evidence_summary_actual",
+        "evidence_summary_row_count"
+      ]
+    },
+    "failureExplanationUnknownId": {
+      "type": "string",
+      "enum": ["unknown_reason_code", "classification_confidence_band", "competing_hypothesis"]
+    },
+    "failureExplanationFactRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "value"],
+      "properties": {
+        "id": { "$ref": "#/$defs/failureExplanationFactId" },
+        "value": { "type": "string", "maxLength": 4096 }
+      }
+    },
+    "failureExplanationUnknownRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "value"],
+      "properties": {
+        "id": { "$ref": "#/$defs/failureExplanationUnknownId" },
+        "value": { "type": "string", "maxLength": 4096 }
+      }
+    },
+    "failureExplanationV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "expected", "observed", "divergence", "knownFacts", "unknowns"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "expected": { "type": "string", "maxLength": 2048 },
+        "observed": { "type": "string", "maxLength": 2048 },
+        "divergence": { "type": "string", "maxLength": 2048 },
+        "knownFacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/failureExplanationFactRow" }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/failureExplanationUnknownRow" }
+        }
+      }
+    },
     "pathConcernCategory": {
       "type": "string",
       "enum": [

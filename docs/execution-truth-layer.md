@@ -481,7 +481,7 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 - **Fixed `trust:` lines:** Most `trust:` lines map to one `WorkflowStatus` from `aggregate.ts`, except the **eventual-window uncertainty** line which applies when `workflow_status` is `incomplete` under the narrow rule in the grammar below.
 - **Machine-stable JSON labels (`STEP_STATUS_TRUTH_LABELS`):** The structured **`workflowTruthReport`** on stdout JSON uses fixed **`outcomeLabel`** strings (`VERIFIED`, `FAILED_ROW_MISSING`, …) for integrators and **`verify-workflow compare`**. The **human report text** uses plain-language **`result=`** phrases from **`HUMAN_REPORT_RESULT_PHRASE`** in `workflowTruthReport.ts` (same mapping table as JSON labels—see [Human text vs JSON `outcomeLabel`](#human-text-vs-json-outcomelabel) below). **Automation should key on stdout JSON**, not on parsing stderr text.
 - **Run-level and event-sequence issues:** Human text leads with **`detail:`** (trimmed `message`), then **`category:`**, then **`reference_code:`** (wire `code`). Same sources as **`runLevelReasons`** / **`eventSequenceIntegrity.reasons`**.
-- **Failure diagnosis:** When the workflow is not **`complete`**, after **`trust:`** and the execution-path block (see below), the human report includes a **`diagnosis:`** block mirroring **`workflowTruthReport.failureAnalysis`** on stdout JSON (see [Failure analysis](#failure-analysis-normative)), including one line **`actionable_failure: category=… severity=… recommended_action=… automation_safe=…`** (see [Actionable failure classification](#actionable-failure-classification-normative)).
+- **Failure diagnosis:** When the workflow is not **`complete`**, after **`trust:`** and the execution-path block (see below), the human report includes a **`diagnosis:`** block mirroring **`workflowTruthReport.failureAnalysis`** on stdout JSON (see [Failure analysis](#failure-analysis-normative)), including one line **`actionable_failure: category=… severity=… recommended_action=… automation_safe=…`** (see [Actionable failure classification](#actionable-failure-classification-normative)). Immediately after **`diagnosis:`**, when **`failureExplanation`** is non-null, the report includes **`failure_explanation:`** (see [Failure explanation v1 (normative)](#failure-explanation-v1-normative)); when the workflow is **`complete`**, that block is omitted entirely.
 - **Execution path:** Immediately after **`trust:`**, the human report includes **`execution_path:`** (summary string) and zero or more **`path_finding:`** lines with **`detail:`**, mirroring **`workflowTruthReport.executionPathFindings`** (see [Execution path findings](#execution-path-findings-normative)).
 - **No trailing newline inside the returned string:** The default `truthReport` implementation appends `\n` when writing to stderr.
 
@@ -503,7 +503,7 @@ This section is **normative**: literals and line shape match `formatWorkflowTrut
 
 - **SSOT for JSON shape:** [`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json) (`$id` in file). Integrators and tools should treat that schema as the authoritative contract for **`workflowTruthReport`**; this document describes purpose and integration only (no duplicate field tables here).
 <!-- ci:workflow-result-normative-prose:start -->
-- **Embedding:** On stdout / public API, **`workflowTruthReport`** is required on **`WorkflowResult`** with outer **`schemaVersion` 14** ([`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json)); inner **`workflowTruthReport.schemaVersion`** is **6**.
+- **Embedding:** On stdout / public API, **`workflowTruthReport`** is required on **`WorkflowResult`** with outer **`schemaVersion` 14** ([`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json)); inner **`workflowTruthReport.schemaVersion`** is **7**.
 - **Construction:** `buildWorkflowTruthReport(engine)` derives the object from **`WorkflowEngineResult`** (`schemaVersion` 7, [`schemas/workflow-engine-result.schema.json`](../schemas/workflow-engine-result.schema.json)) produced by `aggregateWorkflow` plus **`verificationRunContext`** merged in `verifyWorkflow` / `withWorkflowVerification`. `finalizeEmittedWorkflowResult` attaches the truth report and sets **`WorkflowResult.schemaVersion` 14**.
 - **Evolution:** Additive changes to the truth report require bumping **`workflowTruthReport.schemaVersion`** inside the truth schema; breaking engine/stdout shape bumps **`WorkflowResult.schemaVersion`**; document changes in this file’s compatibility section.
 <!-- ci:workflow-result-normative-prose:end -->
@@ -1021,6 +1021,149 @@ Step statuses: `verified` | `missing` | `inconsistent` | `incomplete_verificatio
 <!-- ci:workflow-result-normative-prose:start -->
 **Compatibility:** Emitted **`WorkflowResult.schemaVersion`** is **14** with required **`workflowTruthReport`** and **`verificationRunContext`** (no **`runLevelCodes`**). The engine-only JSON (`schemaVersion` **7**) is defined by [`schemas/workflow-engine-result.schema.json`](../schemas/workflow-engine-result.schema.json). Required **`verificationPolicy`** and **`eventSequenceIntegrity`**; non-**`verified`** steps require **`failureDiagnostic`**; consumers must allow step `status` **`uncertain`** (see [`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json)).
 <!-- ci:workflow-result-normative-prose:end -->
+
+## Failure explanation v1 (normative)
+
+**Schema:** `workflowTruthReport.failureExplanation` is `failureExplanationV1` (see [`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json) `$defs.failureExplanationV1`) when present.
+
+### Status triple invariant (JSON)
+
+- **`failureExplanation === null` if and only if `workflowStatus === "complete"` if and only if `failureAnalysis === null`.**
+- Enforced on the wire by the root `allOf` + `if` / `then` rules on `workflow-truth-report.schema.json` (complete → both null; incomplete/inconsistent → both non-null structured objects).
+
+### Human stderr (`failure_explanation:`)
+
+When `failureExplanation` is non-null, the [Human truth report](#human-truth-report) includes a **`failure_explanation:`** block **immediately after** the full **`diagnosis:`** block. When the workflow is **complete**, the operator report **omits** `failure_explanation:` entirely (never a `(none)` placeholder).
+
+Lines under `failure_explanation:`:
+
+- `expected:` / `observed:` / `divergence:` — single-line strings (newlines in source messages are normalized to spaces; repeated spaces collapsed; trim; empty → `(no message)` for message-like fields in template filling; see `failureExplanation.ts`).
+- `known_facts:` — `- id=<FailureExplanationFactId> value=<single-line string>` in **`KNOWN_FACT_ORDER`** (below); only applicable ids are emitted.
+- `unknowns:` — `- id=<FailureExplanationUnknownId> value=<single-line string>` with ordering rules below (may be empty).
+
+### Policy sourcing and `P`
+
+- **Single source:** `engine.verificationPolicy` on the `WorkflowEngineResult` passed into `buildWorkflowTruthReport` / `buildFailureExplanation`. Do **not** read policy from `workflowTruthReport` (it has no policy field) and do **not** invent defaults.
+- **Guard:** Before building a non-null explanation, `policyFragment(engine)` requires `consistencyMode` ∈ `strong` | `eventual`, and finite numeric `verificationWindowMs` and `pollIntervalMs`. On violation, the implementation throws **`FailureExplanationInvariantError`** with **`code: EXPLANATION_VERIFICATION_POLICY_INVALID`** and message **`Verification policy is missing or invalid for failure explanation.`** (fixed literal in `failureExplanation.ts`).
+- **Template fragment:** `P = consistencyMode=<consistencyMode>; verificationWindowMs=<verificationWindowMs>; pollIntervalMs=<pollIntervalMs>` (numeric/string values as emitted after the guard; no rounding).
+
+### Primary evidence and `primaryCode`
+
+- Let `fa = buildFailureAnalysis(engine)` and `e0 = fa.evidence[0]`.
+- If `e0.scope === "effect"` → **`EXPLANATION_PRIMARY_EVIDENCE_SCOPE_EFFECT`**.
+- If `!e0.codes || e0.codes.length === 0` → **`EXPLANATION_EVIDENCE_CODES_EMPTY`**.
+- Else `primaryCode` is the minimum of `e0.codes` in UTF-16 lexicographic order.
+
+Branch by `e0.scope`: `run_level` | `event_sequence` | `run_context` | `step` (includes `NO_STEPS_FOR_WORKFLOW`).
+
+### `KNOWN_FACT_ORDER` and branch applicability
+
+Emit fact rows in this order; **omit** ids that do not apply.
+
+`trust_summary`, `workflow_status`, `verification_policy`, `primary_origin`, `classification_confidence`, `failure_analysis_summary`, `primary_scope`, `primary_codes`, `primary_ingest_index`, `primary_tool_id`, `primary_source`, `primary_run_event_id`, `primary_seq`, `primary_effect_id`, `verify_target`, `intended_effect_narrative`, `evidence_summary_field`, `evidence_summary_expected`, `evidence_summary_actual`, `evidence_summary_row_count`.
+
+- **Always (non-null explanation):** `trust_summary`, `workflow_status`, `verification_policy`, `primary_origin`, `classification_confidence`, `failure_analysis_summary`, `primary_scope`, `primary_codes`, plus branch-specific rows as implemented in `failureExplanation.ts`.
+- **`run_context`:** includes `primary_ingest_index` when `e0.ingestIndex` is defined; may include `primary_source`, `primary_run_event_id`, `primary_tool_id` when present on evidence.
+- **`step` (normal):** `primary_seq`, `primary_tool_id`, `verify_target`, `intended_effect_narrative`, and evidence-summary facts when present on the driver step.
+- **`step` (`NO_STEPS_FOR_WORKFLOW`):** no `primary_seq` / tool / verify-target rows from a driver (no steps).
+
+### `unknowns` ordering
+
+1. **`unknown_reason_code`:** one row per `fa.unknownReasonCodes` entry; `value = code=<c>|meaning=<userPhraseForReasonCode(c)>`; rows sorted by **`value`** UTF-16 ascending.
+2. **`classification_confidence_band`:** at most one row; present if and only if `fa.confidence` is `medium` or `low`; `value` is `medium` or `low` respectively; omitted when `fa.confidence === "high"`.
+3. **`competing_hypothesis`:** in array index order of `fa.alternativeHypotheses`; `value = origin=<primaryOrigin>|rationale=<normalized rationale>`.
+
+When there are no unknown codes, high confidence, and no alternatives, **`unknowns` is `[]`**.
+
+### `FailureExplanationInvariantError` and CLI
+
+| `code` | When |
+|--------|------|
+| `EXPLANATION_VERIFICATION_POLICY_INVALID` | Policy guard failed. |
+| `EXPLANATION_EVIDENCE_CODES_EMPTY` | Primary evidence `codes` missing or empty. |
+| `EXPLANATION_PRIMARY_EVIDENCE_SCOPE_EFFECT` | Primary evidence scope is `effect`. |
+| `EXPLANATION_STEP_TRUTH_MISMATCH` | `step` branch: driver or truth step row missing for `(seq, toolId)`. |
+| `EXPLANATION_RUN_CONTEXT_INDEX_MISSING` | `run_context` branch: `e0.ingestIndex` undefined. |
+
+If any of these propagate as an unhandled error from verification, the **`verify-workflow`** CLI treats it like other internal failures: **stderr** emits the operational JSON envelope (`INTERNAL_ERROR`), **exit code `3`**, and **no** valid `WorkflowResult` JSON on **stdout**.
+
+### Consumption (no new package exports)
+
+Do **not** rely on new exports from `src/index.ts` for failure explanations. Integrators read **`failureExplanation`** from emitted **`WorkflowResult.workflowTruthReport`** and/or the default human stderr report from **`verifyWorkflow`** / **`finalizeEmittedWorkflowResult`**.
+
+### Verbatim branch templates (`failureExplanation.ts`)
+
+Each fence below must match the corresponding exported string constant **byte-for-byte** (CI enforces parity).
+
+```text failureExplanation.ts FE_RUN_LEVEL_EXPECTED
+Verification expected a valid captured run for workflowId=<workflowId> under policy [<P>] with no run-level ingest or planning failures.
+```
+
+```text failureExplanation.ts FE_RUN_LEVEL_OBSERVED
+Run-level failure: code=<firstCode> detail=<detail>.
+```
+
+```text failureExplanation.ts FE_RUN_LEVEL_DIVERGENCE
+Divergence at run_level: code=<firstCode> meaning=<meaning>
+```
+
+```text failureExplanation.ts FE_EVENT_SEQUENCE_EXPECTED
+Verification expected monotonic, well-formed event capture for workflowId=<workflowId> under policy [<P>].
+```
+
+```text failureExplanation.ts FE_EVENT_SEQUENCE_OBSERVED
+Event-sequence irregularity: code=<firstCode> detail=<detail>.
+```
+
+```text failureExplanation.ts FE_EVENT_SEQUENCE_DIVERGENCE
+Divergence at event_sequence: code=<firstCode> meaning=<meaning>
+```
+
+```text failureExplanation.ts FE_RUN_CONTEXT_EXPECTED
+Verification expected upstream run context through ingest_index=<ingestIndex> to allow fair evaluation of the failing tool observation under policy [<P>].
+```
+
+```text failureExplanation.ts FE_RUN_CONTEXT_OBSERVED
+Run-context signal before the failing observation: code=<C> <detail>.
+```
+
+```text failureExplanation.ts FE_RUN_CONTEXT_DIVERGENCE
+Divergence at run_context before the failing tool observation: code=<C> meaning=<meaning>
+```
+
+```text failureExplanation.ts FE_STEP_EXPECTED
+Verification expected post-execution database state to satisfy verify_target "<verifyTargetOrLiteralNull>" and intended_effect "<narrative>" for seq=<seq> toolId=<toolId> under policy [<P>].
+```
+
+```text failureExplanation.ts FE_STEP_OBSERVED
+Step verification outcome: code=<primaryCode> detail=<detail><suffix>
+```
+
+```text failureExplanation.ts FE_STEP_DIVERGENCE
+Divergence at step seq=<seq> toolId=<toolId>: primary_code=<primaryCode> meaning=<meaning>
+```
+
+```text failureExplanation.ts FE_NO_STEPS_OBSERVED
+No tool_observed steps were produced for workflowId=<workflowId>.
+```
+
+```text failureExplanation.ts FE_NO_STEPS_DIVERGENCE
+Divergence: no steps to verify against the database under policy [<P>]
+```
+
+### Placeholder precedence (normative summaries)
+
+**Shared:** `workflowId = engine.workflowId`; `P = policyFragment(engine)` after the guard.
+
+**`RUN_LEVEL`:** `U = sortUniqueUtf16(e0.codes)`; `firstCode` = smallest known run-level code in `U` (per `RUN_LEVEL_CODE_TO_ORIGIN`) if any, else smallest in `U`; `R` = first `engine.runLevelReasons` entry in array order with `r.code === firstCode`; `detail = norm(R.message)`.
+
+**`EVENT_SEQUENCE`:** `firstCode = minUtf16Lex(U)`; `R` = first `engine.eventSequenceIntegrity.reasons` with matching code (integrity kind must be `irregular`).
+
+**`RUN_CONTEXT`:** `ingestIndex` from `e0.ingestIndex` (required; else `EXPLANATION_RUN_CONTEXT_INDEX_MISSING`); `C = minUtf16Lex(e0.codes)`; detail string from the matching digest row for `(ingestIndex, C)` or `run_context_record_missing=true` when no row matches.
+
+**`STEP`:** `seq` / `toolId` from `e0`; driver from `engine.steps`; `truthStep` from truth `steps` (mismatch → `EXPLANATION_STEP_TRUTH_MISMATCH`); `verifyTarget` string or literal `null`; `intended_effect` from truth narrative (normalized); `msgReason` from driver `reasons` / multi-effect rollup rules; optional evidence-summary suffix keys in order `field`, `expected`, `actual`, `rowCount` when present on `driver.evidenceSummary`.
+
+**`NO_STEPS_FOR_WORKFLOW`:** `expected` matches **`RUN_LEVEL`** expected; observed/divergence use the no-steps templates above.
 
 ## Agent run record (canonical bundle)
 

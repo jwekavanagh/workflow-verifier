@@ -526,6 +526,43 @@ export type ExecutionPathFinding = {
   evidence: ExecutionPathEvidenceItem;
 };
 
+export type FailureExplanationFactId =
+  | "trust_summary"
+  | "workflow_status"
+  | "verification_policy"
+  | "primary_origin"
+  | "classification_confidence"
+  | "failure_analysis_summary"
+  | "primary_scope"
+  | "primary_codes"
+  | "primary_ingest_index"
+  | "primary_tool_id"
+  | "primary_source"
+  | "primary_run_event_id"
+  | "primary_seq"
+  | "primary_effect_id"
+  | "verify_target"
+  | "intended_effect_narrative"
+  | "evidence_summary_field"
+  | "evidence_summary_expected"
+  | "evidence_summary_actual"
+  | "evidence_summary_row_count";
+
+export type FailureExplanationUnknownId =
+  | "unknown_reason_code"
+  | "classification_confidence_band"
+  | "competing_hypothesis";
+
+/** `workflowTruthReport.failureExplanation` when status is not complete (`schemaVersion` 1). */
+export type FailureExplanationV1 = {
+  schemaVersion: 1;
+  expected: string;
+  observed: string;
+  divergence: string;
+  knownFacts: Array<{ id: FailureExplanationFactId; value: string }>;
+  unknowns: Array<{ id: FailureExplanationUnknownId; value: string }>;
+};
+
 export type WorkflowTruthStep = {
   seq: number;
   toolId: string;
@@ -546,7 +583,7 @@ export type WorkflowTruthStep = {
 };
 
 export type WorkflowTruthReport = {
-  schemaVersion: 6;
+  schemaVersion: 7;
   workflowId: string;
   workflowStatus: WorkflowStatus;
   trustSummary: string;
@@ -557,6 +594,8 @@ export type WorkflowTruthReport = {
   steps: WorkflowTruthStep[];
   /** JSON `null` when workflow is complete; object when incomplete or inconsistent. */
   failureAnalysis: FailureAnalysis | null;
+  /** JSON `null` when workflow is complete; `failureExplanationV1` when not complete. */
+  failureExplanation: FailureExplanationV1 | null;
   executionPathFindings: ExecutionPathFinding[];
   executionPathSummary: string;
 };

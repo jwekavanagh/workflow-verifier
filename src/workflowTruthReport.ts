@@ -1,4 +1,5 @@
 import { deriveActionableFailureWorkflow } from "./actionableFailure.js";
+import { buildFailureExplanation } from "./failureExplanation.js";
 import {
   buildExecutionPathFindings,
   buildExecutionPathSummary,
@@ -267,17 +268,24 @@ export function buildWorkflowTruthReport(engine: WorkflowEngineResult): Workflow
     ctx.maxWireSchemaVersion,
   );
 
-  return {
-    schemaVersion: 6,
+  const steps = engine.steps.map(buildTruthStep);
+  const withoutExplanation: Omit<WorkflowTruthReport, "schemaVersion" | "failureExplanation"> = {
     workflowId: engine.workflowId,
     workflowStatus: engine.status,
     trustSummary: trustSummaryForEngine(engine),
     runLevelIssues,
     eventSequence,
-    steps: engine.steps.map(buildTruthStep),
+    steps,
     failureAnalysis,
     executionPathFindings,
     executionPathSummary,
+  };
+  const failureExplanation = buildFailureExplanation(engine, withoutExplanation);
+
+  return {
+    schemaVersion: 7,
+    ...withoutExplanation,
+    failureExplanation,
   };
 }
 
@@ -367,6 +375,22 @@ export function formatWorkflowTruthReportStruct(truth: WorkflowTruthReport): str
         lines.push(`  alternative_origin: ${alt.primaryOrigin}`);
         lines.push(`    rationale: ${alt.rationale}`);
       }
+    }
+  }
+
+  if (truth.failureExplanation !== null) {
+    const fe = truth.failureExplanation;
+    lines.push("failure_explanation:");
+    lines.push(`expected: ${fe.expected}`);
+    lines.push(`observed: ${fe.observed}`);
+    lines.push(`divergence: ${fe.divergence}`);
+    lines.push("known_facts:");
+    for (const kf of fe.knownFacts) {
+      lines.push(`  - id=${kf.id} value=${kf.value}`);
+    }
+    lines.push("unknowns:");
+    for (const u of fe.unknowns) {
+      lines.push(`  - id=${u.id} value=${u.value}`);
     }
   }
 

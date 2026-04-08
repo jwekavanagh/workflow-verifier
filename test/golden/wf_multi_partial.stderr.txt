@@ -13,6 +13,28 @@ diagnosis:
     rationale: Stored column values differ from required fields; the live database state may have diverged from what the tool reported.
   alternative_origin: inputs
     rationale: Stored column values differ from required fields; registry pointers or consts used to build the verification request may not match the observation payload.
+failure_explanation:
+expected: Verification expected post-execution database state to satisfy verify_target "sql_effects count=2 primary:contacts identity=[id=c_ok]; secondary:contacts identity=[id=c_partial]" and intended_effect "Multi "c_ok" "c_partial"" for seq=0 toolId=demo.multi_contact under policy [consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0].
+observed: Step verification outcome: code=VALUE_MISMATCH detail=Expected "Alice" but found null for field name (table=contacts id=c_partial)
+divergence: Divergence at step seq=0 toolId=demo.multi_contact: primary_code=VALUE_MISMATCH meaning=Wrong value in the database for a required field.
+known_facts:
+  - id=trust_summary value=NOT TRUSTED: At least one step failed verification against the database (determinate failure).
+  - id=workflow_status value=inconsistent
+  - id=verification_policy value=consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0
+  - id=primary_origin value=downstream_system_state
+  - id=classification_confidence value=medium
+  - id=failure_analysis_summary value=Primary failure at seq 0 tool demo.multi_contact (code VALUE_MISMATCH); origin: downstream_system_state. Multi-effect verification: authoritative per-effect outcomes are under workflowTruthReport.steps[].effects.
+  - id=primary_scope value=step
+  - id=primary_codes value=VALUE_MISMATCH
+  - id=primary_tool_id value=demo.multi_contact
+  - id=primary_seq value=0
+  - id=primary_effect_id value=secondary
+  - id=verify_target value=sql_effects count=2 primary:contacts identity=[id=c_ok]; secondary:contacts identity=[id=c_partial]
+  - id=intended_effect_narrative value=Multi "c_ok" "c_partial"
+unknowns:
+  - id=classification_confidence_band value=medium
+  - id=competing_hypothesis value=origin=downstream_system_state|rationale=Stored column values differ from required fields; the live database state may have diverged from what the tool reported.
+  - id=competing_hypothesis value=origin=inputs|rationale=Stored column values differ from required fields; registry pointers or consts used to build the verification request may not match the observation payload.
 run_level: (none)
 event_sequence: normal
 steps:

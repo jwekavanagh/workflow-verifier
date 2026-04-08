@@ -78,6 +78,6 @@ describe("WorkflowResult consumer contract (CLI stdout)", () => {
       s0.observedExecution?.paramsCanonical,
       '{"fields":{"name":"Alice","status":"active"},"recordId":"c_ok"}',
     );
-    assert.equal(parsed.workflowTruthReport?.schemaVersion, 6);
+    assert.equal(parsed.workflowTruthReport?.schemaVersion, 7);
   });
 });

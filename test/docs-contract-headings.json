@@ -19,6 +19,7 @@
     "## Reconciler rule table (`sql_row`)",
     "## Verification policy (normative)",
     "## Workflow status (PRD-aligned)",
+    "## Failure explanation v1 (normative)",
     "## Agent run record (canonical bundle)",
     "## Debug Console (normative)",
     "## Cross-run comparison (normative)",

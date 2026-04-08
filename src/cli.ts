@@ -14,6 +14,7 @@ import {
 import { buildExecutionTraceView, formatExecutionTraceText } from "./executionTrace.js";
 import { loadEventsForWorkflow } from "./loadEvents.js";
 import { verifyWorkflow } from "./pipeline.js";
+import { runStandardVerifyWorkflowCliFlow } from "./standardVerifyWorkflowCli.js";
 import {
   formatRegistryValidationHumanReport,
   validateToolsRegistry,
@@ -985,57 +986,40 @@ async function main(): Promise<void> {
     process.exit(3);
   }
 
-  let result;
-  try {
-    result = await verifyWorkflow({
-      workflowId,
-      eventsPath,
-      registryPath,
-      database: postgresUrl
-        ? { kind: "postgres", connectionString: postgresUrl }
-        : { kind: "sqlite", path: dbPath! },
-      verificationPolicy,
-      ...(noTruthReport ? { truthReport: () => {} } : {}),
-    });
-  } catch (e) {
-    if (e instanceof TruthLayerError) {
-      writeCliError(e.code, e.message);
-      process.exit(3);
-    }
-    const msg = e instanceof Error ? e.message : String(e);
-    writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(msg));
-    process.exit(3);
-  }
-
-  const validateResult = loadSchemaValidator("workflow-result");
-  if (!validateResult(result)) {
-    writeCliError(
-      CLI_OPERATIONAL_CODES.WORKFLOW_RESULT_SCHEMA_INVALID,
-      JSON.stringify(validateResult.errors ?? []),
-    );
-    process.exit(3);
-  }
-
-  if (writeRunBundleDir !== undefined) {
-    try {
-      writeRunBundleCli(
-        writeRunBundleDir,
-        readFileSync(path.resolve(eventsPath)),
-        result,
-        signPrivateKeyPath,
-      );
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(msg));
-      process.exit(3);
-    }
-  }
-
-  console.log(JSON.stringify(result));
-
-  if (result.status === "complete") process.exit(0);
-  if (result.status === "inconsistent") process.exit(1);
-  process.exit(2);
+  await runStandardVerifyWorkflowCliFlow({
+    runVerify: () =>
+      verifyWorkflow({
+        workflowId,
+        eventsPath,
+        registryPath,
+        database: postgresUrl
+          ? { kind: "postgres", connectionString: postgresUrl }
+          : { kind: "sqlite", path: dbPath! },
+        verificationPolicy,
+        ...(noTruthReport ? { truthReport: () => {} } : {}),
+      }),
+    maybeWriteBundle:
+      writeRunBundleDir === undefined
+        ? undefined
+        : (result) =>
+            writeRunBundleCli(
+              writeRunBundleDir,
+              readFileSync(path.resolve(eventsPath)),
+              result,
+              signPrivateKeyPath,
+            ),
+    io: {
+      consoleLog: (line) => {
+        console.log(line);
+      },
+      stderrLine: (line) => {
+        console.error(line);
+      },
+      exit: (code) => {
+        process.exit(code);
+      },
+    },
+  });
 }
 
 void main().catch((e) => {

@@ -76,9 +76,22 @@ export const INGEST_AND_QUICK_MISC_PHRASES = {
   MALFORMED_LINE: "One or more lines could not be parsed as JSON.",
 } as const;
 
+/** Run-context codes referenced by `failureAnalysis` P1–P3 (failure explanation divergence lines). */
+export const RUN_CONTEXT_FAILURE_PHRASES: Record<string, string> = {
+  RETRIEVAL_ERROR: "A retrieval step failed before the failing tool observation.",
+  MODEL_TURN_ERROR: "A model turn reported an error before the failing tool observation.",
+  MODEL_TURN_ABORTED: "A model turn was aborted before the failing tool observation.",
+  MODEL_TURN_INCOMPLETE: "A model turn was incomplete before the failing tool observation.",
+  CONTROL_INTERRUPT: "An interrupt control event occurred before the failing tool observation.",
+  CONTROL_BRANCH_SKIPPED: "A branch was skipped before the failing tool observation.",
+  CONTROL_GATE_SKIPPED: "A gate was skipped before the failing tool observation.",
+  TOOL_SKIPPED: "A tool was skipped before the failing tool observation.",
+};
+
 const RUN_AND_EVENT_PHRASES: Record<string, string> = {
   ...RUN_LEVEL_MESSAGES,
   ...EVENT_SEQUENCE_MESSAGES,
+  ...RUN_CONTEXT_FAILURE_PHRASES,
   [TIMESTAMP_NOT_MONOTONIC_CODE]:
     "Timestamps decreased between steps in sequence order (ordering may be unreliable).",
 };

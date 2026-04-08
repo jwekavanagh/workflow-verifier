@@ -1,5 +1,4 @@
 {
-  "schemaVersion": 1,
   "runId": "run_b",
   "workflowId": "wf_complete",
   "producer": {
@@ -7,11 +6,12 @@
     "version": "0.1.0"
   },
   "verifiedAt": "2026-04-06T20:13:27.088Z",
+  "schemaVersion": 1,
   "artifacts": {
     "workflowResult": {
       "relativePath": "workflow-result.json",
-      "sha256": "7ab627c3aa67cce9e10bce187578e72f057ea9f232c52ec5f913e63d34ce347d",
-      "byteLength": 2014
+      "sha256": "16091b45a0c6a8a9766de35f0aa1fd149ecba83394ee1579f9737fb1007cb625",
+      "byteLength": 2040
     },
     "events": {
       "relativePath": "events.ndjson",

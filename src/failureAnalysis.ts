@@ -104,7 +104,8 @@ function primaryCodeForStep(step: StepOutcome): string {
   return STEP_NO_REASON_CODE;
 }
 
-function pickDriverStep(steps: StepOutcome[]): StepOutcome {
+/** Same ordering as P5 driver step selection; exported for `failureExplanation` (no duplicate logic). */
+export function normativeDriverStep(steps: StepOutcome[]): StepOutcome {
   const bad = steps.filter((s) => s.status !== "verified");
   bad.sort((a, b) => {
     const ra = STATUS_RANK[a.status];
@@ -114,6 +115,10 @@ function pickDriverStep(steps: StepOutcome[]): StepOutcome {
     return a.toolId.localeCompare(b.toolId);
   });
   return bad[0]!;
+}
+
+function pickDriverStep(steps: StepOutcome[]): StepOutcome {
+  return normativeDriverStep(steps);
 }
 
 function alternativesForCode(primaryCode: string): FailureAnalysisAlternative[] | undefined {
