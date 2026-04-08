@@ -8,6 +8,9 @@
 
 ### Quick Verify (zero-config path)
 
+This path expects structured tool activity in your paste—tool names and parameters the engine can extract as JSON—not arbitrary unstructured logs.
+Verification uses read-only SQL against your database; API-only or non-SQL systems are out of scope for this tool.
+
 Product story, audiences, TTFV, and **which doc owns which contract**: **[`docs/verification-product-ssot.md`](docs/verification-product-ssot.md)**. Ingest ladder, thresholds, and CLI ordering: **[`docs/quick-verify-normative.md`](docs/quick-verify-normative.md)** (do not duplicate those numbers here).
 
 After **`npm run build`**, point at **JSON/NDJSON** tool activity and a **read-only** SQLite or Postgres database. Writes the **export registry** array atomically, optional synthetic **events** NDJSON, then one **`quick-verify-report`** line on **stdout**; human-readable context on **stderr** (three fixed anchor lines—see normative doc). Integrators should rely on **stdout + exit codes**, not parsed stderr prose.

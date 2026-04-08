@@ -10,20 +10,57 @@ describe("ingestActivityUtf8", () => {
     expect(r.malformedLineCount).toBe(0);
   });
 
-  it("returns two MALFORMED_LINE then INGEST_NO_ACTIONS for two bad lines", () => {
+  it("returns two MALFORMED_LINE then INGEST_NO_STRUCTURED_TOOL_ACTIVITY for two bad lines", () => {
     const r = ingestActivityUtf8("notjson\nalsobad");
     expect(r.actions).toEqual([]);
-    expect(r.reasonCodes).toEqual(["MALFORMED_LINE", "MALFORMED_LINE", "INGEST_NO_ACTIONS"]);
+    expect(r.reasonCodes).toEqual([
+      "MALFORMED_LINE",
+      "MALFORMED_LINE",
+      "INGEST_NO_STRUCTURED_TOOL_ACTIVITY",
+    ]);
     expect(r.malformedLineCount).toBe(2);
   });
 
-  it("parses second line after malformed first", () => {
+  it("parses second line after malformed first (mixed stream: no MALFORMED_LINE in reasonCodes)", () => {
     const r = ingestActivityUtf8(
       'notjson\n{"toolId":"t","params":{"id":"1"}}\n',
     );
     expect(r.actions.length).toBe(1);
-    expect(r.reasonCodes).toEqual(["MALFORMED_LINE"]);
+    expect(r.reasonCodes).toEqual([]);
+    expect(r.malformedLineCount).toBe(1);
     expect(r.actions[0]?.toolName).toBe("t");
+  });
+
+  it("strips CSI ANSI before JSON", () => {
+    const r = ingestActivityUtf8(
+      '\u001b[31m{"toolId":"t","params":{"id":"1"}}\u001b[0m',
+    );
+    expect(r.actions.length).toBe(1);
+    expect(r.actions[0]?.toolName).toBe("t");
+  });
+
+  it("salvages ISO timestamp prefix on line", () => {
+    const raw =
+      '2026-04-07T12:00:00Z {"toolId":"t","params":{"id":"1"}}';
+    const r = ingestActivityUtf8(raw);
+    expect(r.actions.length).toBe(1);
+    expect(r.actions[0]?.toolName).toBe("t");
+  });
+
+  it("parses stringified arguments JSON", () => {
+    const line = JSON.stringify({
+      tool: "x",
+      arguments: JSON.stringify({ id: "1" }),
+    });
+    const r = ingestActivityUtf8(line);
+    expect(r.actions.length).toBe(1);
+    expect(r.actions[0]?.toolName).toBe("x");
+  });
+
+  it("non-empty JSON with no tools yields INGEST_NO_STRUCTURED_TOOL_ACTIVITY", () => {
+    const r = ingestActivityUtf8("{}");
+    expect(r.actions).toEqual([]);
+    expect(r.reasonCodes).toEqual(["INGEST_NO_STRUCTURED_TOOL_ACTIVITY"]);
   });
 
   it("INGEST_INPUT_TOO_LARGE", () => {

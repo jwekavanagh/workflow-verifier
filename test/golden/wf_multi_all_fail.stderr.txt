@@ -24,9 +24,12 @@ steps:
     category: workflow_execution
     detail: All 2 effects failed: primary, secondary. Per effect: primary (ROW_ABSENT); secondary (ROW_ABSENT)
     reference_code: MULTI_EFFECT_ALL_FAILED
+    user_meaning: All intended effects for this step failed verification.
     effect: id=primary result=Expected row is missing from the database (the log implies a write that is not present).
       detail: No row matched key (table=contacts id=missing_one)
       reference_code: ROW_ABSENT
+      user_meaning: Success was implied, but no matching row was found in the database.
     effect: id=secondary result=Expected row is missing from the database (the log implies a write that is not present).
       detail: No row matched key (table=contacts id=missing_two)
       reference_code: ROW_ABSENT
+      user_meaning: Success was implied, but no matching row was found in the database.

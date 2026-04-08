@@ -8,13 +8,13 @@ This document is the **authoritative place** for product intent, audiences, onbo
 |---------|-------------------------|-----------|
 | Ingest ladder L0–L5, `extractActions`, thresholds (`T_TABLE`, …), dedupe, decomposition, rollup, CLI phase ordering, registry bytes, human stderr anchor rules | [`quick-verify-normative.md`](quick-verify-normative.md) | Link only; never copy thresholds or ladder text |
 | `QuickVerifyReport` JSON shape | [`schemas/quick-verify-report.schema.json`](../schemas/quick-verify-report.schema.json) | Normative doc links schema; no second field catalog |
-| User-facing English strings for quick verify (exact wording) | [`src/quickVerify/quickVerifyHumanCopy.ts`](../src/quickVerify/quickVerifyHumanCopy.ts) | Appendix H in normative lists **identifiers** only |
+| User-facing English strings for quick verify (exact wording) | [`src/quickVerify/quickVerifyHumanCopy.ts`](../src/quickVerify/quickVerifyHumanCopy.ts), [`src/quickVerify/formatQuickVerifyHumanReport.ts`](../src/quickVerify/formatQuickVerifyHumanReport.ts) (banner lines), [`src/verificationUserPhrases.ts`](../src/verificationUserPhrases.ts) (reason `user_meaning`) | Appendix H in normative lists **identifiers** only |
 | `verifyWorkflow`, batch CLI, registry resolution, Postgres read-only session, `WorkflowResult` | [`execution-truth-layer.md`](execution-truth-layer.md) | This doc links there for batch semantics |
 | Repo entry, one copy-paste path | [`README.md`](../README.md) | No algorithm copy |
 
 ## Core promise
 
-Given **structured tool activity** and **read-only SQL** access, verify that **database state matches what the tool calls claimed**—not “handle any log” or “infer everything.”
+Given **structured tool activity** and **read-only SQL** (**SQL ground truth**: SQLite or Postgres you can query), verify that **database state matches what the tool calls claimed**—not “handle any log” or “infer everything.” API-only or non-SQL systems are **out of scope**.
 
 ## For engineers (first run)
 

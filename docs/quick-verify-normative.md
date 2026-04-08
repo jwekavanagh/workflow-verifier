@@ -1,6 +1,6 @@
 # Quick Verify — normative specification
 
-**Spec id:** `quick-verify-spec` **version:** `1.0.0`
+**Spec id:** `quick-verify-spec` **version:** `1.1.0`
 
 *Source: plan Appendix A (canonical).*
 
@@ -45,11 +45,11 @@ Tokens: `verify-workflow quick --input <path> (--postgres-url <url> | --db <sqli
 2. `Verdict: pass` or `Verdict: fail` or `Verdict: uncertain` (matches rollup)
 3. `=== end quick-verify human report ===`
 
-Additional prose after line 3 may change without bumping `quickVerifyVersion`. Integrators must use **stdout JSON** and **exit codes** for automation.
+Lines 4–5 after the anchors are **fixed banner** strings exported as `QUICK_VERIFY_BANNER_LINE_1` and `QUICK_VERIFY_BANNER_LINE_2` from **`src/quickVerify/formatQuickVerifyHumanReport.ts`**. Additional prose after those lines may change without bumping `quickVerifyVersion`. Integrators must use **stdout JSON** and **exit codes** for automation.
 
 ## Appendix H — Human copy identifiers (normative names only)
 
-English text for ingest lines and unit hints is defined in **`src/quickVerify/quickVerifyHumanCopy.ts`**. Identifiers include at least: `MSG_NO_TOOL_CALLS`, `HUMAN_REPORT_BEGIN`, `HUMAN_REPORT_END`, `verdictLine`, `humanLineForIngestReasonCode`, `humanFragmentForReasonCode`. Do not duplicate the strings in this doc.
+English text for ingest lines and unit reason hints is defined in **`src/quickVerify/quickVerifyHumanCopy.ts`** (ingest messages and imports from **`src/verificationUserPhrases.ts`**). Banner lines: **`src/quickVerify/formatQuickVerifyHumanReport.ts`**. Identifiers include at least: `MSG_NO_TOOL_CALLS`, `MSG_NO_STRUCTURED_TOOL_ACTIVITY`, `HUMAN_REPORT_BEGIN`, `HUMAN_REPORT_END`, `QUICK_VERIFY_BANNER_LINE_1`, `QUICK_VERIFY_BANNER_LINE_2`, `verdictLine`, `humanLineForIngestReasonCode`, `humanFragmentForReasonCode`. Do not duplicate the strings in this doc outside a fenced block that cites one of those file paths.
 
 ---
 
@@ -69,20 +69,35 @@ L0: Reject input byte length > `MAX_INPUT_BYTES` → phase B, `ingest.reasonCode
 
 L1: Strip UTF-8 BOM if present.
 
+L1b: Remove all CSI ANSI sequences from the **whole buffer** using ECMAScript regex `/\u001b\[[\d;?]*[\s-/]*[@-~]/g` (no OSC / other families in this spec version).
+
+**Early empty:** If `buffer.trim().length === 0` after L1–L1b → return zero actions, `ingest.reasonCodes = [INGEST_NO_ACTIONS]`, `malformedLineCount = 0`.
+
 L2: Try `JSON.parse` entire buffer as value `root`; run **extractActions(root)**; if **≥1** action, ladder **stops** (do not run L3–L4). If parse succeeds but **0** actions, **continue** to L3. If parse **throws**, **continue** to L3.
 
-L3: Split buffer by `\n` (keep line endings out); for each non-empty line, `JSON.parse(line)`; each success → extractActions on that value; collect. If **≥1** action total, **stop**.
+L3: Split buffer by `\n`. For each line with non-empty `trim(line)`:
 
-L4: Scan for balanced `{`…`}` substrings (greedy outermost scan, no nesting cross-capture); each substring `JSON.parse` → extractActions. If **≥1** action, **stop**.
+- Let `s1` = `line.trim()` with at most one leading match removed for **P1** `/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?\s+/`, then trim.
+- Try `JSON.parse(s1)`; on success → **extractActions** and continue to next line.
+- Else if `s1` matches **P2** `/^(?:DEBUG|INFO|WARN|WARNING|ERROR|TRACE)\s+/i`, let `s2` = `s1` with one P2 prefix removed, trim; try `JSON.parse(s2)`; on success → **extractActions**.
+- Else if `s1` matches **P3** `/^\[[^\]]{1,64}\]\s+/`, let `s3` = `s1` with one P3 prefix removed, trim; try `JSON.parse(s3)`; on success → **extractActions**.
+- Else: increment `malformedLineCount`; append **`MALFORMED_LINE`** to the **internal** L3 list (see mixed-stream rule below).
 
-L5: If zero actions after L2–L4: phase B, `verdict=uncertain`, append **`INGEST_NO_ACTIONS` once** to `ingest.reasonCodes` **after** any `MALFORMED_LINE` entries from L3 (final order: all `MALFORMED_LINE` in encounter order, then `INGEST_NO_ACTIONS`).
+If **≥1** action total from L3, **stop** L3–L4 and return with **mixed-stream rule** applied to `ingest.reasonCodes`.
 
-**Malformed line in L3:** increment `ingest.malformedLineCount`, append `MALFORMED_LINE` to `ingest.reasonCodes` **once per failed line** in **encounter order**; continue scanning remaining lines.
+L4: Scan for balanced `{`…`}` substrings (greedy outermost scan, no nesting cross-capture); each substring `JSON.parse` → extractActions. If **≥1** action, **stop** (apply mixed-stream rule to `ingest.reasonCodes`).
+
+L5: If zero actions after L2–L4: phase B, `verdict=uncertain`, append **`MALFORMED_LINE` once per failed L3 line** in encounter order, then **exactly one** terminal ingest code:
+
+- **`INGEST_NO_ACTIONS`** only when the buffer was whitespace-only (handled at **Early empty**; this terminal is not combined with `MALFORMED_LINE`).
+- **`INGEST_NO_STRUCTURED_TOOL_ACTIVITY`** when the buffer was **non-empty** after trim but zero actions were extracted.
+
+**Mixed stream:** If the final action count is **≥1**, `ingest.reasonCodes` must contain **no** `MALFORMED_LINE` entries; `malformedLineCount` still reflects the count of L3 lines that failed parse after salvage.
 
 ## A.6 extractActions(value)
 
 - If `value` is object with `tool_calls` array: for each element `c` of `tool_calls` (max `MAX_ACTIONS` total across entire run), recursively `extractActions(c)`.
-- If `value` is object: if it has tool name key (first hit in order `toolId`, `tool`, `name`, `function.name`, `action`), build one action: `toolName` = string at that key; `params` = first of `params`|`arguments`|`input` if object, else shallow copy of own keys excluding tool-name keys and `tool_calls`; emit **one** action.
+- If `value` is object: if it has tool name key (first hit in order `toolId`, `tool`, `name`, `function.name`, `action`), build one action: `toolName` = string at that key; `params` = **param bag** from the first of `params`|`arguments`|`input` in order: if value is a non-array object use it; if value is a string whose trim starts with `{` or `[`, `JSON.parse` in try/catch and if the result is a plain non-null object use it; otherwise shallow copy of own keys excluding tool-name keys and `tool_calls`; emit **one** action.
 - If `value` is array: run `extractActions` on each element until `MAX_ACTIONS` reached; if exceeded, phase B `uncertain`, append `INGEST_ACTION_CAP` once to `ingest.reasonCodes` and **stop** adding.
 
 ## A.7 Flatten (per action)
@@ -140,6 +155,7 @@ Row: SELECT LIMIT 2; 0 rows `ROW_ABSENT`; ≥2 `DUPLICATE_ROWS`; else scalar com
 
 ## A.13 Scope string (fixed)
 
-Report `scope.quickVerifyVersion` = `1.0.0`; `scope.capabilities` = fixed enum array `["inferred_row","inferred_related_exists"]` only.
+Report `scope.quickVerifyVersion` = `1.1.0`; `scope.capabilities` = fixed enum array `["inferred_row","inferred_related_exists"]`; `scope.ingestContract` = `structured_tool_activity`; `scope.groundTruth` = `read_only_sql`; `scope.limitations` = fixed tuple  
+`["quick_verify_inferred_row_and_related_exists_only","no_multi_effect_contract","no_destructive_or_forbidden_row_contract","contract_replay_export_row_tools_only"]` (see schema).
 
 Report `verificationMode` is always **`inferred`**. Per-unit `sourceAction` and `contractEligible` and merged row `verification` fields are defined only in [`schemas/quick-verify-report.schema.json`](../schemas/quick-verify-report.schema.json)—do not restate here.

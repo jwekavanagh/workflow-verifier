@@ -76,6 +76,8 @@ function usageQuick(): string {
   verify-workflow quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path>
     [--emit-events <path>] [--workflow-id <id>]
 
+  Input must contain structured tool activity (tool names and parameters extractable as JSON). Verification uses read-only SQL against the database you pass.
+
   Use - for stdin. Writes registry JSON array atomically, then optional events file, then stdout (see docs/quick-verify-normative.md).
 
 Exit codes:
@@ -90,7 +92,7 @@ Exit codes:
 function usageVerify(): string {
   return `Usage:
   verify-workflow quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path> [--emit-events <path>] [--workflow-id <id>]
-    (zero-config path; see docs/quick-verify-normative.md)
+    (zero-config path; structured tool activity + read-only SQL; see docs/quick-verify-normative.md)
 
   verify-workflow --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
   verify-workflow --workflow-id <id> --events <path> --registry <path> --postgres-url <url>

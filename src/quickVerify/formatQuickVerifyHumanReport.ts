@@ -7,6 +7,12 @@ import {
   verdictLine,
 } from "./quickVerifyHumanCopy.js";
 
+/** Banner after anchor lines (normative: prose only after line 3). */
+export const QUICK_VERIFY_BANNER_LINE_1 =
+  "Structured tool activity: tool names and parameters extractable as JSON (NDJSON, JSON lines, or embedded objects).";
+export const QUICK_VERIFY_BANNER_LINE_2 =
+  "Quick Verify checks inferred row state and related-row presence only; use contract mode (registry + events) for multi-effect, destructive/forbidden-row, and full relational rules.";
+
 export type QuickHumanReportCliContext = {
   workflowId?: string;
   eventsPath?: string;
@@ -68,6 +74,7 @@ export function formatQuickVerifyHumanReport(
   );
 
   const anchors = [HUMAN_REPORT_BEGIN, verdictLine(report.verdict), HUMAN_REPORT_END];
+  const banner = [QUICK_VERIFY_BANNER_LINE_1, QUICK_VERIFY_BANNER_LINE_2];
 
-  return `${anchors.join("\n")}\n\n${body.join("\n")}\n`;
+  return `${anchors.join("\n")}\n${banner.join("\n")}\n\n${body.join("\n")}\n`;
 }

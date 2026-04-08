@@ -68,7 +68,8 @@ steps:
     intended: Upsert contact "missing_id" with fields {"name":"X","status":"Y"}
     category: workflow_execution
     detail: No row matched key
-    reference_code: ROW_ABSENT`;
+    reference_code: ROW_ABSENT
+    user_meaning: Success was implied, but no matching row was found in the database.`;
 
 const GOLDEN_INCOMPLETE_UNKNOWN_TOOL = `workflow_id: wf_unknown_tool
 workflow_status: incomplete
@@ -91,7 +92,8 @@ steps:
     intended: Unknown tool: nope.tool
     category: verification_setup
     detail: Unknown toolId: nope.tool
-    reference_code: UNKNOWN_TOOL`;
+    reference_code: UNKNOWN_TOOL
+    user_meaning: The tool is not defined in the registry (or could not be resolved).`;
 
 const MALFORMED_MSG =
   "Event line was missing, invalid JSON, or failed schema validation for a tool observation.";
@@ -113,9 +115,11 @@ run_level:
   - detail: ${MALFORMED_MSG}
     category: workflow_execution
     reference_code: MALFORMED_EVENT_LINE
+    user_meaning: ${MALFORMED_MSG}
   - detail: ${NO_STEPS_MSG}
     category: workflow_execution
     reference_code: NO_STEPS_FOR_WORKFLOW
+    user_meaning: ${NO_STEPS_MSG}
 event_sequence: normal
 steps:`;
 
@@ -135,6 +139,7 @@ run_level:
   - detail: ${NO_STEPS_MSG}
     category: workflow_execution
     reference_code: NO_STEPS_FOR_WORKFLOW
+    user_meaning: ${NO_STEPS_MSG}
 event_sequence: normal
 steps:`;
 
@@ -148,6 +153,7 @@ run_level:
   - detail: Unknown run-level code (forward compatibility).
     category: workflow_execution
     reference_code: UNKNOWN_CODE_X
+    user_meaning: Verification issue (code UNKNOWN_CODE_X).
 event_sequence: normal
 steps:
   - seq=0 tool=t result=Matched the database.
@@ -172,7 +178,8 @@ steps:
     observed_execution: ${PC_EMPTY}
     category: observation_uncertainty
     detail: No row within window
-    reference_code: ROW_NOT_OBSERVED_WITHIN_WINDOW`;
+    reference_code: ROW_NOT_OBSERVED_WITHIN_WINDOW
+    user_meaning: The expected row did not show up within the verification window.`;
 
 describe("formatWorkflowTruthReport", () => {
   it("golden complete / inconsistent missing / incomplete unknown tool", () => {
@@ -293,6 +300,7 @@ describe("formatWorkflowTruthReport", () => {
     assert.ok(out.includes("event_sequence: irregular\n"));
     assert.ok(out.includes(`  - detail: ${captureReason.message}`));
     assert.ok(out.includes(`    reference_code: ${captureReason.code}`));
+    assert.ok(out.includes(`    user_meaning: ${captureReason.message}`));
     assert.ok(out.includes(`    category: workflow_execution`));
   });
 
@@ -509,6 +517,7 @@ describe("formatWorkflowTruthReport", () => {
     };
     assert.ok(formatWorkflowTruthReport(trimmed).includes("  - detail: hello"));
     assert.ok(formatWorkflowTruthReport(trimmed).includes("reference_code: X"));
+    assert.ok(formatWorkflowTruthReport(trimmed).includes("user_meaning: Verification issue (code X)."));
 
     const blank = {
       schemaVersion: 7,
@@ -522,6 +531,7 @@ describe("formatWorkflowTruthReport", () => {
     };
     assert.ok(formatWorkflowTruthReport(blank).includes("  - detail: (no message)"));
     assert.ok(formatWorkflowTruthReport(blank).includes("reference_code: Y"));
+    assert.ok(formatWorkflowTruthReport(blank).includes("user_meaning: Verification issue (code Y)."));
   });
 
   it("empty reason message renders (no message)", () => {
@@ -551,6 +561,7 @@ describe("formatWorkflowTruthReport", () => {
     const out = formatWorkflowTruthReport(r);
     assert.ok(out.includes("detail: (no message)"));
     assert.ok(out.includes("reference_code: CONNECTOR_ERROR"));
+    assert.ok(out.includes("user_meaning: Database query failed during verification."));
   });
 
   it("reason with field appends field=", () => {
@@ -580,6 +591,7 @@ describe("formatWorkflowTruthReport", () => {
     const t = formatWorkflowTruthReport(r);
     assert.ok(t.includes("detail: msg field=col"));
     assert.ok(t.includes("reference_code: CONNECTOR_ERROR"));
+    assert.ok(t.includes("user_meaning: Database query failed during verification."));
   });
 
   it("newlines in toolId sanitized", () => {

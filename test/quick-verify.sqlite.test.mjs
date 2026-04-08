@@ -16,8 +16,14 @@ import { loadSchemaValidator } from "../dist/schemaLoad.js";
 import {
   HUMAN_REPORT_BEGIN,
   HUMAN_REPORT_END,
+  MSG_NO_STRUCTURED_TOOL_ACTIVITY,
   MSG_NO_TOOL_CALLS,
+  verdictLine,
 } from "../dist/quickVerify/quickVerifyHumanCopy.js";
+import {
+  QUICK_VERIFY_BANNER_LINE_1,
+  QUICK_VERIFY_BANNER_LINE_2,
+} from "../dist/quickVerify/formatQuickVerifyHumanReport.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -26,11 +32,13 @@ const passLine = readFileSync(join(root, "test", "fixtures", "quick-verify", "pa
 const cliJs = join(root, "dist", "cli.js");
 
 function assertHumanAnchors(stderr, verdict) {
-  const lines = stderr.split(/\r?\n/).filter((l) => l.length > 0);
+  const lines = stderr.split(/\r?\n/);
   const i = lines.findIndex((l) => l === HUMAN_REPORT_BEGIN);
   assert.ok(i >= 0, "missing human report begin anchor");
-  assert.equal(lines[i + 1], `Verdict: ${verdict}`);
+  assert.equal(lines[i + 1], verdictLine(verdict));
   assert.equal(lines[i + 2], HUMAN_REPORT_END);
+  assert.equal(lines[i + 3], QUICK_VERIFY_BANNER_LINE_1);
+  assert.equal(lines[i + 4], QUICK_VERIFY_BANNER_LINE_2);
 }
 
 describe("Quick Verify SQLite", () => {
@@ -60,6 +68,15 @@ describe("Quick Verify SQLite", () => {
     assert.equal(row.contractEligible, true);
     const v = loadSchemaValidator("quick-verify-report");
     assert.ok(v(report), JSON.stringify(v.errors ?? []));
+    assert.equal(report.scope.quickVerifyVersion, "1.1.0");
+    assert.equal(report.scope.ingestContract, "structured_tool_activity");
+    assert.equal(report.scope.groundTruth, "read_only_sql");
+    assert.deepEqual(report.scope.limitations, [
+      "quick_verify_inferred_row_and_related_exists_only",
+      "no_multi_effect_contract",
+      "no_destructive_or_forbidden_row_contract",
+      "contract_replay_export_row_tools_only",
+    ]);
     const readBack = canonicalToolsArrayUtf8(report.exportableRegistry.tools);
     assert.equal(registryUtf8, readBack);
     assert.ok(contractExports.length >= 1);
@@ -80,10 +97,10 @@ describe("Quick Verify SQLite", () => {
     assertHumanAnchors(r.stderr, "pass");
   });
 
-  it("no tool calls: exit 2, INGEST_NO_ACTIONS, anchors, exact no-tool message", () => {
-    const outReg = join(tmp, "none.json");
-    const inPath = join(tmp, "empty.json");
-    writeFileSync(inPath, "{}", "utf8");
+  it("whitespace-only input: exit 2, INGEST_NO_ACTIONS, anchors", () => {
+    const outReg = join(tmp, "ws.json");
+    const inPath = join(tmp, "ws.txt");
+    writeFileSync(inPath, "  \n\t  \n", "utf8");
     const r = spawnSync(
       process.execPath,
       [cliJs, "quick", "--input", inPath, "--db", dbPath, "--export-registry", outReg],
@@ -97,6 +114,25 @@ describe("Quick Verify SQLite", () => {
     assert.ok(report.summary.includes(MSG_NO_TOOL_CALLS));
     assertHumanAnchors(r.stderr, "uncertain");
     assert.ok(r.stderr.includes(MSG_NO_TOOL_CALLS));
+  });
+
+  it("non-empty JSON with no tools: exit 2, INGEST_NO_STRUCTURED_TOOL_ACTIVITY, anchors", () => {
+    const outReg = join(tmp, "none.json");
+    const inPath = join(tmp, "empty.json");
+    writeFileSync(inPath, "{}", "utf8");
+    const r = spawnSync(
+      process.execPath,
+      [cliJs, "quick", "--input", inPath, "--db", dbPath, "--export-registry", outReg],
+      { encoding: "utf8", cwd: root, maxBuffer: 10_000_000 },
+    );
+    assert.equal(r.status, 2, r.stderr);
+    const line = r.stdout.trim().split("\n").filter(Boolean).pop();
+    const report = JSON.parse(line);
+    assert.ok(report.ingest.reasonCodes.includes("INGEST_NO_STRUCTURED_TOOL_ACTIVITY"));
+    assert.equal(report.verdict, "uncertain");
+    assert.ok(report.summary.includes(MSG_NO_STRUCTURED_TOOL_ACTIVITY));
+    assertHumanAnchors(r.stderr, "uncertain");
+    assert.ok(r.stderr.includes(MSG_NO_STRUCTURED_TOOL_ACTIVITY));
   });
 
   it("--emit-events with zero exports writes empty file", () => {

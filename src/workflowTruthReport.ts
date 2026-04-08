@@ -23,6 +23,7 @@ import type {
   WorkflowTruthReport,
   WorkflowTruthStep,
 } from "./types.js";
+import { userPhraseForReasonCode } from "./verificationUserPhrases.js";
 
 /** Plain-language `result=` line in the human report only. JSON `outcomeLabel` stays machine-stable (see STEP_STATUS_TRUTH_LABELS). */
 export const HUMAN_REPORT_RESULT_PHRASE: Record<WorkflowTruthStep["outcomeLabel"], string> = {
@@ -184,6 +185,7 @@ function pushHumanReasonLines(lines: string[], r: Reason, indent: string): void 
   }
   lines.push(detailLine);
   lines.push(`${indent}reference_code: ${r.code}`);
+  lines.push(`${indent}user_meaning: ${userPhraseForReasonCode(r.code)}`);
 }
 
 function buildTruthStep(s: StepOutcome): WorkflowTruthStep {
@@ -378,6 +380,7 @@ export function formatWorkflowTruthReportStruct(truth: WorkflowTruthReport): str
       lines.push(`  - detail: ${human}`);
       lines.push(`    category: ${r.category}`);
       lines.push(`    reference_code: ${r.code}`);
+      lines.push(`    user_meaning: ${userPhraseForReasonCode(r.code)}`);
     }
   }
 
@@ -391,6 +394,7 @@ export function formatWorkflowTruthReportStruct(truth: WorkflowTruthReport): str
       lines.push(`  - detail: ${human}`);
       lines.push(`    category: ${r.category}`);
       lines.push(`    reference_code: ${r.code}`);
+      lines.push(`    user_meaning: ${userPhraseForReasonCode(r.code)}`);
     }
   }
 

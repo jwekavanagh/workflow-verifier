@@ -13,15 +13,16 @@ import { exportSqlRowTool } from "./exportTool.js";
 import { verifyRowPostgres, verifyRowSqlite, verifyRelatedExists } from "./verifyExecution.js";
 import { T_EXPORT, MAX_UNITS } from "./thresholds.js";
 import { compareUtf16Id } from "../resolveExpectation.js";
-import { MSG_NO_TOOL_CALLS } from "./quickVerifyHumanCopy.js";
+import { MSG_NO_STRUCTURED_TOOL_ACTIVITY, MSG_NO_TOOL_CALLS } from "./quickVerifyHumanCopy.js";
 import type { QuickContractExport } from "./buildQuickContractEventsNdjson.js";
+import { DEFAULT_QUICK_VERIFY_SCOPE, type QuickVerifyScope } from "./quickVerifyScope.js";
 
 export type QuickVerifyReport = {
   schemaVersion: 1;
   verdict: "pass" | "fail" | "uncertain";
   summary: string;
   verificationMode: "inferred";
-  scope: { quickVerifyVersion: "1.0.0"; capabilities: ["inferred_row", "inferred_related_exists"] };
+  scope: QuickVerifyScope;
   ingest: { reasonCodes: string[]; malformedLineCount: number };
   ingestWarnings?: Array<{ code: string; actionKey?: string }>;
   runHeaderReasonCodes?: string[];
@@ -57,7 +58,12 @@ function rollupVerdict(
   ingestCodes: string[],
   hadActions: boolean,
 ): "pass" | "fail" | "uncertain" {
-  if (!hadActions && ingestCodes.includes("INGEST_NO_ACTIONS")) return "uncertain";
+  if (
+    !hadActions &&
+    (ingestCodes.includes("INGEST_NO_ACTIONS") || ingestCodes.includes("INGEST_NO_STRUCTURED_TOOL_ACTIVITY"))
+  ) {
+    return "uncertain";
+  }
   if (units.length === 0) return "uncertain";
   if (units.some((u) => u.verdict === "fail")) return "fail";
   if (units.every((u) => u.verdict === "verified")) return "pass";
@@ -68,6 +74,8 @@ function buildSummary(verdict: string, units: QuickVerifyReport["units"], ingest
   const parts = [`Verdict ${verdict}`, `${units.length} unit(s)`];
   if (ingest.reasonCodes.includes("INGEST_NO_ACTIONS")) {
     parts.push(MSG_NO_TOOL_CALLS);
+  } else if (ingest.reasonCodes.includes("INGEST_NO_STRUCTURED_TOOL_ACTIVITY")) {
+    parts.push(MSG_NO_STRUCTURED_TOOL_ACTIVITY);
   } else if (ingest.reasonCodes.length) {
     parts.push(`ingest: ${ingest.reasonCodes.join(",")}`);
   }
@@ -88,7 +96,7 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
       verdict: "uncertain",
       summary: buildSummary("uncertain", units, ingestBlock),
       verificationMode: "inferred",
-      scope: { quickVerifyVersion: "1.0.0", capabilities: ["inferred_row", "inferred_related_exists"] },
+      scope: { ...DEFAULT_QUICK_VERIFY_SCOPE },
       ingest: ingestBlock,
       units,
       exportableRegistry: { tools: [] },
@@ -227,7 +235,7 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
       verdict,
       summary: buildSummary(verdict, units, ingestBlock),
       verificationMode: "inferred",
-      scope: { quickVerifyVersion: "1.0.0", capabilities: ["inferred_row", "inferred_related_exists"] },
+      scope: { ...DEFAULT_QUICK_VERIFY_SCOPE },
       ingest: ingestBlock,
       ...(ingestWarnings ? { ingestWarnings } : {}),
       ...(runHeaderReasonCodes.length ? { runHeaderReasonCodes } : {}),

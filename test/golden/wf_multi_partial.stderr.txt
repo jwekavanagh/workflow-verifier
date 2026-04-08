@@ -24,7 +24,9 @@ steps:
     category: workflow_execution
     detail: Verified 1 of 2 effects; not verified: secondary. Per effect: secondary (VALUE_MISMATCH)
     reference_code: MULTI_EFFECT_PARTIAL
+    user_meaning: Some intended effects matched; others did not.
     effect: id=primary result=Matched the database.
     effect: id=secondary result=A row was found, but required values do not match.
       detail: Expected "Alice" but found null for field name (table=contacts id=c_partial) field=name
       reference_code: VALUE_MISMATCH
+      user_meaning: Wrong value in the database for a required field.

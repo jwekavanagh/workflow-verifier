@@ -21,13 +21,30 @@
     "scope": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["quickVerifyVersion", "capabilities"],
+      "required": [
+        "quickVerifyVersion",
+        "capabilities",
+        "limitations",
+        "ingestContract",
+        "groundTruth"
+      ],
       "properties": {
-        "quickVerifyVersion": { "type": "string", "const": "1.0.0" },
+        "quickVerifyVersion": { "type": "string", "const": "1.1.0" },
         "capabilities": {
           "type": "array",
           "const": ["inferred_row", "inferred_related_exists"]
-        }
+        },
+        "limitations": {
+          "type": "array",
+          "const": [
+            "quick_verify_inferred_row_and_related_exists_only",
+            "no_multi_effect_contract",
+            "no_destructive_or_forbidden_row_contract",
+            "contract_replay_export_row_tools_only"
+          ]
+        },
+        "ingestContract": { "type": "string", "const": "structured_tool_activity" },
+        "groundTruth": { "type": "string", "const": "read_only_sql" }
       }
     },
     "ingest": {

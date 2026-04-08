@@ -26,6 +26,20 @@ function getParamsObject(obj: Record<string, unknown>): Record<string, unknown> 
   for (const k of ["params", "arguments", "input"] as const) {
     const v = obj[k];
     if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
+    if (typeof v === "string") {
+      const u = v.trim();
+      if (u.length === 0) continue;
+      if (u.startsWith("{") || u.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(u) as unknown;
+          if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+            return parsed as Record<string, unknown>;
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    }
   }
   const out: Record<string, unknown> = {};
   const skip = new Set<string>(["tool_calls", "toolId", "tool", "name", "action", "function"]);
@@ -35,6 +49,52 @@ function getParamsObject(obj: Record<string, unknown>): Record<string, unknown> 
     out[k] = obj[k];
   }
   return out;
+}
+
+const RE_CSI = /\u001b\[[\d;?]*[\s-/]*[@-~]/g;
+
+const RE_LOG_P1 = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?\s+/;
+const RE_LOG_P2 = /^(?:DEBUG|INFO|WARN|WARNING|ERROR|TRACE)\s+/i;
+const RE_LOG_P3 = /^\[[^\]]{1,64}\]\s+/;
+
+function stripAnsiCsi(buffer: string): string {
+  return buffer.replace(RE_CSI, "");
+}
+
+/** L3: salvage timestamp / level / bracket prefixes, then JSON.parse (quick-verify-normative A.5). */
+function tryParseLineWithSalvage(line: string): unknown | null {
+  const s0 = line.trim();
+  if (s0.length === 0) return null;
+
+  let s1 = s0.replace(RE_LOG_P1, "").trim();
+  const tryParse = (s: string): unknown | null => {
+    try {
+      return JSON.parse(s) as unknown;
+    } catch {
+      return null;
+    }
+  };
+
+  let v = tryParse(s1);
+  if (v !== null) return v;
+
+  if (RE_LOG_P2.test(s1)) {
+    const s2 = s1.replace(RE_LOG_P2, "").trim();
+    v = tryParse(s2);
+    if (v !== null) return v;
+  }
+
+  if (RE_LOG_P3.test(s1)) {
+    const s3 = s1.replace(RE_LOG_P3, "").trim();
+    v = tryParse(s3);
+    if (v !== null) return v;
+  }
+
+  return null;
+}
+
+function stripMalformedFromReasonCodes(reasonCodes: string[]): string[] {
+  return reasonCodes.filter((c) => c !== "MALFORMED_LINE");
 }
 
 export type IngestContext = {
@@ -138,15 +198,19 @@ export function ingestActivityUtf8(bufferUtf8: string): IngestResult {
 
   let buf = bufferUtf8;
   if (buf.charCodeAt(0) === 0xfeff) buf = buf.slice(1);
+  buf = stripAnsiCsi(buf);
 
-  let actions: RawAction[] = [];
-  const reasonCodes: string[] = [];
-  let malformedLineCount = 0;
+  if (buf.trim().length === 0) {
+    return {
+      actions: [],
+      reasonCodes: ["INGEST_NO_ACTIONS"],
+      malformedLineCount: 0,
+      inputTooLarge: false,
+    };
+  }
 
-  let l2Parsed = false;
   try {
     const root = JSON.parse(buf) as unknown;
-    l2Parsed = true;
     const ctx = createIngestContext();
     extractActions(ctx, root);
     if (ctx.actions.length >= 1) {
@@ -166,10 +230,10 @@ export function ingestActivityUtf8(bufferUtf8: string): IngestResult {
   for (const line of lines) {
     const t = line.trim();
     if (t.length === 0) continue;
-    try {
-      const v = JSON.parse(t) as unknown;
+    const v = tryParseLineWithSalvage(line);
+    if (v !== null) {
       extractActions(lineCtx, v);
-    } catch {
+    } else {
       lineCtx.malformedLineCount++;
       lineCtx.reasonCodes.push("MALFORMED_LINE");
     }
@@ -177,7 +241,7 @@ export function ingestActivityUtf8(bufferUtf8: string): IngestResult {
   if (lineCtx.actions.length >= 1) {
     return {
       actions: lineCtx.actions,
-      reasonCodes: lineCtx.reasonCodes,
+      reasonCodes: stripMalformedFromReasonCodes(lineCtx.reasonCodes),
       malformedLineCount: lineCtx.malformedLineCount,
       inputTooLarge: false,
     };
@@ -191,8 +255,8 @@ export function ingestActivityUtf8(bufferUtf8: string): IngestResult {
       if (c.actions.length >= 1) {
         return {
           actions: c.actions,
-          reasonCodes: c.reasonCodes,
-          malformedLineCount: c.malformedLineCount,
+          reasonCodes: stripMalformedFromReasonCodes(lineCtx.reasonCodes).concat(c.reasonCodes),
+          malformedLineCount: lineCtx.malformedLineCount,
           inputTooLarge: false,
         };
       }
@@ -205,7 +269,7 @@ export function ingestActivityUtf8(bufferUtf8: string): IngestResult {
   if (lineCtx.malformedLineCount > 0) {
     for (let i = 0; i < lineCtx.malformedLineCount; i++) finalRc.push("MALFORMED_LINE");
   }
-  finalRc.push("INGEST_NO_ACTIONS");
+  finalRc.push("INGEST_NO_STRUCTURED_TOOL_ACTIVITY");
   return {
     actions: [],
     reasonCodes: finalRc,
