@@ -1,5 +1,18 @@
+export {
+  workflowResultToCiLockV1,
+  quickReportToCiLockV1,
+  toCiLockV1,
+  ciLocksEqualStable,
+  assertCiLockSchemaValid,
+} from "./ciLock.js";
+export type { CiLockV1, CiLockBatchV1, CiLockQuickV1 } from "./ciLock.js";
+export { runBatchVerifyToValidatedResult } from "./standardVerifyWorkflowCli.js";
 export { verifyWorkflow, loadToolsRegistry, withWorkflowVerification } from "./pipeline.js";
-export { runQuickVerify, quickReportToStdoutLine } from "./quickVerify/runQuickVerify.js";
+export {
+  runQuickVerify,
+  quickReportToStdoutLine,
+  runQuickVerifyToValidatedReport,
+} from "./quickVerify/runQuickVerify.js";
 export type {
   QuickVerifyReport,
   RunQuickVerifyOptions,

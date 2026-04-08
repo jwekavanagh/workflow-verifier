@@ -1,5 +1,5 @@
 {
-  "$id": "https://execution-truth-layer/schemas/tools-registry.schema.json",
+  "$id": "https://workflow-verifier/schemas/tools-registry.schema.json",
   "title": "ToolsRegistry",
   "type": "array",
   "minItems": 1,

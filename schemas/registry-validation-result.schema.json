@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://execution-truth-layer/schemas/registry-validation-result.schema.json",
+  "$id": "https://workflow-verifier/schemas/registry-validation-result.schema.json",
   "title": "RegistryValidationResult",
   "type": "object",
   "additionalProperties": false,

@@ -1,5 +1,5 @@
 {
-  "$id": "https://execution-truth-layer/schemas/event.schema.json",
+  "$id": "https://workflow-verifier/schemas/event.schema.json",
   "title": "WorkflowRunEvent",
   "oneOf": [
     {

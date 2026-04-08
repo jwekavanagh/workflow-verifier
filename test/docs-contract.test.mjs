@@ -18,8 +18,8 @@ const { headings: readmeFunnelHeadings } = JSON.parse(
 );
 
 describe("docs contract (SSOT + README)", () => {
-  it("execution-truth-layer.md headings appear in committed order", () => {
-    const ssot = readFileSync(join(root, "docs", "execution-truth-layer.md"), "utf8");
+  it("workflow-verifier.md headings appear in committed order", () => {
+    const ssot = readFileSync(join(root, "docs", "workflow-verifier.md"), "utf8");
     let pos = 0;
     for (let i = 0; i < headings.length; i++) {
       const h = headings[i];

@@ -124,7 +124,7 @@ describe("debugServer HTTP", () => {
       const rec2 = buildAgentRunRecordForBundle({
         runId: "r2",
         workflowId: "wf_inconsistent",
-        producer: { name: "execution-truth-layer", version: "0.1.0" },
+        producer: { name: "workflow-verifier", version: "0.1.0" },
         verifiedAt: new Date().toISOString(),
         workflowResultBytes: wr2,
         eventsBytes: ev2,
@@ -164,7 +164,7 @@ describe("debugServer HTTP", () => {
         const rec = buildAgentRunRecordForBundle({
           runId: id,
           workflowId: "wf_inconsistent",
-          producer: { name: "execution-truth-layer", version: "0.1.0" },
+          producer: { name: "workflow-verifier", version: "0.1.0" },
           verifiedAt: new Date().toISOString(),
           workflowResultBytes: wrBuf,
           eventsBytes: evBuf,

@@ -12,6 +12,7 @@ Tokens: `verify-workflow quick --input <path> (--postgres-url <url> | --db <sqli
 
 - **Phase A:** exit 3, stderr single JSON [`schemas/cli-error-envelope.schema.json`](../schemas/cli-error-envelope.schema.json), **no stdout bytes**.
 - **Phase B:** after successful registry atomic write and read-back (see **Registry file and canonical JSON** below), optionally atomic-write **`--emit-events`** (may be **zero bytes** when there are no exported row tools), then emit one stdout line: `stableStringify(report) + "\n"`, schema-valid; exit 0/1/2.
+- **`verify-workflow enforce quick`:** requires exactly one of **`--expect-lock`** or **`--output-lock`**; adds **exit 4** (lock mismatch). Full stdout/stderr rules and the authoritative exit table live only in [workflow-verifier.md — Enforce stream contract (normative)](workflow-verifier.md#enforce-stream-contract-normative) (do not duplicate that table here).
 
 ## A.3 Registry file and canonical JSON
 

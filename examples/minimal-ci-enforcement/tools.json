@@ -1,0 +1,63 @@
+[
+  {
+    "toolId": "crm.upsert_contact",
+    "effectDescriptionTemplate": "Upsert contact {/recordId} with fields {/fields}",
+    "verification": {
+      "kind": "sql_row",
+      "table": { "const": "contacts" },
+      "identityEq": [
+        {
+          "column": { "const": "id" },
+          "value": { "pointer": "/recordId" }
+        }
+      ],
+      "requiredFields": { "pointer": "/fields" }
+    }
+  },
+  {
+    "toolId": "crm.upsert_contact_multi",
+    "effectDescriptionTemplate": "Upsert contacts {/primaryRecordId} and {/secondaryRecordId}",
+    "verification": {
+      "kind": "sql_effects",
+      "effects": [
+        {
+          "id": "primary",
+          "table": { "const": "contacts" },
+          "identityEq": [
+            {
+              "column": { "const": "id" },
+              "value": { "pointer": "/primaryRecordId" }
+            }
+          ],
+          "requiredFields": { "pointer": "/primaryFields" }
+        },
+        {
+          "id": "secondary",
+          "table": { "const": "contacts" },
+          "identityEq": [
+            {
+              "column": { "const": "id" },
+              "value": { "pointer": "/secondaryRecordId" }
+            }
+          ],
+          "requiredFields": { "pointer": "/secondaryFields" }
+        }
+      ]
+    }
+  },
+  {
+    "toolId": "test.dup_row",
+    "effectDescriptionTemplate": "Touch dup {/key}",
+    "verification": {
+      "kind": "sql_row",
+      "table": { "const": "dups" },
+      "identityEq": [
+        {
+          "column": { "const": "k" },
+          "value": { "pointer": "/key" }
+        }
+      ],
+      "requiredFields": { "pointer": "/fields" }
+    }
+  }
+]

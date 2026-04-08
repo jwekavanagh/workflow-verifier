@@ -1,5 +1,5 @@
 {
-  "$id": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json",
+  "$id": "https://workflow-verifier/schemas/workflow-engine-result.schema.json",
   "title": "WorkflowEngineResult",
   "type": "object",
   "additionalProperties": false,

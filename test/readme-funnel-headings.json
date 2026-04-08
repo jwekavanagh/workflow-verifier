@@ -1,16 +1,18 @@
 {
   "description": "README conversion funnel: sections must appear in this order (product requirement).",
   "headings": [
-    "## What this does not prove",
-    "## Product category",
-    "## Who should not use this",
+    "## What this product is",
+    "## What this product does",
+    "## What this product does not prove",
+    "## Who this is for",
+    "## Who this is not for",
     "## Canonical use case",
     "## Core workflow verification",
+    "### Quick Verify (zero-config path)",
     "### Example: before and after",
     "### Quickstart",
     "### Sample output",
     "### Use it on your own system",
-    "## Who this is for",
     "## How it works"
   ]
 }

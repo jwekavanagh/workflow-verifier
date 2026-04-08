@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("docs SSOT execution-truth row verification", () => {
-  it("execution-truth-layer.md anchors row-absent and v14 migration vocabulary", () => {
-    const md = readFileSync(join(root, "docs", "execution-truth-layer.md"), "utf8").replace(/\r\n/g, "\n");
+  it("workflow-verifier.md anchors row-absent and v14 migration vocabulary", () => {
+    const md = readFileSync(join(root, "docs", "workflow-verifier.md"), "utf8").replace(/\r\n/g, "\n");
     expect(md).toContain("## SSOT contract boundary (normative)");
     for (const s of [
       "sql_row_absent",

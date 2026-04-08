@@ -7,6 +7,25 @@ import {
 import { TruthLayerError } from "./truthLayerError.js";
 import type { WorkflowResult } from "./types.js";
 
+/**
+ * Run batch verification and validate emitted WorkflowResult against schema.
+ * @throws TruthLayerError WORKFLOW_RESULT_SCHEMA_INVALID on invalid shape
+ * @throws whatever `runVerify` throws (e.g. TruthLayerError from pipeline)
+ */
+export async function runBatchVerifyToValidatedResult(
+  runVerify: () => Promise<WorkflowResult>,
+): Promise<WorkflowResult> {
+  const result = await runVerify();
+  const validateResult = loadSchemaValidator("workflow-result");
+  if (!validateResult(result)) {
+    throw new TruthLayerError(
+      CLI_OPERATIONAL_CODES.WORKFLOW_RESULT_SCHEMA_INVALID,
+      JSON.stringify(validateResult.errors ?? []),
+    );
+  }
+  return result;
+}
+
 export type StandardVerifyWorkflowCliIo = {
   consoleLog: (line: string) => void;
   stderrLine: (line: string) => void;
@@ -41,7 +60,7 @@ export async function runStandardVerifyWorkflowCliFlow(options: {
 
   let result: WorkflowResult;
   try {
-    result = await options.runVerify();
+    result = await runBatchVerifyToValidatedResult(options.runVerify);
   } catch (e) {
     if (e instanceof TruthLayerError) {
       writeCliError(e.code, e.message);
@@ -54,20 +73,15 @@ export async function runStandardVerifyWorkflowCliFlow(options: {
     return;
   }
 
-  const validateResult = loadSchemaValidator("workflow-result");
-  if (!validateResult(result)) {
-    writeCliError(
-      CLI_OPERATIONAL_CODES.WORKFLOW_RESULT_SCHEMA_INVALID,
-      JSON.stringify(validateResult.errors ?? []),
-    );
-    io.exit(3);
-    return;
-  }
-
   if (options.maybeWriteBundle !== undefined) {
     try {
       options.maybeWriteBundle(result);
     } catch (e) {
+      if (e instanceof TruthLayerError) {
+        writeCliError(e.code, e.message);
+        io.exit(3);
+        return;
+      }
       const msg = e instanceof Error ? e.message : String(e);
       writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(msg));
       io.exit(3);

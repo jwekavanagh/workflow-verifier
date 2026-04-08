@@ -1,5 +1,5 @@
 {
-  "$id": "https://execution-truth-layer/schemas/workflow-result-signature.schema.json",
+  "$id": "https://workflow-verifier/schemas/workflow-result-signature.schema.json",
   "title": "WorkflowResultSignature",
   "type": "object",
   "additionalProperties": false,

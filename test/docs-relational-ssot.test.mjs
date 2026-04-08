@@ -13,18 +13,18 @@ const root = join(__dirname, "..");
 const CODES = ["RELATED_ROWS_ABSENT", "RELATIONAL_EXPECTATION_MISMATCH", "RELATIONAL_SCALAR_UNUSABLE"];
 
 describe("docs relational SSOT", () => {
-  it("(i)-(ii) README and execution-truth-layer omit relational reason code literals", () => {
+  it("(i)-(ii) README and workflow-verifier omit relational reason code literals", () => {
     const readme = readFileSync(join(root, "README.md"), "utf8");
-    const etl = readFileSync(join(root, "docs", "execution-truth-layer.md"), "utf8");
+    const etl = readFileSync(join(root, "docs", "workflow-verifier.md"), "utf8");
     for (const c of CODES) {
       assert.equal(readme.includes(c), false, `README must not contain ${c}`);
-      assert.equal(etl.includes(c), false, `execution-truth-layer must not contain ${c}`);
+      assert.equal(etl.includes(c), false, `workflow-verifier must not contain ${c}`);
     }
   });
 
   it("(iii) pointer to relational-verification.md", () => {
     const readme = readFileSync(join(root, "README.md"), "utf8");
-    const etl = readFileSync(join(root, "docs", "execution-truth-layer.md"), "utf8");
+    const etl = readFileSync(join(root, "docs", "workflow-verifier.md"), "utf8");
     assert.match(readme, /relational-verification\.md/);
     assert.match(etl, /relational-verification\.md/);
   });

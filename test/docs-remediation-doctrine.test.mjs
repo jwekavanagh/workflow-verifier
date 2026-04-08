@@ -1,5 +1,5 @@
 /**
- * Module D: marker-delimited remediation doctrine in execution-truth-layer.md.
+ * Module D: marker-delimited remediation doctrine in workflow-verifier.md.
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -50,8 +50,8 @@ function innerBetween(md, open, close, label) {
 }
 
 describe("docs remediation doctrine (Module D)", () => {
-  it("execution-truth-layer.md marker blocks contain required substrings", () => {
-    const md = readFileSync(join(root, "docs", "execution-truth-layer.md"), "utf8");
+  it("workflow-verifier.md marker blocks contain required substrings", () => {
+    const md = readFileSync(join(root, "docs", "workflow-verifier.md"), "utf8");
 
     const inner1 = innerBetween(md, MARKER_EVIDENCE_OPEN, MARKER_EVIDENCE_CLOSE, "evidence-order");
     assert.ok(inner1.trim().length >= 80, "evidence-order block too short");

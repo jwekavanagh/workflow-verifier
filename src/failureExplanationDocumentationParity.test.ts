@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import * as failureExplanation from "./failureExplanation.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const docPath = path.join(root, "docs", "execution-truth-layer.md");
+const docPath = path.join(root, "docs", "workflow-verifier.md");
 
 const FE_TEMPLATE_EXPORT_NAMES = [
   "FE_RUN_LEVEL_EXPECTED",
@@ -43,7 +43,7 @@ function extractFailureExplanationFence(docText: string, exportName: string): st
 }
 
 describe("failureExplanation documentation template parity", () => {
-  it("execution-truth-layer.md fenced templates match failureExplanation.ts exports", () => {
+  it("workflow-verifier.md fenced templates match failureExplanation.ts exports", () => {
     const docText = readFileSync(docPath, "utf8");
     const mod = failureExplanation as unknown as Record<string, unknown>;
     for (const name of FE_TEMPLATE_EXPORT_NAMES) {

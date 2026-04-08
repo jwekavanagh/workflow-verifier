@@ -5,11 +5,11 @@
     "src/debugServer.test.ts"
   ],
   "plans/outcome_verification_107174c5.plan.md": [
-    "docs/execution-truth-layer.md",
+    "docs/workflow-verifier.md",
     "src/verificationAgainstSystemState.requirements.test.ts"
   ],
   "plans/partial_effects_feedback_730cddce.plan.md": [
-    "docs/execution-truth-layer.md",
+    "docs/workflow-verifier.md",
     "examples/seed.sql",
     "src/failureAnalysis.ts",
     "src/multiEffectRollup.test.ts",

@@ -2,7 +2,7 @@
 
 This document is the **sole normative behavioral contract** for tools-registry verification kind **`sql_relational`**. JSON Schemas under `schemas/` define **structure** only; they are **structural-only** and not normative for runtime semantics.
 
-Runtime semantics for **row** verification — **`sql_row`**, **`sql_effects`**, and **`sql_row_absent`** (composite **`identityEq`**, negative existence, eventual absence, `ROW_PRESENT_WHEN_FORBIDDEN`, `FORBIDDEN_ROWS_STILL_PRESENT_WITHIN_WINDOW`, row-level `sampleRows`) — are defined **only** in [`execution-truth-layer.md`](execution-truth-layer.md). This file does **not** restate those behaviors; use that document for row-level SQL and outcomes.
+Runtime semantics for **row** verification — **`sql_row`**, **`sql_effects`**, and **`sql_row_absent`** (composite **`identityEq`**, negative existence, eventual absence, `ROW_PRESENT_WHEN_FORBIDDEN`, `FORBIDDEN_ROWS_STILL_PRESENT_WITHIN_WINDOW`, row-level `sampleRows`) — are defined **only** in [`workflow-verifier.md`](workflow-verifier.md). This file does **not** restate those behaviors; use that document for row-level SQL and outcomes.
 
 The following **`checkKind`** values are normative here: **`related_exists`**, **`aggregate`**, **`join_count`**, **`anti_join`**.
 
@@ -93,7 +93,7 @@ Use this table to map **product** invariant names to registry **`checkKind`** sh
 
 When a row **could** be expressed as either **`related_exists`** or **`aggregate`** with `COUNT_STAR` and `expect.op: gte` / `eq`, prefer **`related_exists`** if you need a **missing** row interpretation (**`RELATED_ROWS_ABSENT`**) when no child row matches; use **`aggregate`** when a numeric count comparison (including zero) should yield **`RELATIONAL_EXPECTATION_MISMATCH`**.
 
-Row **must not exist** claims belong to **`sql_row_absent`** in the tool registry, not to **`sql_relational`** — see [`execution-truth-layer.md`](execution-truth-layer.md).
+Row **must not exist** claims belong to **`sql_row_absent`** in the tool registry, not to **`sql_relational`** — see [`workflow-verifier.md`](workflow-verifier.md).
 
 ## Non-goals
 

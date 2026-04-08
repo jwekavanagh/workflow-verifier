@@ -1,15 +1,15 @@
 {
-  "$id": "https://execution-truth-layer/schemas/workflow-result-compare-input.schema.json",
+  "$id": "https://workflow-verifier/schemas/workflow-result-compare-input.schema.json",
   "title": "WorkflowResultCompareInput",
   "oneOf": [
     {
-      "$ref": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json"
+      "$ref": "https://workflow-verifier/schemas/workflow-engine-result.schema.json"
     },
     {
-      "$ref": "https://execution-truth-layer/schemas/workflow-result-v9.schema.json"
+      "$ref": "https://workflow-verifier/schemas/workflow-result-v9.schema.json"
     },
     {
-      "$ref": "https://execution-truth-layer/schemas/workflow-result.schema.json"
+      "$ref": "https://workflow-verifier/schemas/workflow-result.schema.json"
     }
   ]
 }

@@ -1,6 +1,6 @@
 /**
  * Deterministic path citation harvest for plan-transition (derived_citations).
- * Normative contract: docs/execution-truth-layer.md — Plan transition validation.
+ * Normative contract: docs/workflow-verifier.md — Plan transition validation.
  */
 
 import { CLI_OPERATIONAL_CODES } from "./cliOperationalCodes.js";

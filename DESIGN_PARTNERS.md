@@ -141,4 +141,4 @@ The human report on stderr will state that the workflow **matched the database**
 
 ---
 
-NPM package: **execution-truth-layer**. Installed CLI name: **verify-workflow** (same flags as `node dist/cli.js`).
+NPM package: **workflow-verifier**. Installed CLI name: **verify-workflow** (same flags as `node dist/cli.js`).

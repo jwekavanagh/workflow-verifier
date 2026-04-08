@@ -1,5 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
+import { CLI_OPERATIONAL_CODES } from "../cliOperationalCodes.js";
 import { buildQuickUnitCorrectnessDefinition } from "../correctnessDefinition.js";
+import { TruthLayerError } from "../truthLayerError.js";
+import { loadSchemaValidator } from "../schemaLoad.js";
 import type { CorrectnessDefinitionV1, ToolRegistryEntry, VerificationRequest } from "../types.js";
 import { connectPostgresVerificationClient } from "../sqlReadBackend.js";
 import { canonicalToolsArrayUtf8, stableStringify } from "./canonicalJson.js";
@@ -319,4 +322,16 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
 /** For tests: stable single-line report JSON */
 export function quickReportToStdoutLine(report: QuickVerifyReport): string {
   return stableStringify(report) + "\n";
+}
+
+export async function runQuickVerifyToValidatedReport(opts: RunQuickVerifyOptions): Promise<RunQuickVerifyResult> {
+  const out = await runQuickVerify(opts);
+  const validateQuickReport = loadSchemaValidator("quick-verify-report");
+  if (!validateQuickReport(out.report)) {
+    throw new TruthLayerError(
+      CLI_OPERATIONAL_CODES.WORKFLOW_RESULT_SCHEMA_INVALID,
+      JSON.stringify(validateQuickReport.errors ?? []),
+    );
+  }
+  return out;
 }

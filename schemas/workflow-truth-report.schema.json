@@ -1,5 +1,5 @@
 {
-  "$id": "https://execution-truth-layer/schemas/workflow-truth-report.schema.json",
+  "$id": "https://workflow-verifier/schemas/workflow-truth-report.schema.json",
   "title": "WorkflowTruthReport",
   "type": "object",
   "additionalProperties": false,
@@ -612,16 +612,16 @@
               "oneOf": [
                 { "type": "null" },
                 {
-                  "$ref": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json#/$defs/verificationRequestSqlRow"
+                  "$ref": "https://workflow-verifier/schemas/workflow-engine-result.schema.json#/$defs/verificationRequestSqlRow"
                 },
                 {
-                  "$ref": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json#/$defs/verificationRequestSqlRowAbsent"
+                  "$ref": "https://workflow-verifier/schemas/workflow-engine-result.schema.json#/$defs/verificationRequestSqlRowAbsent"
                 },
                 {
-                  "$ref": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json#/$defs/verificationRequestSqlEffects"
+                  "$ref": "https://workflow-verifier/schemas/workflow-engine-result.schema.json#/$defs/verificationRequestSqlEffects"
                 },
                 {
-                  "$ref": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json#/$defs/verificationRequestSqlRelational"
+                  "$ref": "https://workflow-verifier/schemas/workflow-engine-result.schema.json#/$defs/verificationRequestSqlRelational"
                 }
               ]
             }
@@ -672,7 +672,7 @@
             "actionIndex": { "type": "integer", "minimum": 0 },
             "table": { "type": "string" },
             "sqlRowRequest": {
-              "$ref": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json#/$defs/verificationRequestSqlRow"
+              "$ref": "https://workflow-verifier/schemas/workflow-engine-result.schema.json#/$defs/verificationRequestSqlRow"
             }
           }
         },
@@ -701,7 +701,7 @@
               "type": "array",
               "minItems": 1,
               "items": {
-                "$ref": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json#/$defs/identityEqPair"
+                "$ref": "https://workflow-verifier/schemas/workflow-engine-result.schema.json#/$defs/identityEqPair"
               }
             }
           }

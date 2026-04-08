@@ -2,7 +2,7 @@
   "runId": "run_a",
   "workflowId": "wf_complete",
   "producer": {
-    "name": "execution-truth-layer",
+    "name": "workflow-verifier",
     "version": "0.1.0"
   },
   "verifiedAt": "2026-04-06T20:13:27.086Z",

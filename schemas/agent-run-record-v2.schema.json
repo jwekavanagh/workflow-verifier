@@ -1,5 +1,5 @@
 {
-  "$id": "https://execution-truth-layer/schemas/agent-run-record-v2.schema.json",
+  "$id": "https://workflow-verifier/schemas/agent-run-record-v2.schema.json",
   "title": "AgentRunRecordV2",
   "type": "object",
   "additionalProperties": false,

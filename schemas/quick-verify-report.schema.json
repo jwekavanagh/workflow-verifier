@@ -1,5 +1,5 @@
 {
-  "$id": "https://execution-truth-layer/schemas/quick-verify-report.schema.json",
+  "$id": "https://workflow-verifier/schemas/quick-verify-report.schema.json",
   "title": "QuickVerifyReport",
   "type": "object",
   "additionalProperties": false,
@@ -142,7 +142,7 @@
               },
               "explanation": { "type": "string", "minLength": 1 },
               "correctnessDefinition": {
-                "$ref": "https://execution-truth-layer/schemas/workflow-truth-report.schema.json#/$defs/correctnessDefinitionV1"
+                "$ref": "https://workflow-verifier/schemas/workflow-truth-report.schema.json#/$defs/correctnessDefinitionV1"
               }
             }
           },

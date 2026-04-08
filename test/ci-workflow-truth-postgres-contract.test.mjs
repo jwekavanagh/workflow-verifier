@@ -1,5 +1,5 @@
 /**
- * CI workflow truth contract (Postgres CLI): machine-enforced parity with docs/execution-truth-layer.md
+ * CI workflow truth contract (Postgres CLI): machine-enforced parity with docs/workflow-verifier.md
  * "### CI workflow truth contract (Postgres CLI)".
  */
 import { describe, it, before } from "node:test";
@@ -14,6 +14,8 @@ const root = join(__dirname, "..");
 const cliJs = join(root, "dist", "cli.js");
 const eventsPath = join(root, "examples", "events.ndjson");
 const registryPath = join(root, "examples", "tools.json");
+const lockComplete = join(root, "test", "fixtures", "ci-enforcement", "wf_complete.ci-lock-v1.json");
+const lockMissing = join(root, "test", "fixtures", "ci-enforcement", "wf_missing.ci-lock-v1.json");
 
 /** Bound hung CLI regressions (spawnSync defaults to waiting forever). */
 const cliSpawnMs = 120_000;
@@ -145,5 +147,65 @@ describe("CI workflow truth contract (Postgres CLI)", () => {
     assert.equal(typeof err.failureDiagnosis.primaryOrigin, "string");
     assert.ok(["high", "medium", "low"].includes(err.failureDiagnosis.confidence));
     assert.ok(Array.isArray(err.failureDiagnosis.evidence));
+  });
+
+  it("case 5: enforce batch wf_complete expect-lock exit 0", () => {
+    const r = spawnSync(
+      process.execPath,
+      [
+        "--no-warnings",
+        cliJs,
+        "enforce",
+        "batch",
+        "--workflow-id",
+        "wf_complete",
+        "--events",
+        eventsPath,
+        "--registry",
+        registryPath,
+        "--postgres-url",
+        verifyUrl,
+        "--no-truth-report",
+        "--expect-lock",
+        lockComplete,
+      ],
+      { encoding: "utf8", cwd: root, env, timeout: cliSpawnMs },
+    );
+    assert.ok(!r.error, r.error?.message ?? String(r.error));
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stderr, "");
+    const parsed = JSON.parse(r.stdout.trim());
+    assert.equal(parsed.workflowId, "wf_complete");
+    assert.equal(parsed.status, "complete");
+  });
+
+  it("case 6: enforce batch wf_missing expect-lock exit 1", () => {
+    const r = spawnSync(
+      process.execPath,
+      [
+        "--no-warnings",
+        cliJs,
+        "enforce",
+        "batch",
+        "--workflow-id",
+        "wf_missing",
+        "--events",
+        eventsPath,
+        "--registry",
+        registryPath,
+        "--postgres-url",
+        verifyUrl,
+        "--no-truth-report",
+        "--expect-lock",
+        lockMissing,
+      ],
+      { encoding: "utf8", cwd: root, env, timeout: cliSpawnMs },
+    );
+    assert.ok(!r.error, r.error?.message ?? String(r.error));
+    assert.equal(r.status, 1, r.stderr);
+    assert.equal(r.stderr, "");
+    const parsed = JSON.parse(r.stdout.trim());
+    assert.equal(parsed.workflowId, "wf_missing");
+    assert.equal(parsed.status, "inconsistent");
   });
 });

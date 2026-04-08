@@ -18,7 +18,7 @@ describe("agentRunRecord", () => {
     const rec = buildAgentRunRecordForBundle({
       runId: "r1",
       workflowId: "w",
-      producer: { name: "execution-truth-layer", version: "0.1.0" },
+      producer: { name: "workflow-verifier", version: "0.1.0" },
       verifiedAt: "2026-04-04T12:00:00.000Z",
       workflowResultBytes: wr,
       eventsBytes: ev,

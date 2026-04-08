@@ -14,17 +14,18 @@ import {
 import { buildExecutionTraceView, formatExecutionTraceText } from "./executionTrace.js";
 import { loadEventsForWorkflow } from "./loadEvents.js";
 import { verifyWorkflow } from "./pipeline.js";
+import { argValue, argValues, parseBatchVerifyCliArgs, parseQuickCliArgs } from "./cliArgv.js";
+import { runEnforce } from "./enforceCli.js";
 import { runStandardVerifyWorkflowCliFlow } from "./standardVerifyWorkflowCli.js";
 import {
   formatRegistryValidationHumanReport,
   validateToolsRegistry,
 } from "./registryValidation.js";
 import { loadSchemaValidator } from "./schemaLoad.js";
-import { BUNDLE_SIGNATURE_PRIVATE_KEY_INVALID } from "./bundleSignatureCodes.js";
 import { TruthLayerError } from "./truthLayerError.js";
 import { verifyRunBundleSignature } from "./verifyRunBundleSignature.js";
-import type { VerificationPolicy, WorkflowEngineResult, WorkflowResult } from "./types.js";
-import { resolveVerificationPolicyInput } from "./verificationPolicy.js";
+import type { WorkflowEngineResult, WorkflowResult } from "./types.js";
+import { isBundlePrivateKeyTruthError, writeRunBundleCli } from "./writeRunBundleCli.js";
 import { normalizeToEmittedWorkflowResult } from "./workflowResultNormalize.js";
 import {
   debugServerEntryUrl,
@@ -32,7 +33,6 @@ import {
   logCorpusLoadErrors,
   startDebugServerOnPort,
 } from "./debugServer.js";
-import { writeAgentRunBundle } from "./agentRunBundle.js";
 import {
   assertPlanPathInsideRepo,
   buildPlanTransitionEventsNdjson,
@@ -50,27 +50,9 @@ import { atomicWriteUtf8File } from "./quickVerify/atomicWrite.js";
 import { buildQuickContractEventsNdjson } from "./quickVerify/buildQuickContractEventsNdjson.js";
 import { stableStringify } from "./quickVerify/canonicalJson.js";
 import { formatQuickVerifyHumanReport } from "./quickVerify/formatQuickVerifyHumanReport.js";
-import { runQuickVerify } from "./quickVerify/runQuickVerify.js";
+import { runQuickVerifyToValidatedReport } from "./quickVerify/runQuickVerify.js";
 import type { QuickVerifyReport } from "./quickVerify/runQuickVerify.js";
 import type { QuickContractExport } from "./quickVerify/buildQuickContractEventsNdjson.js";
-
-function argValue(args: string[], name: string): string | undefined {
-  const i = args.indexOf(name);
-  if (i === -1 || i + 1 >= args.length) return undefined;
-  return args[i + 1];
-}
-
-function argValues(args: string[], name: string): string[] {
-  const out: string[] = [];
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === name) {
-      if (i + 1 >= args.length) break;
-      out.push(args[i + 1]!);
-      i++;
-    }
-  }
-  return out;
-}
 
 function usageQuick(): string {
   return `Usage:
@@ -116,6 +98,7 @@ Exit codes:
   1  workflow status inconsistent
   2  workflow status incomplete
   3  operational failure (see stderr JSON)
+  4  enforce subcommand only: CI lock mismatch (stdout: WorkflowResult line; stderr: envelope after human report if any)
 
   verify-workflow compare --prior <path> [--prior <path> ...] --current <path>
   Compare saved WorkflowResult JSON files (local only; see docs).
@@ -123,10 +106,14 @@ Exit codes:
   verify-workflow validate-registry --registry <path>
   verify-workflow validate-registry --registry <path> --events <path> --workflow-id <id>
   Validate tools registry JSON (and optionally resolution vs events) without a database.
-  See docs/execution-truth-layer.md (Registry validation).
+  See docs/workflow-verifier.md (Registry validation).
 
   verify-workflow execution-trace --workflow-id <id> --events <path> [--workflow-result <path>] [--format json|text]
-  Emit ExecutionTraceView JSON or text (see docs/execution-truth-layer.md).
+  Emit ExecutionTraceView JSON or text (see docs/workflow-verifier.md).
+
+  verify-workflow enforce batch (--expect-lock <path> | --output-lock <path>) <same flags as batch verify>
+  verify-workflow enforce quick (--expect-lock <path> | --output-lock <path>) <same flags as quick>
+  CI enforcement with pinned ci-lock-v1 (see docs/ci-enforcement.md).
 
 Advanced / optional (persisted runs, signing, local UI, plan/git checks):
   --write-run-bundle <dir>   After a successful verify (schema-valid WorkflowResult), write a canonical run directory: events.ndjson (byte copy of --events), workflow-result.json (emitted result), agent-run.json (SHA-256 manifest). Directory is created if missing. Requires exit 0–2 (operational failure skips the write).
@@ -136,7 +123,7 @@ Advanced / optional (persisted runs, signing, local UI, plan/git checks):
   Verify signed bundle (Ed25519 + manifest v2). Exit 0 if valid; exit 3 with JSON envelope on failure.
 
   verify-workflow debug --corpus <dir> [--port <n>]
-  Local Debug Console on 127.0.0.1 (see docs/execution-truth-layer.md — Debug Console).
+  Local Debug Console on 127.0.0.1 (see docs/workflow-verifier.md — Debug Console).
 
   verify-workflow plan-transition --repo <dir> --before <ref> --after <ref> --plan <path>
   Validate git Before..After against machine plan rules (planValidation, body YAML section, or derived path citations as required diff surfaces; Git >= 2.30.0; see docs).
@@ -332,24 +319,17 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
     console.log(usageQuick());
     process.exit(0);
   }
-  const inputPath = argValue(args, "--input");
-  const exportPath = argValue(args, "--export-registry");
-  const emitEventsPath = argValue(args, "--emit-events");
-  const workflowIdQuick = argValue(args, "--workflow-id") ?? "quick-verify";
-  const dbPath = argValue(args, "--db");
-  const postgresUrl = argValue(args, "--postgres-url");
-  if (!inputPath || !exportPath) {
-    writeCliError(CLI_OPERATIONAL_CODES.CLI_USAGE, "Missing --input or --export-registry.");
-    process.exit(3);
+  let pq;
+  try {
+    pq = parseQuickCliArgs(args);
+  } catch (e) {
+    if (e instanceof TruthLayerError) {
+      writeCliError(e.code, e.message);
+      process.exit(3);
+    }
+    throw e;
   }
-  const dbCount = (dbPath ? 1 : 0) + (postgresUrl ? 1 : 0);
-  if (dbCount !== 1) {
-    writeCliError(
-      CLI_OPERATIONAL_CODES.CLI_USAGE,
-      "Provide exactly one of --db or --postgres-url.",
-    );
-    process.exit(3);
-  }
+  const { inputPath, exportPath, emitEventsPath, workflowIdQuick, dbPath, postgresUrl } = pq;
   let inputUtf8: string;
   try {
     inputUtf8 = inputPath === "-" ? readFileSync(0, "utf8") : readFileSync(path.resolve(inputPath), "utf8");
@@ -362,7 +342,7 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
   let report: QuickVerifyReport;
   let contractExports: QuickContractExport[] = [];
   try {
-    const out = await runQuickVerify({
+    const out = await runQuickVerifyToValidatedReport({
       inputUtf8,
       postgresUrl: postgresUrl ?? undefined,
       sqlitePath: dbPath ?? undefined,
@@ -377,14 +357,6 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
     }
     const msg = e instanceof Error ? e.message : String(e);
     writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(msg));
-    process.exit(3);
-  }
-  const validateQuickReport = loadSchemaValidator("quick-verify-report");
-  if (!validateQuickReport(report)) {
-    writeCliError(
-      CLI_OPERATIONAL_CODES.WORKFLOW_RESULT_SCHEMA_INVALID,
-      JSON.stringify(validateQuickReport.errors ?? []),
-    );
     process.exit(3);
   }
   try {
@@ -454,39 +426,6 @@ Exit codes:
   }
   writeCliError(r.code, r.message);
   process.exit(3);
-}
-
-function writeRunBundleCli(
-  outDir: string,
-  eventsNdjson: Buffer,
-  workflowResult: WorkflowResult,
-  signPrivateKeyPath: string | undefined,
-): void {
-  try {
-    writeAgentRunBundle({
-      outDir,
-      eventsNdjson,
-      workflowResult: workflowResult,
-      producer: readPackageIdentity(),
-      verifiedAt: new Date().toISOString(),
-      ...(signPrivateKeyPath !== undefined ? { ed25519PrivateKeyPemPath: signPrivateKeyPath } : {}),
-    });
-  } catch (e) {
-    if (e instanceof TruthLayerError && e.code === BUNDLE_SIGNATURE_PRIVATE_KEY_INVALID) {
-      writeCliError(e.code, e.message);
-      process.exit(3);
-    }
-    throw e;
-  }
-}
-
-function readPackageIdentity(): { name: string; version: string } {
-  const pkgPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "package.json");
-  const raw = readFileSync(pkgPath, "utf8");
-  const pkg = JSON.parse(raw) as { name?: string; version?: string };
-  const name = typeof pkg.name === "string" && pkg.name.length > 0 ? pkg.name : "execution-truth-layer";
-  const version = typeof pkg.version === "string" && pkg.version.length > 0 ? pkg.version : "0.0.0";
-  return { name, version };
 }
 
 function usageValidateRegistry(): string {
@@ -598,37 +537,6 @@ function runValidateRegistrySubcommand(args: string[]): void {
   process.exit(0);
 }
 
-function verificationPolicyFromCliArgs(args: string[]): VerificationPolicy {
-  const mode = argValue(args, "--consistency") ?? "strong";
-  if (mode !== "strong" && mode !== "eventual") {
-    throw new TruthLayerError(CLI_OPERATIONAL_CODES.CLI_USAGE, "Invalid --consistency; use strong or eventual.");
-  }
-  const windowRaw = argValue(args, "--verification-window-ms");
-  const pollRaw = argValue(args, "--poll-interval-ms");
-  if (mode === "strong") {
-    if (windowRaw !== undefined || pollRaw !== undefined) {
-      throw new TruthLayerError(
-        CLI_OPERATIONAL_CODES.CLI_USAGE,
-        "strong consistency does not accept --verification-window-ms or --poll-interval-ms.",
-      );
-    }
-    return resolveVerificationPolicyInput({ consistencyMode: "strong", verificationWindowMs: 0, pollIntervalMs: 0 });
-  }
-  if (windowRaw === undefined || pollRaw === undefined) {
-    throw new TruthLayerError(
-      CLI_OPERATIONAL_CODES.CLI_USAGE,
-      "eventual consistency requires --verification-window-ms and --poll-interval-ms.",
-    );
-  }
-  const verificationWindowMs = Number(windowRaw);
-  const pollIntervalMs = Number(pollRaw);
-  return resolveVerificationPolicyInput({
-    consistencyMode: "eventual",
-    verificationWindowMs,
-    pollIntervalMs,
-  });
-}
-
 function runCompareSubcommand(args: string[]): void {
   if (args.includes("--help") || args.includes("-h")) {
     console.log(usageCompare());
@@ -735,7 +643,7 @@ function usageDebug(): string {
   verify-workflow debug --corpus <dir> [--port <n>]
 
 Serves the Debug Console on 127.0.0.1 only. Each run is a subfolder of the corpus
-with workflow-result.json and events.ndjson (see docs/execution-truth-layer.md).
+with workflow-result.json and events.ndjson (see docs/workflow-verifier.md).
 
 Exit: Ctrl+C ends the server (exit 0). Port in use or bad corpus → exit 3.
 
@@ -893,6 +801,10 @@ function runPlanTransitionSubcommand(args: string[]): void {
       });
       writeRunBundleCli(writeRunBundleDir, eventsNdjson, result, signPrivateKeyPath);
     } catch (e) {
+      if (isBundlePrivateKeyTruthError(e)) {
+        writeCliError(e.code, e.message);
+        process.exit(3);
+      }
       const msg = e instanceof Error ? e.message : String(e);
       writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(msg));
       process.exit(3);
@@ -939,34 +851,19 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (args[0] === "enforce") {
+    await runEnforce(args.slice(1));
+    return;
+  }
+
   if (args.includes("--help") || args.includes("-h")) {
     console.log(usageVerify());
     process.exit(0);
   }
 
-  const workflowId = argValue(args, "--workflow-id");
-  const eventsPath = argValue(args, "--events");
-  const registryPath = argValue(args, "--registry");
-  const dbPath = argValue(args, "--db");
-  const postgresUrl = argValue(args, "--postgres-url");
-
-  if (!workflowId || !eventsPath || !registryPath) {
-    writeCliError(CLI_OPERATIONAL_CODES.CLI_USAGE, "Missing --workflow-id, --events, or --registry.");
-    process.exit(3);
-  }
-
-  const dbCount = (dbPath ? 1 : 0) + (postgresUrl ? 1 : 0);
-  if (dbCount !== 1) {
-    writeCliError(
-      CLI_OPERATIONAL_CODES.CLI_USAGE,
-      "Provide exactly one of --db or --postgres-url.",
-    );
-    process.exit(3);
-  }
-
-  let verificationPolicy: VerificationPolicy;
+  let parsedBatch;
   try {
-    verificationPolicy = verificationPolicyFromCliArgs(args);
+    parsedBatch = parseBatchVerifyCliArgs(args);
   } catch (e) {
     if (e instanceof TruthLayerError) {
       writeCliError(e.code, e.message);
@@ -975,38 +872,25 @@ async function main(): Promise<void> {
     throw e;
   }
 
-  const noTruthReport = args.includes("--no-truth-report");
-  const writeRunBundleDir = argValue(args, "--write-run-bundle");
-  const signPrivateKeyPath = argValue(args, "--sign-ed25519-private-key");
-  if (signPrivateKeyPath !== undefined && writeRunBundleDir === undefined) {
-    writeCliError(
-      CLI_OPERATIONAL_CODES.CLI_USAGE,
-      "--sign-ed25519-private-key requires --write-run-bundle.",
-    );
-    process.exit(3);
-  }
-
   await runStandardVerifyWorkflowCliFlow({
     runVerify: () =>
       verifyWorkflow({
-        workflowId,
-        eventsPath,
-        registryPath,
-        database: postgresUrl
-          ? { kind: "postgres", connectionString: postgresUrl }
-          : { kind: "sqlite", path: dbPath! },
-        verificationPolicy,
-        ...(noTruthReport ? { truthReport: () => {} } : {}),
+        workflowId: parsedBatch.workflowId,
+        eventsPath: parsedBatch.eventsPath,
+        registryPath: parsedBatch.registryPath,
+        database: parsedBatch.database,
+        verificationPolicy: parsedBatch.verificationPolicy,
+        ...(parsedBatch.noTruthReport ? { truthReport: () => {} } : {}),
       }),
     maybeWriteBundle:
-      writeRunBundleDir === undefined
+      parsedBatch.writeRunBundleDir === undefined
         ? undefined
         : (result) =>
             writeRunBundleCli(
-              writeRunBundleDir,
-              readFileSync(path.resolve(eventsPath)),
+              parsedBatch.writeRunBundleDir!,
+              readFileSync(path.resolve(parsedBatch.eventsPath)),
               result,
-              signPrivateKeyPath,
+              parsedBatch.signPrivateKeyPath,
             ),
     io: {
       consoleLog: (line) => {

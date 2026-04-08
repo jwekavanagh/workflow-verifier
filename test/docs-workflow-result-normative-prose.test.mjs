@@ -1,5 +1,5 @@
 /**
- * Normative WorkflowResult v15 prose in docs/execution-truth-layer.md (CI-delimited regions).
+ * Normative WorkflowResult v15 prose in docs/workflow-verifier.md (CI-delimited regions).
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const etlPath = join(root, "docs", "execution-truth-layer.md");
+const etlPath = join(root, "docs", "workflow-verifier.md");
 const workflowResultSchemaPath = join(root, "schemas", "workflow-result.schema.json");
 
 const SEGMENT_RE = /<!-- ci:workflow-result-normative-prose:start -->([\s\S]*?)<!-- ci:workflow-result-normative-prose:end -->/g;

@@ -28,7 +28,7 @@ describe("writeAgentRunBundle", () => {
         outDir,
         eventsNdjson: evBytes,
         workflowResult: wf,
-        producer: { name: "execution-truth-layer", version: "test" },
+        producer: { name: "workflow-verifier", version: "test" },
         verifiedAt: "2026-04-04T12:00:00.000Z",
       });
       const corpusRoot = resolveCorpusRootReal(parent);
@@ -58,7 +58,7 @@ describe("writeAgentRunBundle", () => {
         outDir,
         eventsNdjson: empty,
         workflowResult: wf,
-        producer: { name: "execution-truth-layer", version: "test" },
+        producer: { name: "workflow-verifier", version: "test" },
         verifiedAt: "2026-04-04T12:00:00.000Z",
       });
       const loaded = loadCorpusRun(resolveCorpusRootReal(parent), runId);
@@ -82,7 +82,7 @@ describe("writeAgentRunBundle", () => {
         outDir,
         eventsNdjson: evBytes,
         workflowResult: wf,
-        producer: { name: "execution-truth-layer", version: "test" },
+        producer: { name: "workflow-verifier", version: "test" },
         verifiedAt: "2026-04-04T12:00:00.000Z",
       });
       const wrPath = join(outDir, "workflow-result.json");
@@ -114,7 +114,7 @@ describe("writeAgentRunBundle", () => {
         outDir,
         eventsNdjson: evBytes,
         workflowResult: wf,
-        producer: { name: "execution-truth-layer", version: "test" },
+        producer: { name: "workflow-verifier", version: "test" },
         verifiedAt: "2026-04-04T12:00:00.000Z",
         ed25519PrivateKeyPemPath: keyPath,
       });

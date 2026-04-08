@@ -33,9 +33,10 @@ You are a **state verification engine for agent-driven systems** that have **SQL
 |---------|-------------------------|-----------|
 | Ingest ladder L0–L5, `extractActions`, thresholds (`T_TABLE`, …), dedupe, decomposition, rollup, CLI phase ordering, registry bytes, human stderr anchor rules | [`quick-verify-normative.md`](quick-verify-normative.md) | Link only; never copy thresholds or ladder text |
 | `QuickVerifyReport` JSON shape (`schemaVersion` **3**, `productTruth`, `units[].correctnessDefinition` on non-pass, …) | [`schemas/quick-verify-report.schema.json`](../schemas/quick-verify-report.schema.json) | Normative doc links schema; no second field catalog |
-| **Correctness definition** (forward MUST + `enforceableProjection` on batch truth + quick non-pass units) | [`correctness-definition-normative.md`](correctness-definition-normative.md), [`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json) | Batch human stderr: `correctness_definition:` in [`execution-truth-layer.md`](execution-truth-layer.md); trust boundary unchanged |
+| **Correctness definition** (forward MUST + `enforceableProjection` on batch truth + quick non-pass units) | [`correctness-definition-normative.md`](correctness-definition-normative.md), [`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json) | Batch human stderr: `correctness_definition:` in [`workflow-verifier.md`](workflow-verifier.md); trust boundary unchanged |
 | User-facing English strings for quick verify (exact wording) | [`src/quickVerify/quickVerifyHumanCopy.ts`](../src/quickVerify/quickVerifyHumanCopy.ts), [`src/quickVerify/formatQuickVerifyHumanReport.ts`](../src/quickVerify/formatQuickVerifyHumanReport.ts) (banner lines), [`src/quickVerify/quickVerifyProductTruth.ts`](../src/quickVerify/quickVerifyProductTruth.ts) (stdout `productTruth`), [`src/verificationUserPhrases.ts`](../src/verificationUserPhrases.ts) (reason `user_meaning`) | Appendix H in normative lists **identifiers** only |
-| `verifyWorkflow`, batch CLI, registry resolution, Postgres read-only session, `WorkflowResult` | [`execution-truth-layer.md`](execution-truth-layer.md) | This doc links there for batch semantics |
+| `verifyWorkflow`, batch CLI, registry resolution, Postgres read-only session, `WorkflowResult` | [`workflow-verifier.md`](workflow-verifier.md) | This doc links there for batch semantics |
+| **CI enforcement** (`enforce`, `ci-lock-v1`, bootstrap vs expect-lock recipe) | [`ci-enforcement.md`](ci-enforcement.md), [`schemas/ci-lock-v1.schema.json`](../schemas/ci-lock-v1.schema.json), [Enforce stream contract](workflow-verifier.md#enforce-stream-contract-normative) in [`workflow-verifier.md`](workflow-verifier.md) | Lock field list only in schema; streams only in workflow-verifier |
 | Repo entry, onboarding path | [`README.md`](../README.md) | No algorithm copy |
 
 ## Core promise
@@ -54,7 +55,7 @@ Quick Verify is **provisional**: inference-based mapping, **uncertain** as a nor
 
 1. **Clone** the repository and **`npm install`**.
 2. **`npm run build`** (or **`npm test`**, which builds first).
-3. **`npm run first-run`** — creates **`examples/demo.db`** and runs the bundled batch demo (see [`execution-truth-layer.md`](execution-truth-layer.md) onboarding).
+3. **`npm run first-run`** — creates **`examples/demo.db`** and runs the bundled batch demo (see [`workflow-verifier.md`](workflow-verifier.md) onboarding).
 4. **Quick verify:**  
    `node dist/cli.js quick --input test/fixtures/quick-verify/pass-line.ndjson --db examples/demo.db --export-registry ./quick-export.json`  
    Supply structured tool activity on **stdin** with **`--input -`** when convenient. Optional **`--emit-events`** writes synthetic **`tool_observed`** NDJSON for **exported row tools** only; **`related_exists`** inference is **not** exported to the registry in this release (`contractEligible` is false on those units).
@@ -69,7 +70,7 @@ Quick Verify is **provisional**: inference-based mapping, **uncertain** as a nor
 
 ## For operators
 
-- Verification uses **read-only** SQLite opens and Postgres session guards (see [`execution-truth-layer.md`](execution-truth-layer.md)). Use a **least-privilege** DB user in production.
+- Verification uses **read-only** SQLite opens and Postgres session guards (see [`workflow-verifier.md`](workflow-verifier.md)). Use a **least-privilege** DB user in production.
 - **No** writes are performed against the target database for verification.
 
 ## Time to first meaningful result (Story 5)

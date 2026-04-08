@@ -1,5 +1,5 @@
 {
-  "$id": "https://execution-truth-layer/schemas/workflow-result-v9.schema.json",
+  "$id": "https://workflow-verifier/schemas/workflow-result-v9.schema.json",
   "title": "WorkflowResultV9",
   "type": "object",
   "additionalProperties": false,
@@ -29,7 +29,7 @@
     "runLevelReasons": {
       "type": "array",
       "items": {
-        "$ref": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json#/$defs/reason"
+        "$ref": "https://workflow-verifier/schemas/workflow-engine-result.schema.json#/$defs/reason"
       }
     },
     "verificationPolicy": {
@@ -45,7 +45,7 @@
     "steps": {
       "type": "array",
       "items": {
-        "$ref": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json#/$defs/step"
+        "$ref": "https://workflow-verifier/schemas/workflow-engine-result.schema.json#/$defs/step"
       }
     },
     "eventSequenceIntegrity": {
@@ -68,7 +68,7 @@
               "type": "array",
               "minItems": 1,
               "items": {
-                "$ref": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json#/$defs/reason"
+                "$ref": "https://workflow-verifier/schemas/workflow-engine-result.schema.json#/$defs/reason"
               }
             }
           }
@@ -76,10 +76,10 @@
       ]
     },
     "verificationRunContext": {
-      "$ref": "https://execution-truth-layer/schemas/workflow-engine-result.schema.json#/$defs/verificationRunContext"
+      "$ref": "https://workflow-verifier/schemas/workflow-engine-result.schema.json#/$defs/verificationRunContext"
     },
     "workflowTruthReport": {
-      "$ref": "https://execution-truth-layer/schemas/workflow-truth-report.schema.json"
+      "$ref": "https://workflow-verifier/schemas/workflow-truth-report.schema.json"
     }
   }
 }

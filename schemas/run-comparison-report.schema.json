@@ -1,6 +1,6 @@
 {
-  "$id": "https://execution-truth-layer/schemas/run-comparison-report.schema.json",
-  "$comment": "Structural schema. Behavioral semantics: docs/execution-truth-layer.md#cross-run-comparison-normative",
+  "$id": "https://workflow-verifier/schemas/run-comparison-report.schema.json",
+  "$comment": "Structural schema. Behavioral semantics: docs/workflow-verifier.md#cross-run-comparison-normative",
   "title": "RunComparisonReport",
   "type": "object",
   "additionalProperties": false,
@@ -42,14 +42,14 @@
           "category": {
             "oneOf": [
               {
-                "$ref": "https://execution-truth-layer/schemas/workflow-truth-report.schema.json#/$defs/actionableFailureCategory"
+                "$ref": "https://workflow-verifier/schemas/workflow-truth-report.schema.json#/$defs/actionableFailureCategory"
               },
               { "const": "complete" }
             ]
           },
           "severity": { "type": "string", "enum": ["high", "medium", "low"] },
           "recommendedAction": {
-            "$ref": "https://execution-truth-layer/schemas/workflow-truth-report.schema.json#/$defs/recommendedAction"
+            "$ref": "https://workflow-verifier/schemas/workflow-truth-report.schema.json#/$defs/recommendedAction"
           },
           "automationSafe": { "type": "boolean" }
         }
@@ -65,7 +65,7 @@
           "category": {
             "oneOf": [
               {
-                "$ref": "https://execution-truth-layer/schemas/workflow-truth-report.schema.json#/$defs/actionableFailureCategory"
+                "$ref": "https://workflow-verifier/schemas/workflow-truth-report.schema.json#/$defs/actionableFailureCategory"
               },
               { "const": "complete" }
             ]
@@ -87,7 +87,7 @@
         ],
         "properties": {
           "category": {
-            "$ref": "https://execution-truth-layer/schemas/workflow-truth-report.schema.json#/$defs/actionableFailureCategory"
+            "$ref": "https://workflow-verifier/schemas/workflow-truth-report.schema.json#/$defs/actionableFailureCategory"
           },
           "runIndicesAscending": {
             "type": "array",

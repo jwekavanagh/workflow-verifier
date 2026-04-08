@@ -1,0 +1,163 @@
+{
+  "$id": "https://workflow-verifier/schemas/ci-lock-v1.schema.json",
+  "title": "CiLockV1",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lockSchemaVersion",
+        "kind",
+        "workflowId",
+        "status",
+        "verificationPolicy",
+        "runLevelReasonCodes",
+        "eventSequence",
+        "steps",
+        "primaryFailureCodes",
+        "correctnessEnforcementKind",
+        "enforceableProjection"
+      ],
+      "properties": {
+        "lockSchemaVersion": { "const": 1 },
+        "kind": { "const": "batch" },
+        "workflowId": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["complete", "incomplete", "inconsistent"]
+        },
+        "verificationPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["consistencyMode", "verificationWindowMs", "pollIntervalMs"],
+          "properties": {
+            "consistencyMode": { "type": "string", "enum": ["strong", "eventual"] },
+            "verificationWindowMs": { "type": "integer" },
+            "pollIntervalMs": { "type": "integer" }
+          }
+        },
+        "runLevelReasonCodes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "eventSequence": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind"],
+              "properties": {
+                "kind": { "const": "normal" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "reasonCodes"],
+              "properties": {
+                "kind": { "const": "irregular" },
+                "reasonCodes": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            }
+          ]
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "seq",
+              "toolId",
+              "status",
+              "outcomeLabel",
+              "reasonCodes",
+              "referenceCode"
+            ],
+            "properties": {
+              "seq": { "type": "integer", "minimum": 0 },
+              "toolId": { "type": "string" },
+              "status": { "type": "string" },
+              "outcomeLabel": { "type": "string" },
+              "reasonCodes": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "referenceCode": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "primaryFailureCodes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "correctnessEnforcementKind": {
+          "type": ["string", "null"]
+        },
+        "enforceableProjection": {
+          "type": ["object", "null"]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lockSchemaVersion",
+        "kind",
+        "verdict",
+        "ingestReasonCodes",
+        "runHeaderReasonCodes",
+        "units"
+      ],
+      "properties": {
+        "lockSchemaVersion": { "const": 1 },
+        "kind": { "const": "quick" },
+        "verdict": {
+          "type": "string",
+          "enum": ["pass", "fail", "uncertain"]
+        },
+        "ingestReasonCodes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "runHeaderReasonCodes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "units": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "unitId",
+              "kind",
+              "verdict",
+              "reasonCodes",
+              "toolName",
+              "actionIndex"
+            ],
+            "properties": {
+              "unitId": { "type": "string" },
+              "kind": { "type": "string", "enum": ["row", "related_exists"] },
+              "verdict": {
+                "type": "string",
+                "enum": ["verified", "fail", "uncertain"]
+              },
+              "reasonCodes": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "toolName": { "type": "string" },
+              "actionIndex": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

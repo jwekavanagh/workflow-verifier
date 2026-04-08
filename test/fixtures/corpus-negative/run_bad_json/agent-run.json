@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "runId": "run_bad_json",
   "workflowId": "wf_complete",
-  "producer": { "name": "execution-truth-layer", "version": "0.1.0" },
+  "producer": { "name": "workflow-verifier", "version": "0.1.0" },
   "verifiedAt": "2026-04-04T00:00:00.000Z",
   "artifacts": {
     "workflowResult": {

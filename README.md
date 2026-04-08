@@ -6,15 +6,17 @@
 
 **Why that matters:** A green trace or successful tool response is **not** the same as proof that the row you care about exists with the right values.
 
-*NPM package name: `execution-truth-layer`.*
+*NPM package name: `workflow-verifier`.*
 
-## What this does not prove
+## What this product is
 
-This is the trust boundary for the whole product—**Quick Verify and contract mode**:
+A **state verification engine** for agent and automation workflows: it uses **read-only SQL** against **SQLite or Postgres** to compare **observed database rows** to **expectations** derived from **structured tool activity** (NDJSON events plus, in contract mode, a tool registry). Quick Verify infers checks from declared parameters; contract mode uses explicit registry rules.
 
-- It does **not** prove the tool or side effect **actually executed** (only that state matched expectations when checked).
-- It does **not** prove a **write or state change occurred** (you see a snapshot, not causality).
-- It **only** proves that **current state matched declared or inferred expectations** under the configured rules—not “execution correctness” in the causal sense.
+| This **is** | This is **not** |
+|-------------|-----------------|
+| A **SQL ground-truth state check** against explicit or inferred expectations | Generic observability, log search, or “paste any logs” |
+| A verifier for **persisted state** after agent or automation workflows | A test runner for application code |
+| Proof of **state–expectation alignment** at a point in time | Proof of execution or causality |
 
 **Declared vs expected vs observed** (mental model used in reports and docs):
 
@@ -22,15 +24,28 @@ This is the trust boundary for the whole product—**Quick Verify and contract m
 2. **Expected** — What we derive should hold in SQL: in **quick** mode, **inferred** row/FK checks from declared parameters (provisional); in **contract** mode, **registry-defined** expectations from events.
 3. **Observed** — What **read-only SQL** returned at verification time.
 
-## Product category
+## What this product does
 
-| You are **not** | You **are** |
-|-----------------|------------|
-| Generic observability, log search, or “paste any logs” | A **SQL ground-truth state check** against explicit or inferred expectations |
-| A test runner for application code | A verifier for **persisted state** after agent or automation workflows |
-| Proof of execution or causality | Proof of **state–expectation alignment** at a point in time |
+- **Runs read-only `SELECT`s** at verification time and compares results to **expected** state derived from your ingest (inferred in quick mode, registry-driven in contract mode).
+- **Emits a machine-readable workflow result** (schema-versioned JSON on stdout in normal CLI use) and a **human verification report** (stderr), with **clear reason codes** when rows or fields do not match (for example **`ROW_ABSENT`**).
+- **Supports Quick Verify** for a fast, zero-registry path (provisional rollup), and **contract mode** when you need explicit, auditable expectations per tool.
+- **Works with SQLite and Postgres** (read-only session semantics for Postgres are documented in the authoritative reference).
 
-## Who should not use this
+## What this product does not prove
+
+This is the trust boundary for the whole product—**Quick Verify and contract mode**:
+
+- It does **not** prove the tool or side effect **actually executed** (only that state matched expectations when checked).
+- It does **not** prove a **write or state change occurred** (you see a snapshot, not causality).
+- It **only** proves that **current state matched declared or inferred expectations** under the configured rules—not “execution correctness” in the causal sense.
+
+## Who this is for
+
+**This is for you if** you run agent or automation workflows against **real databases** (SQLite, Postgres, or anything you can mirror into SQL), you can emit **structured tool activity** that matches the ingest model, you own **reliability or compliance**, and you have seen symptoms like “the assistant said it saved, but the record is wrong or missing.”
+
+**This is not for you if** you only need generic request tracing with no notion of **expected rows/fields**, you have no **SQL-accessible ground truth**, or you cannot produce **structured tool calls** (not raw logs). For a fuller exclusion list, see **[Who this is not for](#who-this-is-not-for)** below.
+
+## Who this is not for
 
 Do **not** adopt this if:
 
@@ -40,6 +55,20 @@ Do **not** adopt this if:
 - You want **plug-and-play** ingestion of whatever your platform logs today without shaping data to the **event / ingest model**.
 
 If that is you, a tracing or audit-log product is a better fit; this tool will frustrate you and the feedback will not be actionable.
+
+---
+
+## Canonical use case
+
+**Check that an AI support or CRM workflow left the database in the state your expectations describe.**
+
+Structured tool activity says the ticket or contact should look a certain way; a trace may show success. This tool compares **declared parameters → expected row shape** against **observed SQL**. If required fields do not match, the run is marked **inconsistent**—even when the narrative looked fine. That is **state mismatch**, not proof the tool never ran.
+
+---
+
+## Core workflow verification
+
+Everything below is what most teams need to try the idea and wire it into a pipeline. Optional capabilities (compare, persisted runs, hooks, registry checks) live under **[Advanced features](#advanced-features)**. **Signing**, the **Debug Console**, and **`plan-transition`** are **advanced / optional** there—integrator and power-user paths, not part of the core wedge.
 
 ### Quick Verify (zero-config path)
 
@@ -60,20 +89,6 @@ node dist/cli.js quick --input test/fixtures/quick-verify/pass-line.ndjson --db 
 Use **`--postgres-url "postgresql://…"`** instead of **`--db`**. Use **`-`** as **`--input`** to stream structured tool activity on **stdin**. Optional **`--emit-events <path>`** (zero-byte file if no row tools exported), **`--workflow-id <id>`** (default **`quick-verify`**). Exit codes: **0** pass, **1** fail, **2** uncertain, **3** operational.
 
 **Export → contract replay:** Replaying with emitted events and the exported registry checks **exported row tools only**—not full parity with quick scope (`related_exists` and other rules may be missing). See stderr footer and **`productTruth.contractReplayPartialCoverage`** on stdout.
-
----
-
-## Canonical use case
-
-**Check that an AI support or CRM workflow left the database in the state your expectations describe.**
-
-Structured tool activity says the ticket or contact should look a certain way; a trace may show success. This tool compares **declared parameters → expected row shape** against **observed SQL**. If required fields do not match, the run is marked **inconsistent**—even when the narrative looked fine. That is **state mismatch**, not proof the tool never ran.
-
----
-
-## Core workflow verification
-
-Everything below is what most teams need to try the idea and wire it into a pipeline. Optional capabilities (compare, persisted runs, hooks, registry checks) live under **[Advanced features](#advanced-features)**. **Signing**, the **Debug Console**, and **`plan-transition`** are **advanced / optional** there—integrator and power-user paths, not part of the core wedge.
 
 ### Example: before and after
 
@@ -118,7 +133,7 @@ For ad hoc CLI runs after that, add **`npm run build`** to the same pattern, or 
 
 ### Sample output
 
-The demo prints a **human verification report** and **workflow result JSON** per workflow. (The demo sends both to **stdout**; for normal CLI behavior, see the **[Human truth report](docs/execution-truth-layer.md#human-truth-report)** section in the authoritative reference.)
+The demo prints a **human verification report** and **workflow result JSON** per workflow. (The demo sends both to **stdout**; for normal CLI behavior, see the **[Human truth report](docs/workflow-verifier.md#human-truth-report)** section in the authoritative reference.)
 
 #### Success case (`wf_complete`)
 
@@ -181,7 +196,7 @@ Run **`npm start`** to see the full reports and JSON on your machine.
 
 ### Use it on your own system
 
-1. **Emit one NDJSON line per tool call** after each observation (shape: [Event line schema](docs/execution-truth-layer.md#event-line-schema) in the authoritative reference).
+1. **Emit one NDJSON line per tool call** after each observation (shape: [Event line schema](docs/workflow-verifier.md#event-line-schema) in the authoritative reference).
 2. **Add a registry entry** for each `toolId` (start from **`examples/templates/`**).
 3. **Run verification** against your DB:
 
@@ -205,12 +220,6 @@ node dist/cli.js --workflow-id wf_complete --events examples/events.ndjson --reg
 
 **Why SQLite in the demo:** file-backed ground truth with no Docker. **Permissions (demo):** creates **`examples/demo.db`**; verification still uses read-only SQL against that file.
 
-## Who this is for
-
-**This is for you if** you run agent or automation workflows against **real databases** (SQLite, Postgres, or anything you can mirror into SQL), you can emit **structured tool activity** that matches the ingest model, you own **reliability or compliance**, and you have seen symptoms like “the assistant said it saved, but the record is wrong or missing.”
-
-**This is not for you if** you only need generic request tracing with no notion of **expected rows/fields**, you have no **SQL-accessible ground truth**, or you cannot produce **structured tool calls** (not raw logs). See **[Who should not use this](#who-should-not-use-this)** above for a stronger exclusion list.
-
 ## How it works
 
 Retries, partial failures, and race conditions mean a success flag in a trace is not proof that the intended row exists with the right values. This tool takes **append-only NDJSON** structured tool observations plus a small **`tools.json`** registry, derives **expected** state in SQL, and compares it to **observed** state with **read-only `SELECT`s**.
@@ -232,23 +241,25 @@ Run **after** a workflow (or CI replay of its log), **before** you treat the out
 
 **Typical uses:** block a release, trigger human review, open an incident, or attach a verification artifact to an audit trail.
 
+**CI with pinned outcomes:** use **`verify-workflow enforce`** and committed **`ci-lock-v1`** fixtures so automation fails when verification-shaped output drifts—see [`docs/ci-enforcement.md`](docs/ci-enforcement.md).
+
 ---
 
 ## Advanced features
 
-The items below are **optional**. Full detail (schemas, CLI I/O, Postgres session guards, compare inputs, and more) is in **[docs/execution-truth-layer.md](docs/execution-truth-layer.md)**—not duplicated here. **Cryptographic signing**, the **Debug Console**, and **`plan-transition`** are **advanced / optional** in that doc as well; most adopters never need them to get value from SQL-backed verification.
+The items below are **optional**. Full detail (schemas, CLI I/O, Postgres session guards, compare inputs, and more) is in **[docs/workflow-verifier.md](docs/workflow-verifier.md)**—not duplicated here. **Cryptographic signing**, the **Debug Console**, and **`plan-transition`** are **advanced / optional** in that doc as well; most adopters never need them to get value from SQL-backed verification.
 
 | Area | What it is |
 |------|------------|
-| **Cross-run compare** | `verify-workflow compare` over saved results—trend and reliability summaries. See [Cross-run comparison](docs/execution-truth-layer.md#cross-run-comparison-normative). |
-| **Execution trace view** | `execution-trace` CLI for model + tools + control in one NDJSON. See [End-to-end execution visibility](docs/execution-truth-layer.md#end-to-end-execution-visibility-normative). |
-| **In-process hook** | SQLite-only **`withWorkflowVerification`** — [Low-friction integration](docs/execution-truth-layer.md#low-friction-integration-in-process). |
-| **Registry-only check** | `validate-registry --registry <path>` — [Registry validation](docs/execution-truth-layer.md#registry-validation-validate-registry--normative). |
-| **Run bundles (advanced / optional)** | Persist **`events`**, **`workflow-result`**, and a manifest for audit and reload. **Ed25519 signing** is an extra on top, not required for the bundle layout. See [Agent run record](docs/execution-truth-layer.md#agent-run-record-canonical-bundle) and [Signing](docs/execution-truth-layer.md#cryptographic-signing-of-workflow-result-normative). |
-| **Debug Console (advanced / optional)** | Local UI for corpus loads, compare panel, run-trust panel. See [Debug Console](docs/execution-truth-layer.md#debug-console-normative); UI tests: **`npm run test:debug-ui`**. |
-| **Plan transition validation (advanced / optional)** | `plan-transition` subcommand: git diff vs machine-checkable rules in a plan markdown file—separate from SQL verification. See [Plan transition validation](docs/execution-truth-layer.md#plan-transition-validation-normative). |
+| **Cross-run compare** | `verify-workflow compare` over saved results—trend and reliability summaries. See [Cross-run comparison](docs/workflow-verifier.md#cross-run-comparison-normative). |
+| **Execution trace view** | `execution-trace` CLI for model + tools + control in one NDJSON. See [End-to-end execution visibility](docs/workflow-verifier.md#end-to-end-execution-visibility-normative). |
+| **In-process hook** | SQLite-only **`withWorkflowVerification`** — [Low-friction integration](docs/workflow-verifier.md#low-friction-integration-in-process). |
+| **Registry-only check** | `validate-registry --registry <path>` — [Registry validation](docs/workflow-verifier.md#registry-validation-validate-registry--normative). |
+| **Run bundles (advanced / optional)** | Persist **`events`**, **`workflow-result`**, and a manifest for audit and reload. **Ed25519 signing** is an extra on top, not required for the bundle layout. See [Agent run record](docs/workflow-verifier.md#agent-run-record-canonical-bundle) and [Signing](docs/workflow-verifier.md#cryptographic-signing-of-workflow-result-normative). |
+| **Debug Console (advanced / optional)** | Local UI for corpus loads, compare panel, run-trust panel. See [Debug Console](docs/workflow-verifier.md#debug-console-normative); UI tests: **`npm run test:debug-ui`**. |
+| **Plan transition validation (advanced / optional)** | `plan-transition` subcommand: git diff vs machine-checkable rules in a plan markdown file—separate from SQL verification. See [Plan transition validation](docs/workflow-verifier.md#plan-transition-validation-normative). |
 
-**CLI reference** (streams, exit codes, human vs machine output, schema versions for compare/bundles): see **[Human truth report](docs/execution-truth-layer.md#human-truth-report)** and **[CLI operational errors](docs/execution-truth-layer.md#cli-operational-errors)** in the authoritative reference.
+**CLI reference** (streams, exit codes, human vs machine output, schema versions for compare/bundles): see **[Human truth report](docs/workflow-verifier.md#human-truth-report)** and **[CLI operational errors](docs/workflow-verifier.md#cli-operational-errors)** in the authoritative reference.
 
 ## Development and testing
 

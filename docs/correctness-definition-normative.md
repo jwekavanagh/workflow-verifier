@@ -4,7 +4,7 @@ This document is the **behavioral single source of truth** for `workflowTruthRep
 
 ## Trust boundary
 
-`correctnessDefinition` is **descriptive**: it states what must hold for verification to succeed. It does **not** instruct the engine to mutate data or run new SQL. Remediation alignment remains hints for humans and downstream policy ([`docs/execution-truth-layer.md`](execution-truth-layer.md)).
+`correctnessDefinition` is **descriptive**: it states what must hold for verification to succeed. It does **not** instruct the engine to mutate data or run new SQL. Remediation alignment remains hints for humans and downstream policy ([`docs/workflow-verifier.md`](workflow-verifier.md)).
 
 ## Minimum contract quality
 

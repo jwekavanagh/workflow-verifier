@@ -341,4 +341,28 @@ export const OPERATIONAL_DISPOSITION = {
     recommendedAction: "fix_plan_transition_cli_and_refs",
     automationSafe: false,
   },
+  [CLI_OPERATIONAL_CODES.ENFORCE_USAGE]: {
+    origin: "inputs",
+    summary: "Invalid or incomplete arguments for verify-workflow enforce.",
+    actionableCategory: "bad_input",
+    actionableSeverity: "low",
+    recommendedAction: "fix_cli_usage",
+    automationSafe: false,
+  },
+  [CLI_OPERATIONAL_CODES.CI_LOCK_SCHEMA_INVALID]: {
+    origin: "inputs",
+    summary: "CI lock file is not valid JSON or does not match ci-lock-v1 schema.",
+    actionableCategory: "bad_input",
+    actionableSeverity: "medium",
+    recommendedAction: "fix_saved_workflow_json",
+    automationSafe: false,
+  },
+  [CLI_OPERATIONAL_CODES.VERIFICATION_OUTPUT_LOCK_MISMATCH]: {
+    origin: "workflow_flow",
+    summary: "CI enforcement lock did not match expected fixture.",
+    actionableCategory: "state_inconsistency",
+    actionableSeverity: "high",
+    recommendedAction: "fix_saved_workflow_json",
+    automationSafe: false,
+  },
 } as const satisfies Record<OperationalCode, OperationalDispositionRow>;

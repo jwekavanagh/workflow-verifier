@@ -1,0 +1,1 @@
+{"ingestReasonCodes":[],"kind":"quick","lockSchemaVersion":1,"runHeaderReasonCodes":[],"units":[{"actionIndex":0,"kind":"row","reasonCodes":[],"toolName":"crm.upsert_contact","unitId":"u0","verdict":"verified"}],"verdict":"pass"}

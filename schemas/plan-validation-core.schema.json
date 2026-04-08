@@ -1,5 +1,5 @@
 {
-  "$id": "https://execution-truth-layer/schemas/plan-validation-core.schema.json",
+  "$id": "https://workflow-verifier/schemas/plan-validation-core.schema.json",
   "title": "PlanValidationCore",
   "type": "object",
   "additionalProperties": false,

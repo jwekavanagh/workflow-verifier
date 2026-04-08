@@ -21,7 +21,7 @@ describe("buildCorpusPatterns", () => {
       schemaVersion: 1,
       runId: id,
       workflowId: wr.workflowId,
-      producer: { name: "execution-truth-layer", version: "0.1.0" },
+      producer: { name: "workflow-verifier", version: "0.1.0" },
       verifiedAt: "2026-01-01T00:00:00.000Z",
       artifacts: {
         workflowResult: {

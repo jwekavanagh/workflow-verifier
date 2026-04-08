@@ -392,6 +392,7 @@ node dist/cli.js --workflow-id <id> --events <path> --registry <path> --postgres
 | 1 | `workflow.status` is `inconsistent` |
 | 2 | `workflow.status` is `incomplete` |
 | 3 | Operational failure (registry read/parse, events read, DB open/connect, invalid args, internal CLI error); see [CLI operational errors](#cli-operational-errors) |
+| 4 | **`verify-workflow enforce` only:** CI lock mismatch (**`VERIFICATION_OUTPUT_LOCK_MISMATCH`**); see [Enforce stream contract (normative)](#enforce-stream-contract-normative) |
 
 **`--help` / `-h`:** Prints usage to **stdout** and exits **0** (not a verification run).
 
@@ -455,7 +456,7 @@ When the CLI exits **3**, **stderr** is exactly **one** UTF-8 line: a JSON objec
 
 - `schemaVersion`: **2**
 - `kind`: **`execution_truth_layer_error`**
-- `code`: one of **`CLI_USAGE`**, **`REGISTRY_READ_FAILED`**, **`REGISTRY_JSON_SYNTAX`**, **`REGISTRY_SCHEMA_INVALID`**, **`REGISTRY_DUPLICATE_TOOL_ID`**, **`EVENTS_READ_FAILED`**, **`SQLITE_DATABASE_OPEN_FAILED`**, **`POSTGRES_CLIENT_SETUP_FAILED`**, **`WORKFLOW_RESULT_SCHEMA_INVALID`**, **`VERIFICATION_POLICY_INVALID`**, **`VALIDATE_REGISTRY_USAGE`**, **`INTERNAL_ERROR`**, plus compare-subcommand codes (**`COMPARE_USAGE`**, **`COMPARE_INPUT_READ_FAILED`**, **`COMPARE_INPUT_RUN_LEVEL_INCONSISTENT`**, **`COMPARE_WORKFLOW_TRUTH_MISMATCH`**, …) as documented under [Cross-run comparison](#cross-run-comparison-normative), plus **`execution-trace`** codes (**`EXECUTION_TRACE_USAGE`**, **`TRACE_DUPLICATE_RUN_EVENT_ID`**, **`TRACE_UNKNOWN_PARENT_RUN_EVENT_ID`**, **`TRACE_PARENT_FORWARD_REFERENCE`**, …)
+- `code`: one of **`CLI_USAGE`**, **`REGISTRY_READ_FAILED`**, **`REGISTRY_JSON_SYNTAX`**, **`REGISTRY_SCHEMA_INVALID`**, **`REGISTRY_DUPLICATE_TOOL_ID`**, **`EVENTS_READ_FAILED`**, **`SQLITE_DATABASE_OPEN_FAILED`**, **`POSTGRES_CLIENT_SETUP_FAILED`**, **`WORKFLOW_RESULT_SCHEMA_INVALID`**, **`VERIFICATION_POLICY_INVALID`**, **`VALIDATE_REGISTRY_USAGE`**, **`INTERNAL_ERROR`**, **`ENFORCE_USAGE`**, **`CI_LOCK_SCHEMA_INVALID`**, **`VERIFICATION_OUTPUT_LOCK_MISMATCH`** ( **`VERIFICATION_OUTPUT_LOCK_MISMATCH`** is also emitted as an additional stderr line on **`enforce` exit 4**; see [Enforce stream contract (normative)](#enforce-stream-contract-normative)), plus compare-subcommand codes (**`COMPARE_USAGE`**, **`COMPARE_INPUT_READ_FAILED`**, **`COMPARE_INPUT_RUN_LEVEL_INCONSISTENT`**, **`COMPARE_WORKFLOW_TRUTH_MISMATCH`**, …) as documented under [Cross-run comparison](#cross-run-comparison-normative), plus **`execution-trace`** codes (**`EXECUTION_TRACE_USAGE`**, **`TRACE_DUPLICATE_RUN_EVENT_ID`**, **`TRACE_UNKNOWN_PARENT_RUN_EVENT_ID`**, **`TRACE_PARENT_FORWARD_REFERENCE`**, …)
 - `message`: human-readable text after whitespace normalization and truncation (max **2048** JavaScript string length; see `formatOperationalMessage` in `failureCatalog.ts`)
 - `failureDiagnosis`: structured operational diagnosis (**`summary`**, **`primaryOrigin`**, **`confidence`**, **`evidence`** with **`referenceCode`**, **`actionableFailure`**) from `operationalFailureDiagnosis.ts`, using origin mappings in **`failureOriginCatalog.ts`** and category/severity in **`actionableFailure.ts`** (see [Actionable failure classification](#actionable-failure-classification-normative))
 
@@ -1390,11 +1391,41 @@ For each run index `i`, build the **set** of `recurrenceSignature` values from *
 
 **Engineering MVP “solved”:** `npm test` and **`npm run test:ci`** pass; CLI obeys exit codes; contracts match this document.
 
+## CI enforcement (`enforce`)
+
+Automation should use **`verify-workflow enforce batch`** or **`verify-workflow enforce quick`** with a pinned **`ci-lock-v1`** fixture (see [`schemas/ci-lock-v1.schema.json`](../schemas/ci-lock-v1.schema.json)). Exploratory runs continue to use bare **`verify-workflow`** / **`quick`** without locks. Full recipe and field semantics: [`ci-enforcement.md`](ci-enforcement.md).
+
+### Enforce stream contract (normative)
+
+<!-- etl:enforce-stream-contract:start -->
+
+**`enforce batch`** matches bare batch I/O (`runStandardVerifyWorkflowCliFlow`):
+
+| Exit | stdout | stderr |
+|------|--------|--------|
+| **3** | empty | one line JSON `cli-error-envelope` only |
+| **4** (lock mismatch only) | one line **`JSON.stringify(result)`** + newline (full `WorkflowResult`, same as verdict **0–2**) | content produced during `verifyWorkflow` **then** one **additional** final line: JSON envelope with **`VERIFICATION_OUTPUT_LOCK_MISMATCH`** (if **`--no-truth-report`**, stderr is **only** that envelope line) |
+| **0 / 1 / 2** | one line **`JSON.stringify(result)`** + newline | same as bare batch for **`--no-truth-report`** and human report behavior |
+
+**`enforce quick`** matches bare quick (`runQuickSubcommand`):
+
+| Exit | stdout | stderr |
+|------|--------|--------|
+| **3** | empty | one line envelope only |
+| **4** | one line **`stableStringify(report)`** + newline (full `QuickVerifyReport`) | **`formatQuickVerifyHumanReport`** output **then** one **additional** final line: **`VERIFICATION_OUTPUT_LOCK_MISMATCH`** envelope |
+| **0 / 1 / 2** | one line **`stableStringify(report)`** + newline | human quick report (same as bare quick) |
+
+**Lock file bytes (`--output-lock`):** **`stableStringify(lockObject) + "\n"`**, UTF-8; object must validate as **`ci-lock-v1`**.
+
+Substrings for contract tests: **enforce batch**, **enforce quick**, **JSON.stringify(result)**, **stableStringify(report)**, **VERIFICATION_OUTPUT_LOCK_MISMATCH**, **`--no-truth-report`**.
+
+<!-- etl:enforce-stream-contract:end -->
+
 ## Examples
 
 Bundled files under [`examples/`](../examples/): `seed.sql`, `tools.json`, `events.ndjson`.
 
 - **Onboarding:** run **`npm start`** or **`npm run first-run`** from the repository root (same command). The onboarding driver is [`scripts/first-run.mjs`](../scripts/first-run.mjs) (`npm run build && node scripts/first-run.mjs`). It seeds `examples/demo.db`, prints plain-language framing plus **human verification reports on stdout** (via a custom **`truthReport`** callback), then verifies workflows `wf_complete` (expect `complete` / `verified`) and `wf_missing` (expect `inconsistent` / `missing` / `ROW_ABSENT`). **`example:workflow-hook`:** run **`npm run example:workflow-hook`** for a minimal **`withWorkflowVerification`** + **`observeStep`** demo (SQLite temp DB, one event from **`examples/events.ndjson`**).
-- **CLI log streams:** For the CLI, a **human-readable verification report** is written to **stderr** and the machine-readable **workflow result JSON** to **stdout** on verdict exits **0–2** (default **`truthReport`**); full format is **[Human truth report](#human-truth-report)**. Repository README links use **`docs/execution-truth-layer.md#human-truth-report`** for that section.
+- **CLI log streams:** For the CLI, a **human-readable verification report** is written to **stderr** and the machine-readable **workflow result JSON** to **stdout** on verdict exits **0–2** (default **`truthReport`**); full format is **[Human truth report](#human-truth-report)**. Repository README links use **`docs/workflow-verifier.md#human-truth-report`** for that section.
 
 (Node may print an experimental warning for `node:sqlite` depending on version.)

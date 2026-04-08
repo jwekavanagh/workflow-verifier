@@ -1,5 +1,5 @@
 {
-  "$id": "https://execution-truth-layer/schemas/execution-trace-view.schema.json",
+  "$id": "https://workflow-verifier/schemas/execution-trace-view.schema.json",
   "title": "ExecutionTraceView",
   "type": "object",
   "additionalProperties": false,
