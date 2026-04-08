@@ -72,7 +72,7 @@ const verifyOpts = {
   },
 };
 
-println("Execution Truth Layer — first run");
+println("workflow-verifier — first run");
 println("");
 println(
   "We compare structured tool observations against read-only SQL—because an agent saying “done” is not proof a row exists with the right values.",

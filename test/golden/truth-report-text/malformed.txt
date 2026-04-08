@@ -1,0 +1,46 @@
+workflow_id: wf_complete
+workflow_status: incomplete
+trust: NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
+execution_path: execution_path_concerns=1; codes=RUN_LEVEL_INGEST_ISSUES
+  - path_finding: code=RUN_LEVEL_INGEST_ISSUES severity=high concern=capture_integrity scope=run_level codes=MALFORMED_EVENT_LINE,NO_STEPS_FOR_WORKFLOW
+    detail: Run-level ingest or parse issues (MALFORMED_EVENT_LINE, NO_STEPS_FOR_WORKFLOW).
+diagnosis:
+  summary: Run-level ingest or planning issue (MALFORMED_EVENT_LINE, NO_STEPS_FOR_WORKFLOW); origin: inputs.
+  primary_origin: inputs
+  confidence: medium
+  actionable_failure: category=bad_input severity=medium recommended_action=fix_event_ingest_and_steps automation_safe=false
+  - evidence: scope=run_level codes=MALFORMED_EVENT_LINE,NO_STEPS_FOR_WORKFLOW
+failure_explanation:
+expected: Verification expected a valid captured run for workflowId=wf_complete under policy [consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0] with no run-level ingest or planning failures.
+observed: Run-level failure: code=MALFORMED_EVENT_LINE detail=Event line was missing, invalid JSON, or failed schema validation for a tool observation..
+divergence: Divergence at run_level: code=MALFORMED_EVENT_LINE meaning=Event line was missing, invalid JSON, or failed schema validation for a tool observation.
+known_facts:
+  - id=trust_summary value=NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
+  - id=workflow_status value=incomplete
+  - id=verification_policy value=consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0
+  - id=primary_origin value=inputs
+  - id=classification_confidence value=medium
+  - id=failure_analysis_summary value=Run-level ingest or planning issue (MALFORMED_EVENT_LINE, NO_STEPS_FOR_WORKFLOW); origin: inputs.
+  - id=primary_scope value=run_level
+  - id=primary_codes value=MALFORMED_EVENT_LINE,NO_STEPS_FOR_WORKFLOW
+unknowns:
+  - id=classification_confidence_band value=medium
+correctness_definition:
+  enforcement_kind: run_ingest_integrity
+  must_always_hold: Must: ingest for workflowId=wf_complete SHALL deliver a valid captured run under policy [consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0] with no blocking run-level failures (codes: MALFORMED_EVENT_LINE,NO_STEPS_FOR_WORKFLOW).
+  enforce_as:
+    - Ingest pipelines SHALL validate each event line against the wire event contract before verification.
+    - CI or preflight SHALL reject captures that surface primary failure codes MALFORMED_EVENT_LINE,NO_STEPS_FOR_WORKFLOW for this workflow under the same policy.
+  enforceable_projection: {"projectionKind":"run_ingest_integrity","workflowId":"wf_complete","verificationPolicyFragment":"consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0","primaryFailureCodes":["MALFORMED_EVENT_LINE","NO_STEPS_FOR_WORKFLOW"],"ingestContractRequirement":"no_run_level_failures"}
+  remediation_alignment: recommended_action=fix_event_ingest_and_steps automation_safe=false
+run_level:
+  - detail: Event line was missing, invalid JSON, or failed schema validation for a tool observation.
+    category: workflow_execution
+    reference_code: MALFORMED_EVENT_LINE
+    user_meaning: Event line was missing, invalid JSON, or failed schema validation for a tool observation.
+  - detail: No tool_observed events for this workflow id after filtering.
+    category: workflow_execution
+    reference_code: NO_STEPS_FOR_WORKFLOW
+    user_meaning: No tool_observed events for this workflow id after filtering.
+event_sequence: normal
+steps:

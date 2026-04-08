@@ -76,7 +76,7 @@ export type ParsedBatchVerifyCli = {
 };
 
 /**
- * Parse argv for bare `verify-workflow` batch mode (no subcommand).
+ * Parse argv for bare `workflow-verifier` batch mode (no subcommand).
  * @throws TruthLayerError CLI_USAGE
  */
 export function parseBatchVerifyCliArgs(args: string[]): ParsedBatchVerifyCli {
@@ -136,7 +136,7 @@ export type ParsedQuickCli = {
 };
 
 /**
- * Parse argv for `verify-workflow quick` (after `quick` token).
+ * Parse argv for `workflow-verifier quick` (after `quick` token).
  * @throws TruthLayerError CLI_USAGE
  */
 export function parseQuickCliArgs(args: string[]): ParsedQuickCli {

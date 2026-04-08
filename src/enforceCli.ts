@@ -30,8 +30,8 @@ function writeCliError(code: string, message: string): void {
 
 function usageEnforce(): string {
   return `Usage:
-  verify-workflow enforce batch (--expect-lock <path> | --output-lock <path>) <same flags as batch verify>
-  verify-workflow enforce quick (--expect-lock <path> | --output-lock <path>) <same flags as quick>
+  workflow-verifier enforce batch (--expect-lock <path> | --output-lock <path>) <same flags as batch verify>
+  workflow-verifier enforce quick (--expect-lock <path> | --output-lock <path>) <same flags as quick>
 
 Exactly one of --expect-lock or --output-lock is required.
 

@@ -6,13 +6,13 @@
 
 ## A.1 CLI grammar
 
-Tokens: `verify-workflow quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path>` with optional `--emit-events <path>` and `--workflow-id <id>` (default `quick-verify`). `-` input = stdin. Missing flag or both DB flags = phase A.
+Tokens: `workflow-verifier quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path>` with optional `--emit-events <path>` and `--workflow-id <id>` (default `quick-verify`). `-` input = stdin. Missing flag or both DB flags = phase A.
 
 ## A.2 Phase A / B
 
 - **Phase A:** exit 3, stderr single JSON [`schemas/cli-error-envelope.schema.json`](../schemas/cli-error-envelope.schema.json), **no stdout bytes**.
 - **Phase B:** after successful registry atomic write and read-back (see **Registry file and canonical JSON** below), optionally atomic-write **`--emit-events`** (may be **zero bytes** when there are no exported row tools), then emit one stdout line: `stableStringify(report) + "\n"`, schema-valid; exit 0/1/2.
-- **`verify-workflow enforce quick`:** requires exactly one of **`--expect-lock`** or **`--output-lock`**; adds **exit 4** (lock mismatch). Full stdout/stderr rules and the authoritative exit table live only in [workflow-verifier.md — Enforce stream contract (normative)](workflow-verifier.md#enforce-stream-contract-normative) (do not duplicate that table here).
+- **`workflow-verifier enforce quick`:** requires exactly one of **`--expect-lock`** or **`--output-lock`**; adds **exit 4** (lock mismatch). Full stdout/stderr rules and the authoritative exit table live only in [workflow-verifier.md — Enforce stream contract (normative)](workflow-verifier.md#enforce-stream-contract-normative) (do not duplicate that table here).
 
 ## A.3 Registry file and canonical JSON
 
@@ -46,11 +46,15 @@ Tokens: `verify-workflow quick --input <path> (--postgres-url <url> | --db <sqli
 2. `Rollup (inferred, provisional): pass` or `: fail` or `: uncertain` (matches rollup; wording from `verdictLine` in **`src/quickVerify/quickVerifyHumanCopy.ts`**)
 3. `=== end quick-verify human report ===`
 
-Lines 4–6 after the anchors are **fixed banner** strings exported as `QUICK_VERIFY_BANNER_LINE_1`, `QUICK_VERIFY_BANNER_LINE_2`, and `QUICK_VERIFY_BANNER_LINE_3` from **`src/quickVerify/formatQuickVerifyHumanReport.ts`**. Additional prose after those lines may change without bumping `quickVerifyVersion`. Integrators must use **stdout JSON** and **exit codes** for automation.
+Lines 4–6 after the anchors are **fixed banner** strings exported as `QUICK_VERIFY_BANNER_LINE_1`, `QUICK_VERIFY_BANNER_LINE_2`, and `QUICK_VERIFY_BANNER_LINE_3` from **`src/quickVerify/formatQuickVerifyHumanReport.ts`**.
+
+Under each **unit** bullet (after that unit’s summary line), the formatter emits **exactly four** lines in dimension-ID order, using the same prefixes as [`src/reconciliationPresentation.ts`](../src/reconciliationPresentation.ts): `declared:`, `expected:`, `observed_database:`, `verification_verdict:` — values are copied **only** from **`report.units[i].reconciliation`** on stdout JSON (see [verification-product-ssot.md — Reconciliation vocabulary](verification-product-ssot.md#reconciliation-vocabulary-canonical)).
+
+Additional prose after those lines may change without bumping `quickVerifyVersion`. Integrators must use **stdout JSON** and **exit codes** for automation.
 
 ## Appendix H — Human copy identifiers (normative names only)
 
-English text for ingest lines and unit reason hints is defined in **`src/quickVerify/quickVerifyHumanCopy.ts`** (ingest messages and imports from **`src/verificationUserPhrases.ts`**). Banner lines: **`src/quickVerify/formatQuickVerifyHumanReport.ts`**. Machine **non-guarantee** and **declared / expected / observed** copy on stdout: **`src/quickVerify/quickVerifyProductTruth.ts`** (field `productTruth` on `QuickVerifyReport`, `schemaVersion` **3**). Identifiers include at least: `MSG_NO_TOOL_CALLS`, `MSG_NO_STRUCTURED_TOOL_ACTIVITY`, `HUMAN_REPORT_BEGIN`, `HUMAN_REPORT_END`, `QUICK_VERIFY_BANNER_LINE_1`, `QUICK_VERIFY_BANNER_LINE_2`, `QUICK_VERIFY_BANNER_LINE_3`, `verdictLine`, `humanLineForIngestReasonCode`, `humanFragmentForReasonCode`. Do not duplicate the strings in this doc outside a fenced block that cites one of those file paths.
+English text for ingest lines and unit reason hints is defined in **`src/quickVerify/quickVerifyHumanCopy.ts`** (ingest messages and imports from **`src/verificationUserPhrases.ts`**). Banner lines and per-unit reconciliation stderr lines: **`src/quickVerify/formatQuickVerifyHumanReport.ts`** (stderr values must mirror **`units[].reconciliation`** only). Machine **non-guarantee** and **declared / expected / observed** copy on stdout: **`src/quickVerify/quickVerifyProductTruth.ts`** (field `productTruth` on `QuickVerifyReport`, `schemaVersion` **4**). Identifiers include at least: `MSG_NO_TOOL_CALLS`, `MSG_NO_STRUCTURED_TOOL_ACTIVITY`, `HUMAN_REPORT_BEGIN`, `HUMAN_REPORT_END`, `QUICK_VERIFY_BANNER_LINE_1`, `QUICK_VERIFY_BANNER_LINE_2`, `QUICK_VERIFY_BANNER_LINE_3`, `verdictLine`, `humanLineForIngestReasonCode`, `humanFragmentForReasonCode`. Do not duplicate the strings in this doc outside a fenced block that cites one of those file paths.
 
 ---
 
@@ -159,4 +163,4 @@ Row: SELECT LIMIT 2; 0 rows `ROW_ABSENT`; ≥2 `DUPLICATE_ROWS`; else scalar com
 Report `scope.quickVerifyVersion` = `1.1.0`; `scope.capabilities` = fixed enum array `["inferred_row","inferred_related_exists"]`; `scope.ingestContract` = `structured_tool_activity`; `scope.groundTruth` = `read_only_sql`; `scope.limitations` = fixed tuple  
 `["quick_verify_inferred_row_and_related_exists_only","no_multi_effect_contract","no_destructive_or_forbidden_row_contract","contract_replay_export_row_tools_only"]` (see schema).
 
-Report `schemaVersion` is **3** (includes required `productTruth`: what verification does **not** prove, and **declared / expected / observed** layer copy; non-pass units require `correctnessDefinition` per schema). Report `verificationMode` is always **`inferred`**. Per-unit `sourceAction` and `contractEligible` and merged row `verification` fields are defined only in [`schemas/quick-verify-report.schema.json`](../schemas/quick-verify-report.schema.json)—do not restate here.
+Report `schemaVersion` is **4** (includes required `productTruth`, required per-unit **`reconciliation`** with four string fields, and **declared / expected / observed** layer copy; non-pass units require `correctnessDefinition` per schema). Report `verificationMode` is always **`inferred`**. Per-unit `sourceAction` and `contractEligible` and merged row `verification` fields are defined only in [`schemas/quick-verify-report.schema.json`](../schemas/quick-verify-report.schema.json)—do not restate here.

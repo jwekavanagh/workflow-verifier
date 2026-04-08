@@ -1,0 +1,48 @@
+workflow_id: wf_uncertain
+workflow_status: incomplete
+trust: NOT TRUSTED: At least one step could not be confirmed within the verification window (row not observed; replication or processing delay is possible).
+execution_path: Full upstream execution-path visibility requires schemaVersion 2 run events (retrieval, model_turn, control, tool_skipped) with run graph fields.
+diagnosis:
+  summary: Primary failure at seq 0 tool t (code ROW_NOT_OBSERVED_WITHIN_WINDOW); origin: downstream_system_state.
+  primary_origin: downstream_system_state
+  confidence: high
+  actionable_failure: category=downstream_execution_failure severity=medium recommended_action=improve_read_connectivity automation_safe=false
+  - evidence: scope=step codes=ROW_NOT_OBSERVED_WITHIN_WINDOW seq=0 tool=t
+failure_explanation:
+expected: Verification expected post-execution database state to satisfy verify_target "null" and intended_effect "(no message)" for seq=0 toolId=t under policy [consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0].
+observed: Step verification outcome: code=ROW_NOT_OBSERVED_WITHIN_WINDOW detail=No row within window
+divergence: Divergence at step seq=0 toolId=t: primary_code=ROW_NOT_OBSERVED_WITHIN_WINDOW meaning=The expected row did not show up within the verification window.
+known_facts:
+  - id=trust_summary value=NOT TRUSTED: At least one step could not be confirmed within the verification window (row not observed; replication or processing delay is possible).
+  - id=workflow_status value=incomplete
+  - id=verification_policy value=consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0
+  - id=primary_origin value=downstream_system_state
+  - id=classification_confidence value=high
+  - id=failure_analysis_summary value=Primary failure at seq 0 tool t (code ROW_NOT_OBSERVED_WITHIN_WINDOW); origin: downstream_system_state.
+  - id=primary_scope value=step
+  - id=primary_codes value=ROW_NOT_OBSERVED_WITHIN_WINDOW
+  - id=primary_tool_id value=t
+  - id=primary_seq value=0
+  - id=verify_target value=null
+  - id=intended_effect_narrative value=(no message)
+unknowns:
+correctness_definition:
+  enforcement_kind: step_sql_expectation
+  must_always_hold: Must: after tool_observed seq=0 toolId=t, database state SHALL satisfy the verification contract in verificationRequest under policy [consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0] for workflowId=wf_uncertain.
+  enforce_as:
+    - Registry (or synthetic events plus registry) SHALL keep verificationRequest aligned with declared tool parameters for seq=0.
+    - Authoritative SQL state SHALL match identity, required fields, and relational checks encoded in verificationRequest.
+  enforceable_projection: {"projectionKind":"step_sql_expectation","workflowId":"wf_uncertain","verificationPolicyFragment":"consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0","seq":0,"toolId":"t","verificationRequest":null}
+  remediation_alignment: recommended_action=improve_read_connectivity automation_safe=false
+run_level: (none)
+event_sequence: normal
+steps:
+  - seq=0 tool=t
+    declared: tool=t; intent=(none); parameters_digest={}
+    expected: (none — no resolvable SQL expectation)
+    observed_database: No SQL verification request (registry resolution or unknown tool).
+    verification_verdict: outcome=UNCERTAIN_NOT_OBSERVED_WITHIN_WINDOW; The expected row did not appear within the verification window.; failure_category=observation_uncertainty
+    observations: evaluated=1 of 1 in_capture_order
+    detail: No row within window
+    reference_code: ROW_NOT_OBSERVED_WITHIN_WINDOW
+    user_meaning: The expected row did not show up within the verification window.

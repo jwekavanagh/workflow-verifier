@@ -244,7 +244,7 @@ describe("Verification against system state (requirements)", () => {
 
     const human = formatWorkflowTruthReportStruct(r.workflowTruthReport);
     expect(human).toContain("seq=0 tool=crm.upsert_contact_multi");
-    expect(human).toContain("verify_target:");
+    expect(human).toContain("expected:");
     expect(human).toContain("effect: id=");
     expect(human).toContain("reference_code: ROW_ABSENT");
   });

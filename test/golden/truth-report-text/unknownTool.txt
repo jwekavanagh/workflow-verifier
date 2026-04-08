@@ -1,0 +1,50 @@
+workflow_id: wf_unknown_tool
+workflow_status: incomplete
+trust: NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
+execution_path: execution_path_concerns=1; codes=ACTION_INPUT_RESOLUTION_FAILED
+  - path_finding: code=ACTION_INPUT_RESOLUTION_FAILED severity=high concern=action_inputs_invalid scope=step codes=UNKNOWN_TOOL seq=0 tool=nope.tool
+    detail: Tool nope.tool at seq 0: parameter/registry resolution failed (UNKNOWN_TOOL).
+diagnosis:
+  summary: Primary failure at seq 0 tool nope.tool (code UNKNOWN_TOOL); origin: tool_use.
+  primary_origin: tool_use
+  confidence: high
+  actionable_failure: category=bad_input severity=medium recommended_action=correct_verification_inputs automation_safe=false
+  - evidence: scope=step codes=UNKNOWN_TOOL seq=0 tool=nope.tool
+failure_explanation:
+expected: Verification expected post-execution database state to satisfy verify_target "null" and intended_effect "Unknown tool: nope.tool" for seq=0 toolId=nope.tool under policy [consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0].
+observed: Step verification outcome: code=UNKNOWN_TOOL detail=Unknown toolId: nope.tool
+divergence: Divergence at step seq=0 toolId=nope.tool: primary_code=UNKNOWN_TOOL meaning=The tool is not defined in the registry (or could not be resolved).
+known_facts:
+  - id=trust_summary value=NOT TRUSTED: Verification is incomplete; the workflow cannot be fully confirmed.
+  - id=workflow_status value=incomplete
+  - id=verification_policy value=consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0
+  - id=primary_origin value=tool_use
+  - id=classification_confidence value=high
+  - id=failure_analysis_summary value=Primary failure at seq 0 tool nope.tool (code UNKNOWN_TOOL); origin: tool_use.
+  - id=primary_scope value=step
+  - id=primary_codes value=UNKNOWN_TOOL
+  - id=primary_tool_id value=nope.tool
+  - id=primary_seq value=0
+  - id=verify_target value=null
+  - id=intended_effect_narrative value=Unknown tool: nope.tool
+unknowns:
+correctness_definition:
+  enforcement_kind: step_sql_expectation
+  must_always_hold: Must: after tool_observed seq=0 toolId=nope.tool, database state SHALL satisfy the verification contract in verificationRequest under policy [consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0] for workflowId=wf_unknown_tool.
+  enforce_as:
+    - Registry (or synthetic events plus registry) SHALL keep verificationRequest aligned with declared tool parameters for seq=0.
+    - Authoritative SQL state SHALL match identity, required fields, and relational checks encoded in verificationRequest.
+  enforceable_projection: {"projectionKind":"step_sql_expectation","workflowId":"wf_unknown_tool","verificationPolicyFragment":"consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0","seq":0,"toolId":"nope.tool","verificationRequest":null}
+  remediation_alignment: recommended_action=correct_verification_inputs automation_safe=false
+run_level: (none)
+event_sequence: normal
+steps:
+  - seq=0 tool=nope.tool
+    declared: tool=nope.tool; intent=Unknown tool: nope.tool; parameters_digest={}
+    expected: (none — no resolvable SQL expectation)
+    observed_database: No SQL verification request (registry resolution or unknown tool).
+    verification_verdict: outcome=INCOMPLETE_CANNOT_VERIFY; This step could not be fully verified (registry, connector, or data shape issue).; failure_category=verification_setup
+    observations: evaluated=1 of 1 in_capture_order
+    detail: Unknown toolId: nope.tool
+    reference_code: UNKNOWN_TOOL
+    user_meaning: The tool is not defined in the registry (or could not be resolved).

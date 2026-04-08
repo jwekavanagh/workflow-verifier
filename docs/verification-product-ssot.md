@@ -16,6 +16,19 @@ Across **Quick Verify** and **contract** verification:
 2. **Expected** — What should hold in SQL: **quick** = **inferred** from declared parameters (provisional); **contract** = **registry-resolved** from events.
 3. **Observed** — What **read-only SQL** returned at verification time.
 
+## Reconciliation vocabulary (canonical)
+
+**Single implementation source:** [`src/reconciliationPresentation.ts`](../src/reconciliationPresentation.ts) exports stable dimension IDs, HTML `<th>` titles, stderr line prefixes, batch **`formatBatchObservedStateSummary`**, and Quick **`buildQuickUnitReconciliation`**. **Do not** duplicate these strings in product code outside that module and tests.
+
+**Trust boundary** for this table matches [What this does **not** prove](#what-this-does-not-prove-trust-boundary): **observed** is snapshot SQL ground truth, not proof of execution.
+
+| Dimension ID (`data-etl-dimension`, Quick `units[].reconciliation` keys) | Human title (trust panel `<th>`) | Stderr / human line prefix (exact) | Batch JSON fields (per truth step) | Quick JSON (per unit) |
+|--------------------------------------------------------------------------|----------------------------------|------------------------------------|--------------------------------------|-------------------------|
+| `declared` | Declared | `declared: ` | `toolId`, `intendedEffect.narrative`, `observedExecution.paramsCanonical` (stderr packs these into one line; see [`workflow-verifier.md` — Human truth report](workflow-verifier.md#human-truth-report)) | `reconciliation.declared` |
+| `expected` | Expected | `expected: ` | `verifyTarget` (`null` → sentinel in stderr) | `reconciliation.expected` |
+| `observed_database` | Observed (database) | `observed_database: ` | **`observedStateSummary`** (required, **`schemaVersion` 9**) | `reconciliation.observed_database` |
+| `verification_verdict` | Verification verdict | `verification_verdict: ` | `outcomeLabel`, human phrase, optional `failureCategory` (stderr packs into one line) | `reconciliation.verification_verdict` |
+
 ## Product category
 
 You are a **state verification engine for agent-driven systems** that have **SQL ground truth**. You are **not** a logging, tracing, or general observability product, and you are **not** a substitute for tests of application code paths.
@@ -32,10 +45,10 @@ You are a **state verification engine for agent-driven systems** that have **SQL
 | Subject | Authoritative location | Elsewhere |
 |---------|-------------------------|-----------|
 | Ingest ladder L0–L5, `extractActions`, thresholds (`T_TABLE`, …), dedupe, decomposition, rollup, CLI phase ordering, registry bytes, human stderr anchor rules | [`quick-verify-normative.md`](quick-verify-normative.md) | Link only; never copy thresholds or ladder text |
-| `QuickVerifyReport` JSON shape (`schemaVersion` **3**, `productTruth`, `units[].correctnessDefinition` on non-pass, …) | [`schemas/quick-verify-report.schema.json`](../schemas/quick-verify-report.schema.json) | Normative doc links schema; no second field catalog |
+| `QuickVerifyReport` JSON shape (`schemaVersion` **4**, `productTruth`, required `units[].reconciliation`, `units[].correctnessDefinition` on non-pass, …) | [`schemas/quick-verify-report.schema.json`](../schemas/quick-verify-report.schema.json) | Normative doc links schema; no second field catalog |
 | **Correctness definition** (forward MUST + `enforceableProjection` on batch truth + quick non-pass units) | [`correctness-definition-normative.md`](correctness-definition-normative.md), [`schemas/workflow-truth-report.schema.json`](../schemas/workflow-truth-report.schema.json) | Batch human stderr: `correctness_definition:` in [`workflow-verifier.md`](workflow-verifier.md); trust boundary unchanged |
 | User-facing English strings for quick verify (exact wording) | [`src/quickVerify/quickVerifyHumanCopy.ts`](../src/quickVerify/quickVerifyHumanCopy.ts), [`src/quickVerify/formatQuickVerifyHumanReport.ts`](../src/quickVerify/formatQuickVerifyHumanReport.ts) (banner lines), [`src/quickVerify/quickVerifyProductTruth.ts`](../src/quickVerify/quickVerifyProductTruth.ts) (stdout `productTruth`), [`src/verificationUserPhrases.ts`](../src/verificationUserPhrases.ts) (reason `user_meaning`) | Appendix H in normative lists **identifiers** only |
-| `verifyWorkflow`, batch CLI, registry resolution, Postgres read-only session, `WorkflowResult` | [`workflow-verifier.md`](workflow-verifier.md) | This doc links there for batch semantics |
+| `verifyWorkflow`, batch CLI, registry resolution, Postgres read-only session, `WorkflowResult` (embedded **`workflowTruthReport.schemaVersion` 9**, required **`observedStateSummary`**) | [`workflow-verifier.md`](workflow-verifier.md) | This doc links there for batch semantics; reconciliation vocabulary: [above](#reconciliation-vocabulary-canonical) |
 | **CI enforcement** (`enforce`, `ci-lock-v1`, bootstrap vs expect-lock recipe) | [`ci-enforcement.md`](ci-enforcement.md), [`schemas/ci-lock-v1.schema.json`](../schemas/ci-lock-v1.schema.json), [Enforce stream contract](workflow-verifier.md#enforce-stream-contract-normative) in [`workflow-verifier.md`](workflow-verifier.md) | Lock field list only in schema; streams only in workflow-verifier |
 | **Assurance** (`assurance run` / `assurance stale`, manifest + run report, staleness) | [Assurance subsystem](workflow-verifier.md#assurance-subsystem-normative) in [`workflow-verifier.md`](workflow-verifier.md), [`schemas/assurance-manifest-v1.schema.json`](../schemas/assurance-manifest-v1.schema.json), [`schemas/assurance-run-report-v1.schema.json`](../schemas/assurance-run-report-v1.schema.json) | Example manifest: [`examples/assurance/manifest.json`](../examples/assurance/manifest.json); scheduled workflow: [`.github/workflows/assurance-scheduled.yml`](../.github/workflows/assurance-scheduled.yml) |
 | Repo entry, onboarding path | [`README.md`](../README.md) | No algorithm copy |
@@ -63,10 +76,10 @@ Quick Verify is **provisional**: inference-based mapping, **uncertain** as a nor
 
 ## For integrators
 
-- **Machine contract:** one **stdout** JSON line (`QuickVerifyReport`, **`schemaVersion` 3**), **exit code** 0/1/2/3, and on operational failure a **single-line JSON envelope** on stderr.
+- **Machine contract:** one **stdout** JSON line (`QuickVerifyReport`, **`schemaVersion` 4**), **exit code** 0/1/2/3, and on operational failure a **single-line JSON envelope** on stderr.
 - **Do not** parse human stderr for automation. stderr begins with three **fixed** anchor lines (see [`quick-verify-normative.md`](quick-verify-normative.md) § A.3a); remaining lines are user-facing only.
 - **Contract replay** (repeatable batch path, **partial** vs quick scope): after quick, run  
-  `verify-workflow --workflow-id <id> --events <emit-path> --registry <export-path> --db <sqlitePath>`  
+  `workflow-verifier --workflow-id <id> --events <emit-path> --registry <export-path> --db <sqlitePath>`  
   (or **`--postgres-url`**) with the same DB snapshot. Row tools in the export file align with synthetic events by `toolId` and `seq`. Treat this as **row-tool replay**, not “everything quick checked is now contract-checked.”
 
 ## For operators
@@ -76,7 +89,7 @@ Quick Verify is **provisional**: inference-based mapping, **uncertain** as a nor
 
 ## Time to first meaningful result (Story 5)
 
-`validate-ttfv` (see [`scripts/validate-ttfv.mjs`](../scripts/validate-ttfv.mjs) and [`scripts/lib/quickVerifyPostbuildGate.mjs`](../scripts/lib/quickVerifyPostbuildGate.mjs)) runs **after** a successful **`npm run build`**. It enforces a **spawn timeout** and post-run wall clock (**120s**), parses the **stdout** **`QuickVerifyReport`** line (**`schemaVersion` 3**), and checks that the **exported registry file** matches **`canonicalToolsArrayUtf8`** of the report’s tools. `npm install` duration is network-bound and excluded. A run that completes within three minutes on CI hardware is sufficient evidence that a typical user can reach a first meaningful result within thirty minutes including reading the README and supplying structured tool activity (file or stdin).
+`validate-ttfv` (see [`scripts/validate-ttfv.mjs`](../scripts/validate-ttfv.mjs) and [`scripts/lib/quickVerifyPostbuildGate.mjs`](../scripts/lib/quickVerifyPostbuildGate.mjs)) runs **after** a successful **`npm run build`**. It enforces a **spawn timeout** and post-run wall clock (**120s**), parses the **stdout** **`QuickVerifyReport`** line (**`schemaVersion` 4**), and checks that the **exported registry file** matches **`canonicalToolsArrayUtf8`** of the report’s tools. `npm install` duration is network-bound and excluded. A run that completes within three minutes on CI hardware is sufficient evidence that a typical user can reach a first meaningful result within thirty minutes including reading the README and supplying structured tool activity (file or stdin).
 
 ## Why contract replay is row-only (today)
 

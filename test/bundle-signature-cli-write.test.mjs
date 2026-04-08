@@ -1,5 +1,5 @@
 /**
- * verify-workflow --write-run-bundle + --sign-ed25519-private-key emits v2 bundle; verify-bundle-signature OK.
+ * workflow-verifier --write-run-bundle + --sign-ed25519-private-key emits v2 bundle; verify-bundle-signature OK.
  */
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -33,7 +33,7 @@ describe("CLI signed run bundle", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it("verify-workflow with signing writes v2; sidecar hash matches; verify-bundle-signature exits 0", () => {
+  it("workflow-verifier with signing writes v2; sidecar hash matches; verify-bundle-signature exits 0", () => {
     const eventsPath = join(root, "examples", "events.ndjson");
     const registryPath = join(root, "examples", "tools.json");
     const wfId = "wf_complete";

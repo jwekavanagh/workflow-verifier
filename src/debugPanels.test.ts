@@ -172,7 +172,7 @@ describe("debugPanels", () => {
     expect(html).toContain(VERIFICATION_BASIS_LINE);
     expect(html).toContain('data-etl-table="verify-evidence"');
     expect(html).toContain('data-etl-seq="0"');
-    expect(html).toContain('data-etl-field="sql-evidence"');
+    expect(html).toContain('data-etl-dimension="observed_database"');
     expect(html).toContain("rowCount=1");
   });
 

@@ -27,7 +27,7 @@ describe("Quick Verify Postgres", () => {
       inputUtf8: passLine,
       postgresUrl: verifyUrl,
     });
-    assert.equal(report.schemaVersion, 3);
+    assert.equal(report.schemaVersion, 4);
     assert.deepEqual(report.productTruth, DEFAULT_QUICK_VERIFY_PRODUCT_TRUTH);
     assert.equal(report.verdict, "pass");
     const v = loadSchemaValidator("quick-verify-report");

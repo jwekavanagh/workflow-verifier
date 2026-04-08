@@ -1,6 +1,6 @@
 {
   "verificationBasisSubstring": "Verification outcomes below are from read-only SQL reconciliation",
-  "sqlEvidenceSubstring": "rowCount=1",
+  "observedDatabaseSubstring": "rowCount=1",
   "executionPathEmpty": "No execution-path concerns recorded for this run.",
   "executionPathFindingCode": "NO_RETRIEVAL_EVENTS"
 }

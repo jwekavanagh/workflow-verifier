@@ -55,7 +55,7 @@ describe("buildWorkflowTruthReport (formatter-independent semantics)", () => {
       steps: [verifiedStep(0, "t1")],
     };
     const truth = buildWorkflowTruthReport(engine);
-    expect(truth.schemaVersion).toBe(8);
+    expect(truth.schemaVersion).toBe(9);
     expect(truth.failureAnalysis).toBeNull();
     expect(truth.failureExplanation).toBeNull();
     expect(truth.executionPathFindings).toEqual([]);

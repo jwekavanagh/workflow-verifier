@@ -6,7 +6,7 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "verify-workflow": "dist/cli.js"
+    "workflow-verifier": "dist/cli.js"
   },
   "scripts": {
     "build": "node scripts/sync-failure-origin-from-schema.mjs && tsc && node scripts/copy-debug-ui.mjs",
@@ -21,7 +21,7 @@
     "test:debug-ui": "playwright test",
     "test:ci": "npm run build && npm run test:vitest && npm run test:node:sqlite && node examples/minimal-ci-enforcement/run.mjs && node dist/cli.js assurance run --manifest examples/assurance/manifest.json && npm run test:postgres && npx playwright install chromium && npm run test:debug-ui && npm run validate-ttfv",
     "example:workflow-hook": "npm run build && node examples/workflow-runner.mjs",
-    "verify-workflow": "node dist/cli.js",
+    "workflow-verifier": "node dist/cli.js",
     "migrate:workflow-result-v11": "npm run build && node scripts/migrate-workflow-result-v11.mjs",
     "migrate:workflow-result-v12": "node scripts/migrate-workflow-result-v12.mjs",
     "migrate:workflow-result-v13": "npm run build && node scripts/migrate-workflow-result-v13.mjs",

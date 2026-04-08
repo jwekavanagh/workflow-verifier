@@ -27,7 +27,7 @@ export type OperationalDispositionRow = {
 export const OPERATIONAL_DISPOSITION = {
   [CLI_OPERATIONAL_CODES.CLI_USAGE]: {
     origin: "inputs",
-    summary: "Invalid or incomplete CLI arguments for verify-workflow.",
+    summary: "Invalid or incomplete CLI arguments for workflow-verifier.",
     actionableCategory: "bad_input",
     actionableSeverity: "low",
     recommendedAction: "fix_cli_usage",
@@ -99,7 +99,7 @@ export const OPERATIONAL_DISPOSITION = {
   },
   [CLI_OPERATIONAL_CODES.INTERNAL_ERROR]: {
     origin: "workflow_flow",
-    summary: "Unexpected internal error in the execution truth layer.",
+    summary: "Unexpected internal error in workflow-verifier.",
     actionableCategory: "control_flow_problem",
     actionableSeverity: "high",
     recommendedAction: "manual_review",
@@ -107,7 +107,7 @@ export const OPERATIONAL_DISPOSITION = {
   },
   [CLI_OPERATIONAL_CODES.COMPARE_USAGE]: {
     origin: "workflow_flow",
-    summary: "Invalid or incomplete arguments for verify-workflow compare.",
+    summary: "Invalid or incomplete arguments for workflow-verifier compare.",
     actionableCategory: "bad_input",
     actionableSeverity: "low",
     recommendedAction: "fix_cli_usage",
@@ -243,7 +243,7 @@ export const OPERATIONAL_DISPOSITION = {
   },
   [CLI_OPERATIONAL_CODES.PLAN_TRANSITION_USAGE]: {
     origin: "inputs",
-    summary: "Invalid or incomplete arguments for verify-workflow plan-transition.",
+    summary: "Invalid or incomplete arguments for workflow-verifier plan-transition.",
     actionableCategory: "bad_input",
     actionableSeverity: "low",
     recommendedAction: "fix_plan_transition_cli_and_refs",
@@ -343,7 +343,7 @@ export const OPERATIONAL_DISPOSITION = {
   },
   [CLI_OPERATIONAL_CODES.ENFORCE_USAGE]: {
     origin: "inputs",
-    summary: "Invalid or incomplete arguments for verify-workflow enforce.",
+    summary: "Invalid or incomplete arguments for workflow-verifier enforce.",
     actionableCategory: "bad_input",
     actionableSeverity: "low",
     recommendedAction: "fix_cli_usage",
@@ -367,7 +367,7 @@ export const OPERATIONAL_DISPOSITION = {
   },
   [CLI_OPERATIONAL_CODES.ASSURANCE_USAGE]: {
     origin: "inputs",
-    summary: "Invalid or incomplete arguments for verify-workflow assurance.",
+    summary: "Invalid or incomplete arguments for workflow-verifier assurance.",
     actionableCategory: "bad_input",
     actionableSeverity: "low",
     recommendedAction: "fix_cli_usage",
@@ -447,7 +447,7 @@ export const OPERATIONAL_DISPOSITION = {
   },
   [CLI_OPERATIONAL_CODES.ASSURANCE_STALE_USAGE]: {
     origin: "inputs",
-    summary: "Invalid or incomplete arguments for verify-workflow assurance stale.",
+    summary: "Invalid or incomplete arguments for workflow-verifier assurance stale.",
     actionableCategory: "bad_input",
     actionableSeverity: "low",
     recommendedAction: "fix_cli_usage",

@@ -287,12 +287,12 @@ describe("stderr category parity with JSON failureDiagnostic", () => {
       ],
     };
     const text = formatWorkflowTruthReport(result);
-    expect(text).toContain("category: workflow_execution");
-    expect(text).toContain("category: verification_setup");
-    expect(text).toContain("verify_target:");
+    expect(text).toContain("failure_category=workflow_execution");
+    expect(text).toContain("failure_category=verification_setup");
+    expect(text).toContain("expected:");
     const block0 = text.split("  - seq=0 ")[1]!.split("  - seq=1 ")[0]!;
-    expect(block0).toContain(`category: ${result.steps[0]!.failureDiagnostic}`);
+    expect(block0).toContain(`failure_category=${result.steps[0]!.failureDiagnostic}`);
     const block1 = text.split("  - seq=1 ")[1]!;
-    expect(block1).toContain(`category: ${result.steps[1]!.failureDiagnostic}`);
+    expect(block1).toContain(`failure_category=${result.steps[1]!.failureDiagnostic}`);
   });
 });

@@ -15,7 +15,7 @@
     "productTruth"
   ],
   "properties": {
-    "schemaVersion": { "type": "integer", "const": 3 },
+    "schemaVersion": { "type": "integer", "const": 4 },
     "verdict": { "type": "string", "enum": ["pass", "fail", "uncertain"] },
     "summary": { "type": "string", "minLength": 1 },
     "verificationMode": { "type": "string", "const": "inferred" },
@@ -93,7 +93,8 @@
               "contractEligible",
               "inference",
               "verification",
-              "explanation"
+              "explanation",
+              "reconciliation"
             ],
             "properties": {
               "unitId": { "type": "string", "minLength": 1 },
@@ -141,6 +142,17 @@
                 "additionalProperties": true
               },
               "explanation": { "type": "string", "minLength": 1 },
+              "reconciliation": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["declared", "expected", "observed_database", "verification_verdict"],
+                "properties": {
+                  "declared": { "type": "string" },
+                  "expected": { "type": "string" },
+                  "observed_database": { "type": "string" },
+                  "verification_verdict": { "type": "string" }
+                }
+              },
               "correctnessDefinition": {
                 "$ref": "https://workflow-verifier/schemas/workflow-truth-report.schema.json#/$defs/correctnessDefinitionV1"
               }

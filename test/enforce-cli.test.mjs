@@ -1,5 +1,5 @@
 /**
- * verify-workflow enforce: XOR flags, expect-lock, output-lock, exit 4 stream contract.
+ * workflow-verifier enforce: XOR flags, expect-lock, output-lock, exit 4 stream contract.
  */
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";

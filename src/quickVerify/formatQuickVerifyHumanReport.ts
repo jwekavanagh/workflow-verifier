@@ -1,3 +1,9 @@
+import {
+  LINE_PREFIX_DECLARED,
+  LINE_PREFIX_EXPECTED,
+  LINE_PREFIX_OBSERVED_DATABASE,
+  LINE_PREFIX_VERIFICATION_VERDICT,
+} from "../reconciliationPresentation.js";
 import type { QuickVerifyReport } from "./runQuickVerify.js";
 import {
   HUMAN_REPORT_BEGIN,
@@ -59,6 +65,10 @@ export function formatQuickVerifyHumanReport(
     );
     body.push(`  ${u.explanation}`);
     body.push(`  codes: ${rc}${frag ? ` — ${frag}` : ""}`);
+    body.push(`  ${LINE_PREFIX_DECLARED}${u.reconciliation.declared}`);
+    body.push(`  ${LINE_PREFIX_EXPECTED}${u.reconciliation.expected}`);
+    body.push(`  ${LINE_PREFIX_OBSERVED_DATABASE}${u.reconciliation.observed_database}`);
+    body.push(`  ${LINE_PREFIX_VERIFICATION_VERDICT}${u.reconciliation.verification_verdict}`);
     if (u.correctnessDefinition !== undefined) {
       const cd = u.correctnessDefinition;
       body.push(`  correctness_definition: enforcement_kind=${cd.enforcementKind}`);
@@ -84,7 +94,7 @@ export function formatQuickVerifyHumanReport(
       ? `--db ${ctx.dbFlag}`
       : `--db <sqlitePath>`;
   body.push(
-    `Optional contract replay (partial coverage — exported row tools only; not full relational/multi-effect parity with quick scope): verify-workflow --workflow-id ${wf} --events ${ev} --registry ${reg} ${dbPart}`,
+    `Optional contract replay (partial coverage — exported row tools only; not full relational/multi-effect parity with quick scope): workflow-verifier --workflow-id ${wf} --events ${ev} --registry ${reg} ${dbPart}`,
   );
 
   const anchors = [HUMAN_REPORT_BEGIN, verdictLine(report.verdict), HUMAN_REPORT_END];
