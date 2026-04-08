@@ -18,7 +18,7 @@
     "executionPathSummary"
   ],
   "properties": {
-    "schemaVersion": { "const": 8 },
+    "schemaVersion": { "const": 9 },
     "workflowId": { "type": "string" },
     "workflowStatus": {
       "type": "string",
@@ -409,7 +409,8 @@
             "reasons",
             "intendedEffect",
             "observedExecution",
-            "verifyTarget"
+            "verifyTarget",
+            "observedStateSummary"
           ],
           "properties": {
             "seq": { "type": "integer", "minimum": 0 },
@@ -465,6 +466,7 @@
             "verifyTarget": {
               "type": ["string", "null"]
             },
+            "observedStateSummary": { "type": "string" },
             "effects": {
               "type": "array",
               "minItems": 1,

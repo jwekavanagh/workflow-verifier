@@ -14,9 +14,9 @@ It does **not** replace full **`WorkflowResult`** / **`QuickVerifyReport`** on s
 ## Automation recipe
 
 1. **Bootstrap (once per scenario):** run  
-   `verify-workflow enforce batch … --output-lock path/to/scenario.ci-lock-v1.json`  
+   `workflow-verifier enforce batch … --output-lock path/to/scenario.ci-lock-v1.json`  
    or  
-   `verify-workflow enforce quick … --output-lock path/to/scenario.ci-lock-v1.json`  
+   `workflow-verifier enforce quick … --output-lock path/to/scenario.ci-lock-v1.json`  
    Commit the file.
 2. **CI gate:** run the same command line with **`--expect-lock`** pointing at the committed file instead of **`--output-lock`**. Exactly one of the two flags is required.
 3. **Review:** when intentional product changes alter pinned semantics, update the lock in the same change.

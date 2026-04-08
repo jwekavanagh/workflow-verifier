@@ -44,8 +44,8 @@ This work does **not** introduce a second storage format.
 1. **Preserve:** Call **`writeAgentRunBundle({ outDir, eventsNdjson, workflowResult })`**. The **`runId`** in `agent-run.json` is **`path.basename(path.resolve(outDir))`**, matching today’s CLI. **`workflowResult.workflowId`** must equal the manifest’s `workflowId` (same rule as [`buildAgentRunRecordForBundle`](src/agentRunRecord.ts) today).
 2. **Link:** `agent-run.json` holds **`artifacts.events`** and **`artifacts.workflowResult`** with **`relativePath`**, **`byteLength`**, **`sha256`** (hex). Integrity is **exact byte equality**, not semantic re-parse.
 3. **Retrieve (programmatic):** Call **`loadCorpusRun(corpusRoot, runId)`** (already exported from [`src/index.ts`](src/index.ts) / [`src/debugCorpus.ts`](src/debugCorpus.ts)). **`corpusRoot`** is the parent directory whose child **`runId`** is the run folder. Success is **`loadStatus === "ok"`**, which yields **`workflowResult`**, **`agentRunRecord`**, **`paths`**, and enough context to re-load events.
-4. **Retrieve / review (interactive):** Run **`verify-workflow debug --corpus <corpusRoot>`** and use the Debug Console; **`GET /api/runs/:id`** returns the same loaded objects the UI uses, plus the new **`workflowVerdictSurface`** field for ok rows.
-5. **Review (offline):** Open **`workflow-result.json`** and **`events.ndjson`** under the run directory; interpret **`status`** / **`workflowTruthReport`** per existing SSOT. Human stderr from a **re-run** of `verify-workflow` is optional and not required for verdict-audit acceptance.
+4. **Retrieve / review (interactive):** Run **`workflow-verifier debug --corpus <corpusRoot>`** and use the Debug Console; **`GET /api/runs/:id`** returns the same loaded objects the UI uses, plus the new **`workflowVerdictSurface`** field for ok rows.
+5. **Review (offline):** Open **`workflow-result.json`** and **`events.ndjson`** under the run directory; interpret **`status`** / **`workflowTruthReport`** per existing SSOT. Human stderr from a **re-run** of `workflow-verifier` is optional and not required for verdict-audit acceptance.
 
 ### Empty `events.ndjson` (decided contract, not TBD)
 

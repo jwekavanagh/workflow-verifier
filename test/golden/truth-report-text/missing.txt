@@ -1,0 +1,55 @@
+workflow_id: wf_missing
+workflow_status: inconsistent
+trust: NOT TRUSTED: At least one step failed verification against the database (determinate failure).
+execution_path: Full upstream execution-path visibility requires schemaVersion 2 run events (retrieval, model_turn, control, tool_skipped) with run graph fields.
+diagnosis:
+  summary: Primary failure at seq 0 tool crm.upsert_contact (code ROW_ABSENT); origin: downstream_system_state.
+  primary_origin: downstream_system_state
+  confidence: medium
+  actionable_failure: category=ambiguous severity=high recommended_action=manual_review automation_safe=false
+  - evidence: scope=step codes=ROW_ABSENT seq=0 tool=crm.upsert_contact
+  alternative_origin: downstream_system_state
+    rationale: The database has no row at the verified key; the tool log may not have committed a write, or replication lag prevented observation.
+  alternative_origin: tool_use
+    rationale: The database has no row at the verified key; the registry key/value or pointer resolution from tool params may not match the row that was written.
+failure_explanation:
+expected: Verification expected post-execution database state to satisfy verify_target "null" and intended_effect "Upsert contact "missing_id" with fields {"name":"X","status":"Y"}" for seq=0 toolId=crm.upsert_contact under policy [consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0].
+observed: Step verification outcome: code=ROW_ABSENT detail=No row matched key
+divergence: Divergence at step seq=0 toolId=crm.upsert_contact: primary_code=ROW_ABSENT meaning=Success was implied, but no matching row was found in the database.
+known_facts:
+  - id=trust_summary value=NOT TRUSTED: At least one step failed verification against the database (determinate failure).
+  - id=workflow_status value=inconsistent
+  - id=verification_policy value=consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0
+  - id=primary_origin value=downstream_system_state
+  - id=classification_confidence value=medium
+  - id=failure_analysis_summary value=Primary failure at seq 0 tool crm.upsert_contact (code ROW_ABSENT); origin: downstream_system_state.
+  - id=primary_scope value=step
+  - id=primary_codes value=ROW_ABSENT
+  - id=primary_tool_id value=crm.upsert_contact
+  - id=primary_seq value=0
+  - id=verify_target value=null
+  - id=intended_effect_narrative value=Upsert contact "missing_id" with fields {"name":"X","status":"Y"}
+unknowns:
+  - id=classification_confidence_band value=medium
+  - id=competing_hypothesis value=origin=downstream_system_state|rationale=The database has no row at the verified key; the tool log may not have committed a write, or replication lag prevented observation.
+  - id=competing_hypothesis value=origin=tool_use|rationale=The database has no row at the verified key; the registry key/value or pointer resolution from tool params may not match the row that was written.
+correctness_definition:
+  enforcement_kind: step_sql_expectation
+  must_always_hold: Must: after tool_observed seq=0 toolId=crm.upsert_contact, database state SHALL satisfy the verification contract in verificationRequest under policy [consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0] for workflowId=wf_missing.
+  enforce_as:
+    - Registry (or synthetic events plus registry) SHALL keep verificationRequest aligned with declared tool parameters for seq=0.
+    - Authoritative SQL state SHALL match identity, required fields, and relational checks encoded in verificationRequest.
+  enforceable_projection: {"projectionKind":"step_sql_expectation","workflowId":"wf_missing","verificationPolicyFragment":"consistencyMode=strong; verificationWindowMs=0; pollIntervalMs=0","seq":0,"toolId":"crm.upsert_contact","verificationRequest":{}}
+  remediation_alignment: recommended_action=manual_review automation_safe=false
+run_level: (none)
+event_sequence: normal
+steps:
+  - seq=0 tool=crm.upsert_contact
+    declared: tool=crm.upsert_contact; intent=Upsert contact "missing_id" with fields {"name":"X","status":"Y"}; parameters_digest={"fields":{"name":"X","status":"Y"},"recordId":"missing_id"}
+    expected: (none — no resolvable SQL expectation)
+    observed_database: SQL evidence present (no rowCount in summary).
+    verification_verdict: outcome=FAILED_ROW_MISSING; Expected row is missing from the database (the log implies a write that is not present).; failure_category=workflow_execution
+    observations: evaluated=1 of 1 in_capture_order
+    detail: No row matched key
+    reference_code: ROW_ABSENT
+    user_meaning: Success was implied, but no matching row was found in the database.

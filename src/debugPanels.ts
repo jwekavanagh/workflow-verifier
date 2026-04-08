@@ -1,6 +1,17 @@
 import type { RunComparisonReport } from "./runComparison.js";
 import { PLAN_TRANSITION_WORKFLOW_ID } from "./planTransitionConstants.js";
-import type { StepOutcome, WorkflowResult } from "./types.js";
+import {
+  formatBatchDeclaredStderrValue,
+  formatBatchExpectedStderrValue,
+  formatBatchObservedStateSummary,
+  formatBatchVerificationVerdictStderrValue,
+  RECONCILIATION_TITLE_DECLARED,
+  RECONCILIATION_TITLE_EXPECTED,
+  RECONCILIATION_TITLE_OBSERVED_DATABASE,
+  RECONCILIATION_TITLE_VERIFICATION_VERDICT,
+} from "./reconciliationPresentation.js";
+import type { StepOutcome, WorkflowResult, WorkflowTruthStep } from "./types.js";
+import { HUMAN_REPORT_PLAN_TRANSITION_PHRASE, HUMAN_REPORT_RESULT_PHRASE } from "./workflowTruthReport.js";
 
 function escapeHtml(s: string): string {
   return String(s)
@@ -10,46 +21,22 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function formatPlanTransitionEvidenceSummary(ev: Record<string, unknown>): string {
-  const { planTransition: _pt, ...rest } = ev;
-  const json = JSON.stringify(rest);
-  const max = 500;
-  return json.length <= max ? json : `${json.slice(0, max - 3)}...`;
+/** Trust panel / tests: observed database summary (operational-message normalized). */
+export function formatSqlEvidenceDetailForTrustPanel(step: StepOutcome): string {
+  return formatBatchObservedStateSummary(step);
 }
 
-/** Single formatter for trust panel SQL evidence column (Debug compare/trust UI); plan-transition uses git diff evidence. */
-export function formatSqlEvidenceDetailForTrustPanel(step: StepOutcome): string {
-  if (step.evidenceSummary && (step.evidenceSummary as { planTransition?: boolean }).planTransition === true) {
-    return formatPlanTransitionEvidenceSummary(step.evidenceSummary as Record<string, unknown>);
+function declaredCellHtml(s: WorkflowTruthStep, toolIdRaw: string): string {
+  const declaredPlain = formatBatchDeclaredStderrValue(
+    toolIdRaw,
+    s.intendedEffect.narrative,
+    s.observedExecution.paramsCanonical,
+  );
+  const idx = declaredPlain.indexOf("parameters_digest=");
+  if (idx <= 0) {
+    return escapeHtml(declaredPlain);
   }
-  if (step.verificationRequest === null) {
-    return "No SQL verification request (registry resolution or unknown tool).";
-  }
-  const ev = step.evidenceSummary ?? {};
-  if (step.verificationRequest.kind === "sql_effects") {
-    const effects = Array.isArray(ev.effects) ? ev.effects.length : (ev.effectCount as number | undefined) ?? 0;
-    return `multi_effect effect_rows=${effects}`;
-  }
-  if (step.verificationRequest.kind === "sql_relational") {
-    if (step.verificationRequest.checks.length >= 2) {
-      const effects = Array.isArray(ev.effects) ? ev.effects.length : (ev.effectCount as number | undefined) ?? 0;
-      return `multi_effect effect_rows=${effects}`;
-    }
-    const ck = ev.checkKind;
-    const cid = ev.checkId;
-    if (typeof ck === "string" && typeof cid === "string") {
-      return `sql_relational check=${cid} kind=${ck}`;
-    }
-    return "sql_relational (single check)";
-  }
-  const rowCount = ev.rowCount;
-  if (typeof rowCount === "number") {
-    if (ev.field !== undefined && ev.expected !== undefined && ev.actual !== undefined) {
-      return `rowCount=${rowCount} field=${String(ev.field)} expected=${String(ev.expected)} actual=${String(ev.actual)}`;
-    }
-    return `rowCount=${rowCount}`;
-  }
-  return "SQL evidence present (no rowCount in summary).";
+  return `${escapeHtml(declaredPlain.slice(0, idx))}<br />${escapeHtml(declaredPlain.slice(idx))}`;
 }
 
 const VERIFICATION_BASIS_LINE =
@@ -99,15 +86,24 @@ export function renderRunTrustPanelHtml(wf: WorkflowResult): string {
     const t = truthBySeq.get(seq);
     const e = engineBySeq.get(seq);
     if (t && e) {
-      const vt = t.verifyTarget ?? "";
-      const verifyTargetDisplay = vt === "" ? "—" : vt;
+      const stepPhraseMap =
+        wf.workflowId === PLAN_TRANSITION_WORKFLOW_ID
+          ? HUMAN_REPORT_PLAN_TRANSITION_PHRASE
+          : HUMAN_REPORT_RESULT_PHRASE;
+      const phrase = stepPhraseMap[t.outcomeLabel];
+      const expectedVal = formatBatchExpectedStderrValue(t.verifyTarget);
+      const verdictVal = formatBatchVerificationVerdictStderrValue(
+        t.outcomeLabel,
+        phrase,
+        t.outcomeLabel !== "VERIFIED" ? t.failureCategory : undefined,
+      );
       rows.push(
         `<tr data-etl-seq="${seq}">` +
           `<td>${seq}</td>` +
-          `<td>${escapeHtml(e.toolId)}</td>` +
-          `<td>${escapeHtml(t.outcomeLabel)}</td>` +
-          `<td>${escapeHtml(verifyTargetDisplay)}</td>` +
-          `<td data-etl-field="sql-evidence">${escapeHtml(formatSqlEvidenceDetailForTrustPanel(e))}</td>` +
+          `<td data-etl-dimension="declared">${declaredCellHtml(t, e.toolId)}</td>` +
+          `<td data-etl-dimension="expected">${escapeHtml(expectedVal)}</td>` +
+          `<td data-etl-dimension="observed_database">${escapeHtml(t.observedStateSummary)}</td>` +
+          `<td data-etl-dimension="verification_verdict">${escapeHtml(verdictVal)}</td>` +
           `</tr>`,
       );
     } else if (t && !e) {
@@ -152,7 +148,7 @@ export function renderRunTrustPanelHtml(wf: WorkflowResult): string {
   return [
     `<section data-etl-section="run-trust">`,
     `<p data-etl-verification-basis>${escapeHtml(basisLine)}</p>`,
-    `<table data-etl-table="verify-evidence"><thead><tr><th>seq</th><th>toolId</th><th>outcome</th><th>verifyTarget</th><th>sql evidence</th></tr></thead><tbody>`,
+    `<table data-etl-table="verify-evidence"><thead><tr><th scope="col">seq</th><th scope="col">${escapeHtml(RECONCILIATION_TITLE_DECLARED)}</th><th scope="col">${escapeHtml(RECONCILIATION_TITLE_EXPECTED)}</th><th scope="col">${escapeHtml(RECONCILIATION_TITLE_OBSERVED_DATABASE)}</th><th scope="col">${escapeHtml(RECONCILIATION_TITLE_VERIFICATION_VERDICT)}</th></tr></thead><tbody>`,
     ...rows,
     `</tbody></table>`,
     `<section data-etl-section="execution-path">`,

@@ -34,7 +34,7 @@ isProject: false
 
 | Non-negotiable outcome | Engineering requirement |
 |------------------------|-------------------------|
-| User supplies **Before**, **After**, **`Plan.md`** | CLI `verify-workflow plan-transition --repo <path> --before <ref> --after <ref> --plan <path>`; optional `--workflow-id` defaulting to `wf_plan_transition`. |
+| User supplies **Before**, **After**, **`Plan.md`** | CLI `workflow-verifier plan-transition --repo <path> --before <ref> --after <ref> --plan <path>`; optional `--workflow-id` defaulting to `wf_plan_transition`. |
 | Answer: **does Before→After match the intended change described in Plan.md?** | **Normative narrowing (honest scope):** the *described* intent is whatever is **machine-declared** in YAML front matter under `planValidation.rules`. The markdown body is not interpreted. **Matching** means: every rule evaluates to a passing step; failure = at least one rule fails → `inconsistent` / `incomplete` per aggregates. This is the only defensible product claim without NLP. |
 | Express **common transition intents** | Rules cover: **status-specific** rows (`matchingRowsMustHaveRowKinds`), **delete** / **add** via `requireMatchingRow`, **rename** and **copy** via `requireRenameFromTo` + required **`includeCopy`** (copy rows always **parsed** from `C*` lines for allowlist/path logic; **matching** copy vs rename is rule-controlled). **Allowlist** and **forbid** as documented. |
 | **Observable** output | Stdout: AJV-valid [`WorkflowResult`](schemas/workflow-result.schema.json) via [`finalizeEmittedWorkflowResult`](src/workflowTruthReport.ts). Stderr: human truth report. Exits 0/1/2. Operational failure exit 3 + [`cli-error-envelope`](schemas/cli-error-envelope.schema.json). |
@@ -236,7 +236,7 @@ Exactly **one** line in `events.ndjson` (UTF-8, trailing `\n`), valid against [`
 | **Adversarial pattern** | Rule pattern `../x` | Exit **3** `PLAN_VALIDATION_INVALID_PATTERN`. |
 | **Glob `**`** | Pattern `**/*.ts` matches nested ts | Pass/fail per rowKinds. |
 | **Synthetic event** | Emit bundle; read line; AJV `event` | Valid v1 `tool_observed`; params keys exact. |
-| **CLI integration** | Spawn `verify-workflow plan-transition` on temp repo | stdout `WorkflowResult`, stderr rules. |
+| **CLI integration** | Spawn `workflow-verifier plan-transition` on temp repo | stdout `WorkflowResult`, stderr rules. |
 | **Compare** | Two plan-transition results through existing compare | No throw; document semantic limits. |
 
 ---

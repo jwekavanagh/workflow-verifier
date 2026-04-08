@@ -130,7 +130,7 @@ export function toCiLockV1(emitted: WorkflowResult | QuickVerifyReport): CiLockV
   if ("workflowTruthReport" in emitted && emitted.schemaVersion === 15) {
     return workflowResultToCiLockV1(emitted);
   }
-  if ("verdict" in emitted && emitted.schemaVersion === 3) {
+  if ("verdict" in emitted && emitted.schemaVersion === 4) {
     return quickReportToCiLockV1(emitted as QuickVerifyReport);
   }
   throw new Error("toCiLockV1: unsupported emitted type");

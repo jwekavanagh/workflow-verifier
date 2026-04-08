@@ -2,8 +2,6 @@
 
 **One-sentence value:** Read-only SQL checks that your database **at verification time** matches **expectations derived from structured tool activity**—not whether a trace step “succeeded.”
 
-**Names:** This is a **state verification engine**. NPM package and repo: **`workflow-verifier`**. CLI: **`verify-workflow`**. [docs/workflow-verifier.md](docs/workflow-verifier.md) titles the same layer **Execution Truth Layer**—optional vocabulary for reading the reference.
-
 ## Try it (about one minute)
 
 **Prerequisite:** **Node.js ≥ 22.13** (built-in [`node:sqlite`](https://nodejs.org/api/sqlite.html)), or use [Docker](#docker-quickstart-optional) below.
@@ -39,9 +37,9 @@ docker run --rm -it -v "${PWD}:/work" -w /work node:22-bookworm bash -lc "npm in
 
 ## How to run the CLI
 
-- **After `npm install` and `npm run build` in this repo:** use **`verify-workflow`** (from `package.json` `bin`, pointing at `dist/cli.js`). Examples: `npm run verify-workflow -- --help` or `npx verify-workflow --help` from the repo root.
-- **From a published install** (when you install the `workflow-verifier` package): same command—**`verify-workflow`** on your `PATH`.
-- **Explicit path from source:** **`node dist/cli.js`** — same entrypoint as `verify-workflow`; use this when you want a literal path after **`npm run build`**.
+- **After `npm install` and `npm run build` in this repo:** use **`workflow-verifier`** (from `package.json` `bin`, pointing at `dist/cli.js`). Examples: `npm run workflow-verifier -- --help` or `npx workflow-verifier --help` from the repo root.
+- **From a published install** (when you install the `workflow-verifier` package): same command—**`workflow-verifier`** on your `PATH`.
+- **Explicit path from source:** **`node dist/cli.js`** — same entrypoint as **`workflow-verifier`**; use this when you want a literal path after **`npm run build`**.
 
 Postgres: use **`--postgres-url "postgresql://…"`** instead of **`--db <sqlitePath>`** (exactly one of the two).
 
@@ -111,17 +109,17 @@ Typical integration:
 
 ```bash
 npm run build
-verify-workflow --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
+workflow-verifier --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
 ```
 
 Replay the bundled demo:
 
 ```bash
 npm run build
-verify-workflow --workflow-id wf_complete --events examples/events.ndjson --registry examples/tools.json --db examples/demo.db
+workflow-verifier --workflow-id wf_complete --events examples/events.ndjson --registry examples/tools.json --db examples/demo.db
 ```
 
-**From source without `verify-workflow` on PATH:** `node dist/cli.js` with the same flags.
+**From source without `workflow-verifier` on PATH:** `node dist/cli.js` with the same flags.
 
 **Why SQLite in the demo:** file-backed ground truth with no extra services. The demo (re)creates **`examples/demo.db`**; verification still uses read-only SQL.
 
@@ -130,20 +128,20 @@ verify-workflow --workflow-id wf_complete --events examples/events.ndjson --regi
 **Input contract:** We only accept **structured tool activity**—JSON or NDJSON that describes tool calls and parameters our ingest model can extract—not arbitrary logs, traces, or unstructured observability text.
 Verification uses read-only SQL against your database; API-only or non-SQL systems are out of scope for this tool.
 
-**Quick Verify** runs **`verify-workflow quick`** with structured tool activity and a DB: inferred checks, no registry file. It is **provisional**—rollup pass/fail/uncertain is **not** an audit-final verdict; prefer **contract mode** when you need explicit per-tool expectations.
+**Quick Verify** runs **`workflow-verifier quick`** with structured tool activity and a DB: inferred checks, no registry file. It is **provisional**—rollup pass/fail/uncertain is **not** an audit-final verdict; prefer **contract mode** when you need explicit per-tool expectations.
 
 Full behavior, stdout/stderr contracts, exit codes, and replay caveats: **[`docs/quick-verify-normative.md`](docs/quick-verify-normative.md)** and **[`docs/workflow-verifier.md`](docs/workflow-verifier.md)** (Quick Verify sections). Product framing: **[`docs/verification-product-ssot.md`](docs/verification-product-ssot.md)**.
 
 ```bash
 npm run build
-verify-workflow quick --input test/fixtures/quick-verify/pass-line.ndjson --db examples/demo.db --export-registry ./quick-export.json
+workflow-verifier quick --input test/fixtures/quick-verify/pass-line.ndjson --db examples/demo.db --export-registry ./quick-export.json
 ```
 
 Use **`--postgres-url`** instead of **`--db`**; **`-`** as **`--input`** reads stdin.
 
 ## Confidence over time (assurance)
 
-**Trust over time** uses **`verify-workflow assurance run`** with a versioned **manifest** (multi-scenario sweep by spawning the CLI) and **`verify-workflow assurance stale`** to fail closed when a saved **`AssuranceRunReport`** is missing, invalid, or older than **`--max-age-hours`**. Bundled example manifest: **[`examples/assurance/manifest.json`](examples/assurance/manifest.json)**. Normative I/O and schemas: **[Assurance subsystem](docs/workflow-verifier.md#assurance-subsystem-normative)** in **`docs/workflow-verifier.md`**.
+**Trust over time** uses **`workflow-verifier assurance run`** with a versioned **manifest** (multi-scenario sweep by spawning the CLI) and **`workflow-verifier assurance stale`** to fail closed when a saved **`AssuranceRunReport`** is missing, invalid, or older than **`--max-age-hours`**. Bundled example manifest: **[`examples/assurance/manifest.json`](examples/assurance/manifest.json)**. Normative I/O and schemas: **[Assurance subsystem](docs/workflow-verifier.md#assurance-subsystem-normative)** in **`docs/workflow-verifier.md`**.
 
 ## Sample output (contract demo)
 
@@ -215,7 +213,7 @@ Run **after** a workflow (or CI replay of its log), **before** you treat the out
 
 **Typical uses:** block a release, trigger human review, open an incident, or attach a verification artifact to an audit trail.
 
-**CI with pinned outcomes:** **`verify-workflow enforce`** and committed **`ci-lock-v1`** fixtures—[`docs/ci-enforcement.md`](docs/ci-enforcement.md).
+**CI with pinned outcomes:** **`workflow-verifier enforce`** and committed **`ci-lock-v1`** fixtures—[`docs/ci-enforcement.md`](docs/ci-enforcement.md).
 
 ## Advanced features
 
@@ -223,13 +221,13 @@ Optional capabilities; full detail in **[`docs/workflow-verifier.md`](docs/workf
 
 | Area | Entry |
 |------|--------|
-| **Cross-run compare** | `verify-workflow compare` — [Cross-run comparison](docs/workflow-verifier.md#cross-run-comparison-normative) |
-| **Execution trace** | `verify-workflow execution-trace` — [End-to-end execution visibility](docs/workflow-verifier.md#end-to-end-execution-visibility-normative) |
+| **Cross-run compare** | `workflow-verifier compare` — [Cross-run comparison](docs/workflow-verifier.md#cross-run-comparison-normative) |
+| **Execution trace** | `workflow-verifier execution-trace` — [End-to-end execution visibility](docs/workflow-verifier.md#end-to-end-execution-visibility-normative) |
 | **In-process hook** | SQLite **`withWorkflowVerification`** — [Low-friction integration](docs/workflow-verifier.md#low-friction-integration-in-process) |
-| **Registry validation** | `verify-workflow validate-registry` — [Registry validation](docs/workflow-verifier.md#registry-validation-validate-registry--normative) |
+| **Registry validation** | `workflow-verifier validate-registry` — [Registry validation](docs/workflow-verifier.md#registry-validation-validate-registry--normative) |
 | **Run bundles / signing** | [Agent run record](docs/workflow-verifier.md#agent-run-record-canonical-bundle), [Signing](docs/workflow-verifier.md#cryptographic-signing-of-workflow-result-normative) |
-| **Debug Console** | `verify-workflow debug` — [Debug Console](docs/workflow-verifier.md#debug-console-normative) |
-| **Plan transition** | `verify-workflow plan-transition` — [Plan transition validation](docs/workflow-verifier.md#plan-transition-validation-normative) |
+| **Debug Console** | `workflow-verifier debug` — [Debug Console](docs/workflow-verifier.md#debug-console-normative) |
+| **Plan transition** | `workflow-verifier plan-transition` — [Plan transition validation](docs/workflow-verifier.md#plan-transition-validation-normative) |
 
 Streams, exit codes, and operational errors: [Human truth report](docs/workflow-verifier.md#human-truth-report), [CLI operational errors](docs/workflow-verifier.md#cli-operational-errors).
 
@@ -237,7 +235,7 @@ Streams, exit codes, and operational errors: [Human truth report](docs/workflow-
 
 | Doc | Purpose |
 |-----|---------|
-| [`docs/workflow-verifier.md`](docs/workflow-verifier.md) | Authoritative CLI and behavior reference (Execution Truth Layer SSOT) |
+| [`docs/workflow-verifier.md`](docs/workflow-verifier.md) | Authoritative CLI and behavior reference (SSOT) |
 | [`docs/quick-verify-normative.md`](docs/quick-verify-normative.md) | Quick Verify normative contract |
 | [`docs/verification-product-ssot.md`](docs/verification-product-ssot.md) | Product story and doc ownership |
 | [`docs/relational-verification.md`](docs/relational-verification.md) | Relational verification semantics |

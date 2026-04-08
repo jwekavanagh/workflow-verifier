@@ -1,0 +1,13 @@
+workflow_id: wf_complete
+workflow_status: complete
+trust: TRUSTED: Every step matched the database under the configured verification rules.
+execution_path: Full upstream execution-path visibility requires schemaVersion 2 run events (retrieval, model_turn, control, tool_skipped) with run graph fields.
+run_level: (none)
+event_sequence: normal
+steps:
+  - seq=0 tool=crm.upsert_contact
+    declared: tool=crm.upsert_contact; intent=Upsert contact "c_ok" with fields {"name":"Alice","status":"active"}; parameters_digest={"fields":{"name":"Alice","status":"active"},"recordId":"c_ok"}
+    expected: (none — no resolvable SQL expectation)
+    observed_database: SQL evidence present (no rowCount in summary).
+    verification_verdict: outcome=VERIFIED; Matched the database.
+    observations: evaluated=1 of 1 in_capture_order

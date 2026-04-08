@@ -1,6 +1,6 @@
 {
   "headings": [
-    "# Execution Truth Layer (MVP) — Single Source of Truth",
+    "# workflow-verifier (MVP) — Single Source of Truth",
     "## Why this shape",
     "## SSOT contract boundary (normative)",
     "## Product requirements: outcome verification",

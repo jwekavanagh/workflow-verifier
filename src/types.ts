@@ -674,11 +674,13 @@ export type WorkflowTruthStep = {
   observedExecution: ObservedExecution;
   failureCategory?: FailureDiagnostic;
   verifyTarget: string | null;
+  /** Read-only SQL / plan evidence summary at verification time (operational-message normalized). */
+  observedStateSummary: string;
   effects?: WorkflowTruthEffect[];
 };
 
 export type WorkflowTruthReport = {
-  schemaVersion: 8;
+  schemaVersion: 9;
   workflowId: string;
   workflowStatus: WorkflowStatus;
   trustSummary: string;

@@ -45,7 +45,7 @@ const defaultIo: StandardVerifyWorkflowCliIo = {
 };
 
 /**
- * Shared verify-workflow stdout path: run verification, validate emitted result, optional bundle write, print JSON, exit by verdict.
+ * Shared workflow-verifier stdout path: run verification, validate emitted result, optional bundle write, print JSON, exit by verdict.
  * CLI delegates here so tests can inject `runVerify` (e.g. mock `verifyWorkflow`) and I/O without executing `cli.ts` top-level `main()`.
  */
 export async function runStandardVerifyWorkflowCliFlow(options: {

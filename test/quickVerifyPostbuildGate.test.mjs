@@ -53,7 +53,7 @@ describe("quickVerifyPostbuildGate", () => {
       spawnTimeoutMs: QUICK_VERIFY_SPAWN_TIMEOUT_MS,
     });
     assert.equal(result.exitCode, 0, result.stderrSummary);
-    assert.equal(result.report?.schemaVersion, 3);
+    assert.equal(result.report?.schemaVersion, 4);
     assert.equal(result.registryUtf8Match, true);
     assert.ok(result.elapsedMs <= QUICK_VERIFY_SPAWN_TIMEOUT_MS, `elapsed ${result.elapsedMs}ms`);
     assert.ok(

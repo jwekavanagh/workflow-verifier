@@ -58,7 +58,7 @@ import { runAssuranceFromManifest } from "./assurance/runAssurance.js";
 
 function usageQuick(): string {
   return `Usage:
-  verify-workflow quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path>
+  workflow-verifier quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path>
     [--emit-events <path>] [--workflow-id <id>]
 
   Input must contain structured tool activity (tool names and parameters extractable as JSON). Verification uses read-only SQL against the database you pass.
@@ -76,11 +76,11 @@ Exit codes:
 
 function usageVerify(): string {
   return `Usage:
-  verify-workflow quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path> [--emit-events <path>] [--workflow-id <id>]
+  workflow-verifier quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path> [--emit-events <path>] [--workflow-id <id>]
     (zero-config path; structured tool activity + read-only SQL; see docs/quick-verify-normative.md)
 
-  verify-workflow --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
-  verify-workflow --workflow-id <id> --events <path> --registry <path> --postgres-url <url>
+  workflow-verifier --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
+  workflow-verifier --workflow-id <id> --events <path> --registry <path> --postgres-url <url>
 
 Optional consistency (default strong):
   --consistency strong|eventual
@@ -102,23 +102,23 @@ Exit codes:
   3  operational failure (see stderr JSON)
   4  enforce subcommand only: CI lock mismatch (stdout: WorkflowResult line; stderr: envelope after human report if any)
 
-  verify-workflow compare --prior <path> [--prior <path> ...] --current <path>
+  workflow-verifier compare --prior <path> [--prior <path> ...] --current <path>
   Compare saved WorkflowResult JSON files (local only; see docs).
 
-  verify-workflow validate-registry --registry <path>
-  verify-workflow validate-registry --registry <path> --events <path> --workflow-id <id>
+  workflow-verifier validate-registry --registry <path>
+  workflow-verifier validate-registry --registry <path> --events <path> --workflow-id <id>
   Validate tools registry JSON (and optionally resolution vs events) without a database.
   See docs/workflow-verifier.md (Registry validation).
 
-  verify-workflow execution-trace --workflow-id <id> --events <path> [--workflow-result <path>] [--format json|text]
+  workflow-verifier execution-trace --workflow-id <id> --events <path> [--workflow-result <path>] [--format json|text]
   Emit ExecutionTraceView JSON or text (see docs/workflow-verifier.md).
 
-  verify-workflow enforce batch (--expect-lock <path> | --output-lock <path>) <same flags as batch verify>
-  verify-workflow enforce quick (--expect-lock <path> | --output-lock <path>) <same flags as quick>
+  workflow-verifier enforce batch (--expect-lock <path> | --output-lock <path>) <same flags as batch verify>
+  workflow-verifier enforce quick (--expect-lock <path> | --output-lock <path>) <same flags as quick>
   CI enforcement with pinned ci-lock-v1 (see docs/ci-enforcement.md).
 
-  verify-workflow assurance run --manifest <path> [--write-report <path>]
-  verify-workflow assurance stale --report <path> --max-age-hours <n>
+  workflow-verifier assurance run --manifest <path> [--write-report <path>]
+  workflow-verifier assurance stale --report <path> --max-age-hours <n>
   Multi-scenario assurance sweep and staleness gate (see docs/workflow-verifier.md).
 
 Advanced / optional (persisted runs, signing, local UI, plan/git checks):
@@ -128,10 +128,10 @@ Advanced / optional (persisted runs, signing, local UI, plan/git checks):
   verify-bundle-signature --run-dir <dir> --public-key <path>
   Verify signed bundle (Ed25519 + manifest v2). Exit 0 if valid; exit 3 with JSON envelope on failure.
 
-  verify-workflow debug --corpus <dir> [--port <n>]
+  workflow-verifier debug --corpus <dir> [--port <n>]
   Local Debug Console on 127.0.0.1 (see docs/workflow-verifier.md — Debug Console).
 
-  verify-workflow plan-transition --repo <dir> --before <ref> --after <ref> --plan <path>
+  workflow-verifier plan-transition --repo <dir> --before <ref> --after <ref> --plan <path>
   Validate git Before..After against machine plan rules (planValidation, body YAML section, or derived path citations as required diff surfaces; Git >= 2.30.0; see docs).
 
   --help, -h  print this message and exit 0`;
@@ -139,7 +139,7 @@ Advanced / optional (persisted runs, signing, local UI, plan/git checks):
 
 function usageExecutionTrace(): string {
   return `Usage:
-  verify-workflow execution-trace --workflow-id <id> --events <path> [--workflow-result <path>] [--format json|text]
+  workflow-verifier execution-trace --workflow-id <id> --events <path> [--workflow-result <path>] [--format json|text]
 
 Exit codes:
   0  success (stdout: ExecutionTraceView JSON or text; stderr empty)
@@ -304,7 +304,7 @@ function runExecutionTraceSubcommand(args: string[]): void {
 
 function usageCompare(): string {
   return `Usage:
-  verify-workflow compare --prior <workflowResult.json> [--prior <path> ...] --current <workflowResult.json>
+  workflow-verifier compare --prior <workflowResult.json> [--prior <path> ...] --current <workflowResult.json>
 
 Compares the current run (last file) against the immediate prior run (last --prior).
 Recurrence uses all runs in order: each --prior in order, then --current.
@@ -322,8 +322,8 @@ function writeCliError(code: string, message: string): void {
 
 function usageAssurance(): string {
   return `Usage:
-  verify-workflow assurance run --manifest <path> [--write-report <path>]
-  verify-workflow assurance stale --report <path> --max-age-hours <n>
+  workflow-verifier assurance run --manifest <path> [--write-report <path>]
+  workflow-verifier assurance stale --report <path> --max-age-hours <n>
 
   assurance run executes each manifest scenario by spawning this CLI (schemas/assurance-manifest-v1.schema.json).
   Path arguments in each scenario argv are resolved relative to the manifest file's directory unless absolute.
@@ -418,7 +418,7 @@ function runAssuranceSubcommand(args: string[]): void {
   }
   writeCliError(
     CLI_OPERATIONAL_CODES.ASSURANCE_USAGE,
-    "Use verify-workflow assurance run or verify-workflow assurance stale.",
+    "Use workflow-verifier assurance run or workflow-verifier assurance stale.",
   );
   process.exit(3);
 }
@@ -511,7 +511,7 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
 function runVerifyBundleSignatureSubcommand(args: string[]): void {
   if (args.includes("--help") || args.includes("-h")) {
     console.log(`Usage:
-  verify-workflow verify-bundle-signature --run-dir <dir> --public-key <path>
+  workflow-verifier verify-bundle-signature --run-dir <dir> --public-key <path>
 
 Exit codes:
   0  signature and manifest integrity OK
@@ -539,8 +539,8 @@ Exit codes:
 
 function usageValidateRegistry(): string {
   return `Usage:
-  verify-workflow validate-registry --registry <path>
-  verify-workflow validate-registry --registry <path> --events <path> --workflow-id <id>
+  workflow-verifier validate-registry --registry <path>
+  workflow-verifier validate-registry --registry <path> --events <path> --workflow-id <id>
 
 Exit codes:
   0  registry valid (stdout: RegistryValidationResult JSON; stderr empty)
@@ -749,7 +749,7 @@ function runCompareSubcommand(args: string[]): void {
 
 function usageDebug(): string {
   return `Usage:
-  verify-workflow debug --corpus <dir> [--port <n>]
+  workflow-verifier debug --corpus <dir> [--port <n>]
 
 Serves the Debug Console on 127.0.0.1 only. Each run is a subfolder of the corpus
 with workflow-result.json and events.ndjson (see docs/workflow-verifier.md).
@@ -810,7 +810,7 @@ async function runDebugSubcommand(args: string[]): Promise<void> {
 
 function usagePlanTransition(): string {
   return `Usage:
-  verify-workflow plan-transition --repo <dir> --before <ref> --after <ref> --plan <path>
+  workflow-verifier plan-transition --repo <dir> --before <ref> --after <ref> --plan <path>
 
 Optional:
   --workflow-id <id>   (default ${PLAN_TRANSITION_WORKFLOW_ID})

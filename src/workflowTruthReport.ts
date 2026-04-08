@@ -8,6 +8,16 @@ import {
 import { buildFailureAnalysis } from "./failureAnalysis.js";
 import { PLAN_TRANSITION_WORKFLOW_ID } from "./planTransitionConstants.js";
 import {
+  formatBatchDeclaredStderrValue,
+  formatBatchExpectedStderrValue,
+  formatBatchObservedStateSummary,
+  formatBatchVerificationVerdictStderrValue,
+  LINE_PREFIX_DECLARED,
+  LINE_PREFIX_EXPECTED,
+  LINE_PREFIX_OBSERVED_DATABASE,
+  LINE_PREFIX_VERIFICATION_VERDICT,
+} from "./reconciliationPresentation.js";
+import {
   failureDiagnosticForEventSequenceCode,
   failureDiagnosticForRunLevelCode,
   failureDiagnosticForStep,
@@ -207,6 +217,7 @@ function buildTruthStep(s: StepOutcome): WorkflowTruthStep {
     intendedEffect: { narrative },
     observedExecution: { paramsCanonical },
     verifyTarget: vt === null ? null : vt,
+    observedStateSummary: formatBatchObservedStateSummary(s),
   };
   if (s.status !== "verified") {
     const cat = (s.failureDiagnostic ?? failureDiagnosticForStep(s)) as FailureDiagnostic;
@@ -289,7 +300,7 @@ export function buildWorkflowTruthReport(engine: WorkflowEngineResult): Workflow
       : buildWorkflowCorrectnessDefinition(engine, failureExplanation, failureAnalysis, steps);
 
   return {
-    schemaVersion: 8,
+    schemaVersion: 9,
     ...withoutExplanation,
     failureExplanation,
     correctnessDefinition,
@@ -453,21 +464,22 @@ export function formatWorkflowTruthReportStruct(truth: WorkflowTruthReport): str
   for (const s of truth.steps) {
     const toolId = sanitizeOneLineId(s.toolId);
     const resultPhrase = stepPhraseMap[s.outcomeLabel];
-    lines.push(`  - seq=${s.seq} tool=${toolId} result=${resultPhrase}`);
+    lines.push(`  - seq=${s.seq} tool=${toolId}`);
+    lines.push(
+      `    ${LINE_PREFIX_DECLARED}${formatBatchDeclaredStderrValue(toolId, s.intendedEffect.narrative, s.observedExecution.paramsCanonical)}`,
+    );
+    lines.push(`    ${LINE_PREFIX_EXPECTED}${formatBatchExpectedStderrValue(s.verifyTarget)}`);
+    lines.push(`    ${LINE_PREFIX_OBSERVED_DATABASE}${s.observedStateSummary}`);
+    lines.push(
+      `    ${LINE_PREFIX_VERIFICATION_VERDICT}${formatBatchVerificationVerdictStderrValue(
+        s.outcomeLabel,
+        resultPhrase,
+        s.outcomeLabel !== "VERIFIED" ? s.failureCategory : undefined,
+      )}`,
+    );
     lines.push(
       `    observations: evaluated=${s.observations.evaluatedOrdinal} of ${s.observations.repeatCount} in_capture_order`,
     );
-    lines.push(`    observed_execution: ${s.observedExecution.paramsCanonical}`);
-    if (s.intendedEffect.narrative.length > 0) {
-      lines.push(`    intended: ${s.intendedEffect.narrative}`);
-    }
-    if (s.verifyTarget !== null) {
-      lines.push(`    verify_target: ${s.verifyTarget}`);
-    }
-    if (s.outcomeLabel !== "VERIFIED") {
-      const cat = s.failureCategory!;
-      lines.push(`    category: ${cat}`);
-    }
     for (const r of s.reasons) {
       pushHumanReasonLines(lines, r, "    ");
     }

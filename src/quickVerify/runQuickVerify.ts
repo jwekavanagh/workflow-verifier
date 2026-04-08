@@ -24,9 +24,10 @@ import {
   DEFAULT_QUICK_VERIFY_PRODUCT_TRUTH,
   type QuickVerifyProductTruth,
 } from "./quickVerifyProductTruth.js";
+import { buildQuickUnitReconciliation } from "../reconciliationPresentation.js";
 
 export type QuickVerifyReport = {
-  schemaVersion: 3;
+  schemaVersion: 4;
   verdict: "pass" | "fail" | "uncertain";
   summary: string;
   verificationMode: "inferred";
@@ -46,6 +47,12 @@ export type QuickVerifyReport = {
     inference: { table: string; rationale: string[]; alternates?: unknown[] };
     verification: Record<string, unknown>;
     explanation: string;
+    reconciliation: {
+      declared: string;
+      expected: string;
+      observed_database: string;
+      verification_verdict: string;
+    };
     correctnessDefinition?: CorrectnessDefinitionV1;
   }>;
   exportableRegistry: { tools: ToolRegistryEntry[] };
@@ -105,7 +112,7 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
   if (ingest.inputTooLarge) {
     const units: QuickVerifyReport["units"] = [];
     const report: QuickVerifyReport = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       verdict: "uncertain",
       summary: buildSummary("uncertain", units, ingestBlock),
       verificationMode: "inferred",
@@ -181,6 +188,13 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
               alternates: plan.alternates,
             },
             verification: {},
+            reconciliation: buildQuickUnitReconciliation({
+              kind: "row_mapping_failed",
+              toolName: sourceAction.toolName,
+              actionIndex,
+              flat: action.flat,
+              confidence: plan.confidence,
+            }),
             explanation: plan.rationale.join(" ") || "Could not map row unit.",
             correctnessDefinition: buildQuickUnitCorrectnessDefinition({
               unitId: uid,
@@ -208,6 +222,31 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
           exportTools.push(exportSqlRowTool(tid, plan.request));
           contractExports.push({ toolId: tid, request: plan.request });
         }
+        const rowReconciliation =
+          rowOut.verdict === "verified"
+            ? buildQuickUnitReconciliation({
+                kind: "row_verified",
+                toolName: sourceAction.toolName,
+                actionIndex,
+                flat: action.flat,
+                table: plan.request.table,
+                request: plan.request,
+                verification: rowOut.verification,
+                verdict: "verified",
+                confidence: plan.confidence,
+              })
+            : buildQuickUnitReconciliation({
+                kind: "row_fail_or_uncertain",
+                toolName: sourceAction.toolName,
+                actionIndex,
+                flat: action.flat,
+                table: plan.request.table,
+                request: plan.request,
+                verification: rowOut.verification,
+                verdict: rowOut.verdict,
+                reasonCodes: rowOut.reasonCodes,
+                confidence: plan.confidence,
+              });
         const rowBase = {
           unitId: uid,
           kind: "row" as const,
@@ -219,6 +258,7 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
           inference: { table: plan.request.table, rationale: plan.rationale },
           verification: rowOut.verification,
           explanation: rowOut.explanation,
+          reconciliation: rowReconciliation,
         };
         pushUnit(
           rowOut.verdict === "verified"
@@ -260,6 +300,16 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
           inference: { table: rel.childTable, rationale: [`FK ${rel.id}`] },
           verification: rout.verification,
           explanation: rout.explanation,
+          reconciliation: buildQuickUnitReconciliation({
+            kind: "related_exists",
+            toolName: sourceAction.toolName,
+            actionIndex,
+            flat: action.flat,
+            check: rel,
+            verdict: rout.verdict,
+            reasonCodes: rout.reasonCodes,
+            confidence: 0.8,
+          }),
         };
         pushUnit(
           rout.verdict === "verified"
@@ -286,7 +336,7 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
     contractExports.sort((a, b) => compareUtf16Id(a.toolId, b.toolId));
 
     const report: QuickVerifyReport = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       verdict,
       summary: buildSummary(verdict, units, ingestBlock),
       verificationMode: "inferred",
