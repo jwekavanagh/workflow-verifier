@@ -46,9 +46,12 @@ import { isV9RunLevelCodesInconsistent } from "./workflowRunLevelConsistency.js"
 import { formatWorkflowTruthReport } from "./workflowTruthReport.js";
 import { workflowEngineResultFromEmitted } from "./workflowResultNormalize.js";
 import { atomicWriteUtf8File } from "./quickVerify/atomicWrite.js";
+import { buildQuickContractEventsNdjson } from "./quickVerify/buildQuickContractEventsNdjson.js";
 import { stableStringify } from "./quickVerify/canonicalJson.js";
+import { formatQuickVerifyHumanReport } from "./quickVerify/formatQuickVerifyHumanReport.js";
 import { runQuickVerify } from "./quickVerify/runQuickVerify.js";
 import type { QuickVerifyReport } from "./quickVerify/runQuickVerify.js";
+import type { QuickContractExport } from "./quickVerify/buildQuickContractEventsNdjson.js";
 
 function argValue(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
@@ -71,8 +74,9 @@ function argValues(args: string[], name: string): string[] {
 function usageQuick(): string {
   return `Usage:
   verify-workflow quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path>
+    [--emit-events <path>] [--workflow-id <id>]
 
-  Use - for stdin. Writes registry JSON array atomically before stdout (see docs/quick-verify-normative.md).
+  Use - for stdin. Writes registry JSON array atomically, then optional events file, then stdout (see docs/quick-verify-normative.md).
 
 Exit codes:
   0  verdict pass
@@ -85,7 +89,7 @@ Exit codes:
 
 function usageVerify(): string {
   return `Usage:
-  verify-workflow quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path>
+  verify-workflow quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path> [--emit-events <path>] [--workflow-id <id>]
     (zero-config path; see docs/quick-verify-normative.md)
 
   verify-workflow --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
@@ -327,6 +331,8 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
   }
   const inputPath = argValue(args, "--input");
   const exportPath = argValue(args, "--export-registry");
+  const emitEventsPath = argValue(args, "--emit-events");
+  const workflowIdQuick = argValue(args, "--workflow-id") ?? "quick-verify";
   const dbPath = argValue(args, "--db");
   const postgresUrl = argValue(args, "--postgres-url");
   if (!inputPath || !exportPath) {
@@ -351,6 +357,7 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
   }
   let registryUtf8: string;
   let report: QuickVerifyReport;
+  let contractExports: QuickContractExport[] = [];
   try {
     const out = await runQuickVerify({
       inputUtf8,
@@ -359,6 +366,7 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
     });
     report = out.report;
     registryUtf8 = out.registryUtf8;
+    contractExports = out.contractExports;
   } catch (e) {
     if (e instanceof TruthLayerError) {
       writeCliError(e.code, e.message);
@@ -383,6 +391,19 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
     writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(`export-registry: ${msg}`));
     process.exit(3);
   }
+  if (emitEventsPath !== undefined) {
+    const eventsUtf8 = buildQuickContractEventsNdjson({
+      workflowId: workflowIdQuick,
+      exports: contractExports,
+    });
+    try {
+      atomicWriteUtf8File(path.resolve(emitEventsPath), eventsUtf8);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(`emit-events: ${msg}`));
+      process.exit(3);
+    }
+  }
   try {
     process.stdout.write(stableStringify(report) + "\n");
   } catch (e) {
@@ -390,7 +411,14 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
     writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(`stdout: ${msg}`));
     process.exit(3);
   }
-  console.error(`Quick Verify: ${report.verdict}\n${report.summary}`);
+  const human = formatQuickVerifyHumanReport(report, {
+    workflowId: workflowIdQuick,
+    eventsPath: emitEventsPath !== undefined ? emitEventsPath : undefined,
+    registryPath: exportPath,
+    dbFlag: dbPath ?? undefined,
+    postgresUrl: postgresUrl !== undefined,
+  });
+  console.error(human);
   if (report.verdict === "pass") process.exit(0);
   if (report.verdict === "fail") process.exit(1);
   process.exit(2);

@@ -22,7 +22,7 @@ export function verifyRowSqlite(db: DatabaseSync, req: VerificationRequest): Row
       return {
         verdict: "verified",
         reasonCodes: [],
-        verification: { rowCount: rows.length, evidenceSummary: out.evidenceSummary },
+        verification: { ...out.evidenceSummary, rowCount: rows.length },
         explanation: "Row matched identity and required fields.",
       };
     }
@@ -31,7 +31,7 @@ export function verifyRowSqlite(db: DatabaseSync, req: VerificationRequest): Row
     return {
       verdict: out.status === "missing" || out.status === "inconsistent" ? "fail" : "uncertain",
       reasonCodes: codes,
-      verification: { evidenceSummary: out.evidenceSummary },
+      verification: { ...out.evidenceSummary },
       explanation: expl,
     };
   } catch (e) {
@@ -57,7 +57,7 @@ export async function verifyRowPostgres(client: pg.Client, req: VerificationRequ
       return {
         verdict: "verified",
         reasonCodes: [],
-        verification: { rowCount: rows.length, evidenceSummary: out.evidenceSummary },
+        verification: { ...out.evidenceSummary, rowCount: rows.length },
         explanation: "Row matched identity and required fields.",
       };
     }
@@ -65,7 +65,7 @@ export async function verifyRowPostgres(client: pg.Client, req: VerificationRequ
     return {
       verdict: out.status === "missing" || out.status === "inconsistent" ? "fail" : "uncertain",
       reasonCodes: codes,
-      verification: { evidenceSummary: out.evidenceSummary },
+      verification: { ...out.evidenceSummary },
       explanation: out.reasons.map((x) => x.message).join("; "),
     };
   } catch (e) {

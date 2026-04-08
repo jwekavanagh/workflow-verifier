@@ -1,0 +1,17 @@
+{
+  "tool_calls": [
+    {
+      "id": "call_abc",
+      "type": "function",
+      "function": {
+        "name": "crm.upsert_contact",
+        "arguments": "{\"id\":\"c_ok\",\"name\":\"Alice\",\"status\":\"active\"}"
+      },
+      "arguments": {
+        "id": "c_ok",
+        "name": "Alice",
+        "status": "active"
+      }
+    }
+  ]
+}

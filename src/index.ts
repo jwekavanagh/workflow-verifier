@@ -1,6 +1,11 @@
 export { verifyWorkflow, loadToolsRegistry, withWorkflowVerification } from "./pipeline.js";
 export { runQuickVerify, quickReportToStdoutLine } from "./quickVerify/runQuickVerify.js";
-export type { QuickVerifyReport, RunQuickVerifyOptions, RunQuickVerifyResult } from "./quickVerify/runQuickVerify.js";
+export type {
+  QuickVerifyReport,
+  RunQuickVerifyOptions,
+  RunQuickVerifyResult,
+} from "./quickVerify/runQuickVerify.js";
+export type { QuickContractExport } from "./quickVerify/buildQuickContractEventsNdjson.js";
 export {
   formatRegistryValidationHumanReport,
   structuralIssuesFromToolsRegistryAjv,

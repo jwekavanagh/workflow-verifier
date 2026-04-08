@@ -8,13 +8,16 @@
 
 ### Quick Verify (zero-config path)
 
-After **`npm run build`**, point at **JSON/NDJSON activity** and a **SQLite or Postgres** database (read-only). The tool infers tables and columns, verifies rows, writes an **export registry** array atomically, then prints a **`quick-verify-report`** JSON line on stdout.
+Product story, audiences, TTFV, and **which doc owns which contract**: **[`docs/verification-product-ssot.md`](docs/verification-product-ssot.md)**. Ingest ladder, thresholds, and CLI ordering: **[`docs/quick-verify-normative.md`](docs/quick-verify-normative.md)** (do not duplicate those numbers here).
+
+After **`npm run build`**, point at **JSON/NDJSON** tool activity and a **read-only** SQLite or Postgres database. Writes the **export registry** array atomically, optional synthetic **events** NDJSON, then one **`quick-verify-report`** line on **stdout**; human-readable context on **stderr** (three fixed anchor lines—see normative doc). Integrators should rely on **stdout + exit codes**, not parsed stderr prose.
 
 ```bash
-node dist/cli.js quick --input <path> --db examples/demo.db --export-registry ./quick-export.json
+npm run first-run
+node dist/cli.js quick --input test/fixtures/quick-verify/pass-line.ndjson --db examples/demo.db --export-registry ./quick-export.json
 ```
 
-Use **`--postgres-url "postgresql://…"`** instead of **`--db`**. Use **`-`** as the input path to read stdin. Exit codes: **0** pass, **1** fail, **2** uncertain, **3** operational. Full rules: **[`docs/quick-verify-normative.md`](docs/quick-verify-normative.md)**.
+Use **`--postgres-url "postgresql://…"`** instead of **`--db`**. Use **`-`** as **`--input`** for stdin. Optional **`--emit-events <path>`** (zero-byte file if no row tools exported), **`--workflow-id <id>`** (default **`quick-verify`**). Exit codes: **0** pass, **1** fail, **2** uncertain, **3** operational.
 
 ---
 

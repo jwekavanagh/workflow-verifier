@@ -1,6 +1,6 @@
 # Execution Truth Layer (MVP) — Single Source of Truth
 
-**Quick Verify (zero-config inference)** is specified in [`quick-verify-normative.md`](quick-verify-normative.md). This document remains the SSOT for **Advanced verification** (NDJSON events, `tools.json` registry, `WorkflowResult`).
+**Quick Verify (zero-config inference)** is specified in [`quick-verify-normative.md`](quick-verify-normative.md). Product narrative, audiences, and documentation ownership for the wedge live in [`verification-product-ssot.md`](verification-product-ssot.md). This document remains the SSOT for **Advanced verification** (NDJSON events, `tools.json` registry, `WorkflowResult`).
 
 This document is the authoritative specification for the MVP. The product verifies **external SQL state** against expectations derived from **observed tool calls** and a **tool registry**, never from agent-reported success alone.
 
@@ -17,7 +17,7 @@ This table defines **where** each concern is authoritative. Other markdown may s
 
 | Concern | Single source of truth | Others |
 |--------|-------------------------|--------|
-| **Quick Verify** (`verify-workflow quick`, inferred units, `quick-verify-report`, export registry array) | [`quick-verify-normative.md`](quick-verify-normative.md), [`schemas/quick-verify-report.schema.json`](../schemas/quick-verify-report.schema.json) | README summarizes; behavior must match the normative doc. |
+| **Quick Verify** (`verify-workflow quick`, inferred units, `quick-verify-report`, export registry array) | [`quick-verify-normative.md`](quick-verify-normative.md), [`schemas/quick-verify-report.schema.json`](../schemas/quick-verify-report.schema.json) | Product SSOT: [`verification-product-ssot.md`](verification-product-ssot.md); README summarizes; behavior must match the normative doc. |
 | **Emitted wire shape** (property names, types, `schemaVersion`, `verificationRequest` variants, `evidenceSummary` keys as JSON) | [`schemas/workflow-engine-result.schema.json`](../schemas/workflow-engine-result.schema.json), [`schemas/workflow-result.schema.json`](../schemas/workflow-result.schema.json), [`schemas/tools-registry.schema.json`](../schemas/tools-registry.schema.json) | Markdown describes behavior; it must not introduce fields or types absent from these schemas. |
 | **Reason code literals** | `src/wireReasonCodes.ts` (exported constants) | Docs list the same strings; no duplicate definitions with different meanings. |
 | **Runtime semantics — row verification** (`sql_row`, `sql_effects`, `sql_row_absent`: SQL shapes, `identityEq` / `filterEq`, count + `sampleRows` for absent failures, strong vs eventual polling, `ROW_PRESENT_WHEN_FORBIDDEN`, `FORBIDDEN_ROWS_STILL_PRESENT_WITHIN_WINDOW`, `matchedRowCount` on absent paths) | **This document only** | [`relational-verification.md`](relational-verification.md) must **not** define or duplicate row-absent or row-level evidence semantics; it links here for row semantics instead. |

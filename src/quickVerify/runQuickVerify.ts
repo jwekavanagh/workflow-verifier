@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import type { ToolRegistryEntry } from "../types.js";
+import type { ToolRegistryEntry, VerificationRequest } from "../types.js";
 import { connectPostgresVerificationClient } from "../sqlReadBackend.js";
 import { canonicalToolsArrayUtf8, stableStringify } from "./canonicalJson.js";
 import { bucketsForAction } from "./decomposeUnits.js";
@@ -13,11 +13,14 @@ import { exportSqlRowTool } from "./exportTool.js";
 import { verifyRowPostgres, verifyRowSqlite, verifyRelatedExists } from "./verifyExecution.js";
 import { T_EXPORT, MAX_UNITS } from "./thresholds.js";
 import { compareUtf16Id } from "../resolveExpectation.js";
+import { MSG_NO_TOOL_CALLS } from "./quickVerifyHumanCopy.js";
+import type { QuickContractExport } from "./buildQuickContractEventsNdjson.js";
 
 export type QuickVerifyReport = {
   schemaVersion: 1;
   verdict: "pass" | "fail" | "uncertain";
   summary: string;
+  verificationMode: "inferred";
   scope: { quickVerifyVersion: "1.0.0"; capabilities: ["inferred_row", "inferred_related_exists"] };
   ingest: { reasonCodes: string[]; malformedLineCount: number };
   ingestWarnings?: Array<{ code: string; actionKey?: string }>;
@@ -28,6 +31,8 @@ export type QuickVerifyReport = {
     verdict: "verified" | "fail" | "uncertain";
     confidence: number;
     reasonCodes: string[];
+    sourceAction: { toolName: string; actionIndex: number };
+    contractEligible: boolean;
     inference: { table: string; rationale: string[]; alternates?: unknown[] };
     verification: Record<string, unknown>;
     explanation: string;
@@ -44,6 +49,7 @@ export type RunQuickVerifyOptions = {
 export type RunQuickVerifyResult = {
   report: QuickVerifyReport;
   registryUtf8: string;
+  contractExports: QuickContractExport[];
 };
 
 function rollupVerdict(
@@ -60,7 +66,11 @@ function rollupVerdict(
 
 function buildSummary(verdict: string, units: QuickVerifyReport["units"], ingest: QuickVerifyReport["ingest"]): string {
   const parts = [`Verdict ${verdict}`, `${units.length} unit(s)`];
-  if (ingest.reasonCodes.length) parts.push(`ingest: ${ingest.reasonCodes.join(",")}`);
+  if (ingest.reasonCodes.includes("INGEST_NO_ACTIONS")) {
+    parts.push(MSG_NO_TOOL_CALLS);
+  } else if (ingest.reasonCodes.length) {
+    parts.push(`ingest: ${ingest.reasonCodes.join(",")}`);
+  }
   return parts.join(". ") + ".";
 }
 
@@ -76,13 +86,14 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
     const report: QuickVerifyReport = {
       schemaVersion: 1,
       verdict: "uncertain",
-      summary: "Input exceeded MAX_INPUT_BYTES.",
+      summary: buildSummary("uncertain", units, ingestBlock),
+      verificationMode: "inferred",
       scope: { quickVerifyVersion: "1.0.0", capabilities: ["inferred_row", "inferred_related_exists"] },
       ingest: ingestBlock,
       units,
       exportableRegistry: { tools: [] },
     };
-    return { report, registryUtf8: canonicalToolsArrayUtf8([]) };
+    return { report, registryUtf8: canonicalToolsArrayUtf8([]), contractExports: [] };
   }
 
   const { unique, droppedWarnings } = dedupeActions(ingest.actions);
@@ -112,6 +123,7 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
     const fkEdges = await catalog.listFkEdges();
     const units: QuickVerifyReport["units"] = [];
     const exportTools: ToolRegistryEntry[] = [];
+    const contractExports: QuickContractExport[] = [];
     const runHeaderReasonCodes: string[] = [];
     const relationalSeen = new Set<string>();
 
@@ -123,7 +135,9 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
       units.push(u);
     };
 
-    for (const action of unique) {
+    for (let actionIndex = 0; actionIndex < unique.length; actionIndex++) {
+      const action = unique[actionIndex]!;
+      const sourceAction = { toolName: action.toolName, actionIndex };
       const bs = bucketsForAction(action.toolName, action.flat, tables);
       for (const b of bs) {
         if (units.length >= MAX_UNITS) break;
@@ -136,6 +150,8 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
             verdict: "uncertain",
             confidence: plan.confidence,
             reasonCodes: plan.reasonCodes.length ? plan.reasonCodes : ["MAPPING_FAILED"],
+            sourceAction,
+            contractEligible: false,
             inference: {
               table: b.tableName,
               rationale: plan.rationale,
@@ -150,25 +166,29 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
           dialect === "postgres"
             ? await verifyRowPostgres(pgClient!, plan.request)
             : verifyRowSqlite(sqliteDb!, plan.request);
-        pushUnit({
-          unitId: uid,
-          kind: "row",
-          verdict: rowOut.verdict,
-          confidence: plan.confidence,
-          reasonCodes: rowOut.reasonCodes,
-          inference: { table: plan.request.table, rationale: plan.rationale },
-          verification: rowOut.verification,
-          explanation: rowOut.explanation,
-        });
-        if (plan.confidence >= T_EXPORT && plan.request) {
-          let tid = `quick:${uid}`;
+        const exported = plan.confidence >= T_EXPORT;
+        let tid = `quick:${uid}`;
+        if (exported) {
           const used = new Set(exportTools.map((t) => t.toolId));
           let n = 1;
           while (used.has(tid)) {
             tid = `quick:${uid}:${n++}`;
           }
           exportTools.push(exportSqlRowTool(tid, plan.request));
+          contractExports.push({ toolId: tid, request: plan.request });
         }
+        pushUnit({
+          unitId: uid,
+          kind: "row",
+          verdict: rowOut.verdict,
+          confidence: plan.confidence,
+          reasonCodes: rowOut.reasonCodes,
+          sourceAction,
+          contractEligible: exported,
+          inference: { table: plan.request.table, rationale: plan.rationale },
+          verification: rowOut.verification,
+          explanation: rowOut.explanation,
+        });
       }
 
       const rels = planRelationalFromFlat(action.flat, fkEdges);
@@ -188,6 +208,8 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
           verdict: rout.verdict,
           confidence: 0.8,
           reasonCodes: rout.reasonCodes,
+          sourceAction,
+          contractEligible: false,
           inference: { table: rel.childTable, rationale: [`FK ${rel.id}`] },
           verification: rout.verification,
           explanation: rout.explanation,
@@ -197,20 +219,24 @@ export async function runQuickVerify(opts: RunQuickVerifyOptions): Promise<RunQu
 
     const hadActions = ingest.actions.length > 0;
     const verdict = rollupVerdict(units, ingest.reasonCodes, hadActions);
+    exportTools.sort((a, b) => compareUtf16Id(a.toolId, b.toolId));
+    contractExports.sort((a, b) => compareUtf16Id(a.toolId, b.toolId));
+
     const report: QuickVerifyReport = {
       schemaVersion: 1,
       verdict,
       summary: buildSummary(verdict, units, ingestBlock),
+      verificationMode: "inferred",
       scope: { quickVerifyVersion: "1.0.0", capabilities: ["inferred_row", "inferred_related_exists"] },
       ingest: ingestBlock,
       ...(ingestWarnings ? { ingestWarnings } : {}),
       ...(runHeaderReasonCodes.length ? { runHeaderReasonCodes } : {}),
       units,
-      exportableRegistry: { tools: exportTools.sort((a, b) => compareUtf16Id(a.toolId, b.toolId)) },
+      exportableRegistry: { tools: exportTools },
     };
 
     const registryUtf8 = canonicalToolsArrayUtf8(report.exportableRegistry.tools);
-    return { report, registryUtf8 };
+    return { report, registryUtf8, contractExports };
   } finally {
     if (pgClient) {
       try {

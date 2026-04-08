@@ -6,12 +6,12 @@
 
 ## A.1 CLI grammar
 
-Tokens: `verify-workflow quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path>`. `-` input = stdin. Missing flag or both DB flags = phase A.
+Tokens: `verify-workflow quick --input <path> (--postgres-url <url> | --db <sqlitePath>) --export-registry <path>` with optional `--emit-events <path>` and `--workflow-id <id>` (default `quick-verify`). `-` input = stdin. Missing flag or both DB flags = phase A.
 
 ## A.2 Phase A / B
 
 - **Phase A:** exit 3, stderr single JSON [`schemas/cli-error-envelope.schema.json`](../schemas/cli-error-envelope.schema.json), **no stdout bytes**.
-- **Phase B:** after successful registry atomic write and read-back (see **Registry file and canonical JSON** below), emit one stdout line: `stableStringify(report) + "\n"`, schema-valid; exit 0/1/2.
+- **Phase B:** after successful registry atomic write and read-back (see **Registry file and canonical JSON** below), optionally atomic-write **`--emit-events`** (may be **zero bytes** when there are no exported row tools), then emit one stdout line: `stableStringify(report) + "\n"`, schema-valid; exit 0/1/2.
 
 ## A.3 Registry file and canonical JSON
 
@@ -30,11 +30,30 @@ Tokens: `verify-workflow quick --input <path> (--postgres-url <url> | --db <sqli
 
 1. Build complete `QuickVerifyReport` in memory (including final `exportableRegistry.tools`).
 2. Compute `registryUtf8 = canonicalToolsArrayUtf8(report.exportableRegistry.tools)`.
-3. **`atomicWriteUtf8File(path, registryUtf8)`:** `mkdirSync(dirname(path), { recursive: true })`; write to `path + ".tmp." + randomSuffix` in same directory; `fsyncSync`; `renameSync` to final path; `readFileSync(path, "utf8")` must **strict-equal** `registryUtf8`; else phase A.
-4. Serialize `reportUtf8 = stableStringify(report) + "\n"`.
-5. `process.stdout.write(reportUtf8)`.
+3. **`atomicWriteUtf8File(exportRegistryPath, registryUtf8)`:** `mkdirSync(dirname(exportRegistryPath), { recursive: true })`; write to `exportRegistryPath + ".tmp." + randomSuffix` in same directory; `fsyncSync`; `renameSync` to final path; `readFileSync(exportRegistryPath, "utf8")` must **strict-equal** `registryUtf8`; else phase A.
+4. If **`--emit-events <path>`** is present: `atomicWriteUtf8File(emitEventsPath, eventsUtf8)` where `eventsUtf8` is UTF-8 NDJSON (`schemaVersion: 1` `tool_observed` lines for each exported row tool, `seq` in sorted-`toolId` order) or the **empty string** (final file length **0**) when there are no exported row tools.
+5. Serialize `reportUtf8 = stableStringify(report) + "\n"`.
+6. `process.stdout.write(reportUtf8)`.
 
 **Never** emit any stdout byte before step 3 completes successfully.
+
+## A.3a Human stderr (anchors)
+
+**Not an integration contract** except for three lines, in order, as whole lines:
+
+1. `=== quick-verify human report ===`
+2. `Verdict: pass` or `Verdict: fail` or `Verdict: uncertain` (matches rollup)
+3. `=== end quick-verify human report ===`
+
+Additional prose after line 3 may change without bumping `quickVerifyVersion`. Integrators must use **stdout JSON** and **exit codes** for automation.
+
+## Appendix H — Human copy identifiers (normative names only)
+
+English text for ingest lines and unit hints is defined in **`src/quickVerify/quickVerifyHumanCopy.ts`**. Identifiers include at least: `MSG_NO_TOOL_CALLS`, `HUMAN_REPORT_BEGIN`, `HUMAN_REPORT_END`, `verdictLine`, `humanLineForIngestReasonCode`, `humanFragmentForReasonCode`. Do not duplicate the strings in this doc.
+
+---
+
+Documentation authority (which markdown owns product vs algorithms): see **[verification-product-ssot.md](verification-product-ssot.md)**.
 
 ## A.4 Verdict rollup
 
@@ -122,3 +141,5 @@ Row: SELECT LIMIT 2; 0 rows `ROW_ABSENT`; ≥2 `DUPLICATE_ROWS`; else scalar com
 ## A.13 Scope string (fixed)
 
 Report `scope.quickVerifyVersion` = `1.0.0`; `scope.capabilities` = fixed enum array `["inferred_row","inferred_related_exists"]` only.
+
+Report `verificationMode` is always **`inferred`**. Per-unit `sourceAction` and `contractEligible` and merged row `verification` fields are defined only in [`schemas/quick-verify-report.schema.json`](../schemas/quick-verify-report.schema.json)—do not restate here.
