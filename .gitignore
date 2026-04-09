@@ -1,5 +1,7 @@
 node_modules/
 dist/
 src/generated/
+website/.next/
+.next/
 *.db
 .DS_Store
