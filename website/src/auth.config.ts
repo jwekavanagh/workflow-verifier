@@ -41,12 +41,23 @@ export const authConfig = {
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
-        const row = await db
-          .select({ plan: users.plan })
-          .from(users)
-          .where(eq(users.id, user.id))
-          .limit(1);
-        (session.user as { plan?: string }).plan = row[0]?.plan ?? "starter";
+        try {
+          const row = await db
+            .select({ plan: users.plan })
+            .from(users)
+            .where(eq(users.id, user.id))
+            .limit(1);
+          (session.user as { plan?: string }).plan = row[0]?.plan ?? "starter";
+        } catch (e) {
+          if (process.env.NODE_ENV !== "development") {
+            throw e;
+          }
+          console.warn(
+            "[auth] session plan lookup skipped (database unreachable?)",
+            e,
+          );
+          (session.user as { plan?: string }).plan = "starter";
+        }
       }
       return session;
     },
