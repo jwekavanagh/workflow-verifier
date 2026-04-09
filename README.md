@@ -87,6 +87,10 @@ Retries, partial failures, and race conditions mean a success flag in a trace is
 | A verifier for **persisted state** after agent or automation workflows | A test runner for application code |
 | Proof that **observed DB state matched expectations** at verification time | Proof that a tool **executed**, **wrote**, or **caused** that state |
 
+**This is for you if** you need SQL ground truth for persisted rows after agent or automation workflows—when the trace looks fine but the database might not be.
+
+**This is not for you if** you need proof a tool executed, generic log search as verification, or a system where read-only SQL against your app DB is not the right check.
+
 **Trust boundary (once):** a green trace or OK tool response does **not** prove the row you care about exists with the right values. This tool only shows whether **read-only `SELECT`s** at verification time matched **expected** rows/fields under your rules—**not** causality or execution correctness in the deep sense.
 
 **Web-facing qualification** (“for you” / “not for you” on the commercial site) is maintained in **`website/src/content/productCopy.ts`** so homepage copy does not drift from a second source in this README.
