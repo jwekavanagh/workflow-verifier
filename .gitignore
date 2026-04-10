@@ -3,6 +3,7 @@ dist/
 src/generated/
 website/.next/
 website/public/openapi-commercial-v1.yaml
+website/public/llms.txt
 .next/
 *.db
 .DS_Store

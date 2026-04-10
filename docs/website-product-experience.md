@@ -40,6 +40,18 @@ This document explains how the commercial Next.js site works and points to **nor
 - **Public anchors (GitHub, npm, one-liner, keywords):** [`website/src/lib/publicProductAnchors.ts`](../website/src/lib/publicProductAnchors.ts) imports [`config/public-product-anchors.json`](../config/public-product-anchors.json). **Outbound identity links** (repo, npm, served OpenAPI URL) live in the **footer** only — see [`website/src/app/SiteFooter.tsx`](../website/src/app/SiteFooter.tsx). This keeps marketing copy, README, npm `package.json`, and the site aligned without scattering hardcoded `github.com/...` strings.
 - **Auth callback hardening:** [`website/src/lib/sanitizeInternalCallbackUrl.ts`](../website/src/lib/sanitizeInternalCallbackUrl.ts) — `emailSignInOptions` is what the sign-in page passes to `signIn("email", …)`.
 
+### Discovery surfaces (machine + crawl + share)
+
+**Why canonical production URLs:** **`/llms.txt`** (generated) and [`website/src/app/sitemap.ts`](../website/src/app/sitemap.ts) use **`productionCanonicalOrigin`** from [`config/public-product-anchors.json`](../config/public-product-anchors.json) so machine-readable links stay stable on production even when preview deploys use a different `NEXT_PUBLIC_APP_URL`.
+
+- **Generated (gitignored, do not hand-edit):** [`website/public/llms.txt`](../website/public/llms.txt) and [`website/public/openapi-commercial-v1.yaml`](../website/public/openapi-commercial-v1.yaml) — written by [`scripts/public-product-anchors.cjs`](../scripts/public-product-anchors.cjs). **`website` `prebuild`** runs **`npm run sync:public-product-anchors`** from the repo root so these exist before `next build`.
+- **Committed static asset:** [`website/public/og.png`](../website/public/og.png) — Open Graph / Twitter preview image; not generated.
+- **Next.js routes:** [`website/src/app/sitemap.ts`](../website/src/app/sitemap.ts), [`website/src/app/robots.ts`](../website/src/app/robots.ts) — crawl hints at `/sitemap.xml` and `/robots.txt`.
+- **HTML head:** [`website/src/app/layout.tsx`](../website/src/app/layout.tsx) sets `metadataBase`, Open Graph + Twitter card (image from [`website/src/content/siteMetadata.ts`](../website/src/content/siteMetadata.ts)), canonical `/`, and one `application/ld+json` **`SoftwareApplication`** block (repo + npm in `sameAs`).
+- **npm registry fields:** Root [`package.json`](../package.json) **`description`**, **`keywords`**, **`homepage`**, **`repository`**, **`bugs`** are **only** updated by the same sync script from anchors — edit [`config/public-product-anchors.json`](../config/public-product-anchors.json) and run **`npm run sync:public-product-anchors`**.
+
+**Integrator:** For tooling or assistants, prefer fetching **`/llms.txt`** and **`/openapi-commercial-v1.yaml`** on the canonical site origin over scraping prose docs.
+
 ## Pricing / plans
 
 - Billing fields and tier blurbs: [`config/commercial-plans.json`](../config/commercial-plans.json) (`audience`, `valueUnlock` per plan). Numeric SSOT checks remain [`docs/commercial-ssot.md`](commercial-ssot.md) / `npm run check:commercial-ssot`.

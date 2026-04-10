@@ -65,6 +65,7 @@ describe(
       expect(slice).toContain(a.productionCanonicalOrigin);
       expect(slice).toContain(`${a.productionCanonicalOrigin}/integrate`);
       expect(slice).toContain(`${a.productionCanonicalOrigin}/openapi-commercial-v1.yaml`);
+      expect(slice).toContain(`${a.productionCanonicalOrigin}/llms.txt`);
 
       const packDest = mkdtempSync(join(tmpdir(), "wfv-pack-"));
       execFileSync("npm", ["pack", "--pack-destination", packDest], {
@@ -109,14 +110,35 @@ describe(
 
       const html = await (await fetch("http://127.0.0.1:34100/")).text();
       const o = normalize(process.env.NEXT_PUBLIC_APP_URL ?? "");
+      const canonicalOrigin = normalize(a.productionCanonicalOrigin);
       expect(html).toContain(a.gitRepositoryUrl);
       expect(html).toContain(a.npmPackageUrl);
       expect(html).toContain(`${o}/openapi-commercial-v1.yaml`);
+      expect(html).toMatch(/og\.png/);
+      expect(html).toContain("application/ld+json");
+      expect(html).toContain("SoftwareApplication");
+      expect(html).toContain("summary_large_image");
+
+      const llmsText = await (await fetch("http://127.0.0.1:34100/llms.txt")).text();
+      expect(llmsText).toContain(a.identityOneLiner);
+      expect(llmsText).toContain(`${canonicalOrigin}/integrate`);
+      expect(llmsText).toContain(`${canonicalOrigin}/openapi-commercial-v1.yaml`);
+      expect(llmsText).toContain(a.gitRepositoryUrl);
+      expect(llmsText).toContain(a.npmPackageUrl);
+      expect(llmsText.includes("example.invalid")).toBe(false);
+
+      const sitemapXml = await (await fetch("http://127.0.0.1:34100/sitemap.xml")).text();
+      expect(sitemapXml).toContain(`${canonicalOrigin}/llms.txt`);
+      expect(sitemapXml).toContain(`${canonicalOrigin}/integrate`);
+      expect(sitemapXml).toContain(`${canonicalOrigin}/openapi-commercial-v1.yaml`);
+
+      const robotsTxt = await (await fetch("http://127.0.0.1:34100/robots.txt")).text();
+      expect(robotsTxt).toContain(`${canonicalOrigin}/sitemap.xml`);
+      expect(robotsTxt).toMatch(/Allow:\s*\//);
 
       const yamlText = await (
         await fetch("http://127.0.0.1:34100/openapi-commercial-v1.yaml")
       ).text();
-      const canonicalOrigin = normalize(a.productionCanonicalOrigin);
       const integrateUrl = `${canonicalOrigin}/integrate`;
       const selfServed = `${o}/openapi-commercial-v1.yaml`;
       const doc = parse(yamlText) as Record<string, unknown>;
@@ -139,7 +161,7 @@ describe(
       expect(String(dist.repository)).toBe(a.gitRepositoryUrl);
       expect(String(dist.npmPackage)).toBe(a.npmPackageUrl);
       expect(normalize(String(dist.openApi))).toBe(normalize(selfServed));
-    });
+    }, 180_000);
 
     afterAll(async () => {
       if (!child) return;

@@ -8,6 +8,7 @@ const ANCHORS_PATH = join(ROOT, "config", "public-product-anchors.json");
 const OPENAPI_IN = join(ROOT, "schemas", "openapi-commercial-v1.in.yaml");
 const OPENAPI_OUT = join(ROOT, "schemas", "openapi-commercial-v1.yaml");
 const OPENAPI_PUBLIC = join(ROOT, "website", "public", "openapi-commercial-v1.yaml");
+const LLMS_PUBLIC = join(ROOT, "website", "public", "llms.txt");
 const README_PATH = join(ROOT, "README.md");
 const PKG_PATH = join(ROOT, "package.json");
 
@@ -88,6 +89,31 @@ function escapeYamlDoubleQuotedOneLiner(s) {
   return String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+/**
+ * Plain-text entry point for tools and agents (canonical URLs only).
+ * @param {Record<string, unknown>} anchors
+ * @param {string} canonicalOrigin normalized origin
+ * @param {string} integrateUrl
+ * @param {string} openapiSelfCanonical
+ */
+function buildLlmsText(anchors, canonicalOrigin, integrateUrl, openapiSelfCanonical) {
+  const lines = [
+    "# Workflow Verifier",
+    "",
+    "## Summary",
+    String(anchors.identityOneLiner),
+    "",
+    "## Primary links",
+    `- Canonical site: ${canonicalOrigin}/`,
+    `- First-run integration: ${integrateUrl}`,
+    `- OpenAPI (canonical): ${openapiSelfCanonical}`,
+    `- Source repository: ${anchors.gitRepositoryUrl}`,
+    `- npm package: ${anchors.npmPackageUrl}`,
+    "",
+  ];
+  return lines.join("\n");
+}
+
 function assertNextPublicOriginParity() {
   const anchors = loadAnchors();
   const canonicalFromJson = anchors.productionCanonicalOrigin;
@@ -138,6 +164,13 @@ function syncPublicProductAnchors() {
     .replace("__OPENAPI_SELF_URL__", openapiSelfEffective);
   writeFileSync(OPENAPI_PUBLIC, publicYaml, "utf8");
 
+  mkdirSync(dirname(LLMS_PUBLIC), { recursive: true });
+  writeFileSync(
+    LLMS_PUBLIC,
+    buildLlmsText(anchors, canonicalOrigin, integrateUrl, openapiSelfCanonical),
+    "utf8",
+  );
+
   const pkgRaw = readFileSync(PKG_PATH, "utf8");
   const pkg = JSON.parse(pkgRaw);
   pkg.description = anchors.identityOneLiner;
@@ -159,6 +192,7 @@ function syncPublicProductAnchors() {
     `- **Canonical site:** ${canonicalOrigin}`,
     `- **Integrate:** ${integrateUrl}`,
     `- **OpenAPI (canonical):** ${openapiSelfCanonical}`,
+    `- **llms.txt (agents):** ${canonicalOrigin}/llms.txt`,
     "",
   ].join("\n");
   const block = `${README_START}\n${inner}\n${README_END}`;

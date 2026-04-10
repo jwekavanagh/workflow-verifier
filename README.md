@@ -10,6 +10,7 @@ State verification engine: read-only SQL checks that database state matches expe
 - **Canonical site:** https://workflow-verifier.vercel.app
 - **Integrate:** https://workflow-verifier.vercel.app/integrate
 - **OpenAPI (canonical):** https://workflow-verifier.vercel.app/openapi-commercial-v1.yaml
+- **llms.txt (agents):** https://workflow-verifier.vercel.app/llms.txt
 
 <!-- public-product-anchors:end -->
 

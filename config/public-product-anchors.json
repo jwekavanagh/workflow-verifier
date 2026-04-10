@@ -11,6 +11,15 @@
     "database",
     "sql",
     "state",
-    "read-only"
+    "read-only",
+    "agent",
+    "automation",
+    "ndjson",
+    "postgres",
+    "sqlite",
+    "tool-calls",
+    "compliance",
+    "crm",
+    "ai-workflow"
   ]
 }
