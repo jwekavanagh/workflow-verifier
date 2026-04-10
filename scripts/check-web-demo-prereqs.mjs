@@ -3,11 +3,8 @@
  * Fails fast when the web demo cannot run: Node version, node:sqlite, examples fixtures.
  * Exit 0 = prerequisites satisfied; exit 1 = not.
  */
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function parseNodeMajorMinorPatch(v) {
   const m = /^v?(\d+)\.(\d+)\.(\d+)/.exec(v);
@@ -25,11 +22,18 @@ function nodeAtLeast_22_13() {
   return p.patch >= 0;
 }
 
+function committedExampleFixturesPresent(dir) {
+  return (
+    existsSync(path.join(dir, "events.ndjson")) &&
+    existsSync(path.join(dir, "tools.json")) &&
+    existsSync(path.join(dir, "seed.sql"))
+  );
+}
+
 function resolveExamplesDir() {
   const candidates = [path.join(process.cwd(), "examples"), path.join(process.cwd(), "..", "examples")];
   for (const dir of candidates) {
-    const db = path.join(dir, "demo.db");
-    if (existsSync(db)) return dir;
+    if (committedExampleFixturesPresent(dir)) return dir;
   }
   return null;
 }
@@ -51,10 +55,28 @@ try {
 
 const { DatabaseSync } = await import("node:sqlite");
 
+function ensureExamplesDemoDb(dir) {
+  const demoDb = path.join(dir, "demo.db");
+  if (existsSync(demoDb)) return;
+  const sql = readFileSync(path.join(dir, "seed.sql"), "utf8");
+  try {
+    const db = new DatabaseSync(demoDb);
+    db.exec(sql);
+    db.close();
+  } catch (e) {
+    if (existsSync(demoDb)) return;
+    throw e;
+  }
+}
+
 const examplesDir = resolveExamplesDir();
 if (!examplesDir) {
-  fail("examples/ not found (expected examples/demo.db from cwd or parent)");
+  fail(
+    "examples/ not found (expected events.ndjson, tools.json, seed.sql under examples/ from cwd or parent)",
+  );
 }
+
+ensureExamplesDemoDb(examplesDir);
 
 const required = ["events.ndjson", "tools.json", "demo.db"];
 for (const f of required) {
