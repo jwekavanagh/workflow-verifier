@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import type { NextAuthConfig } from "next-auth";
 import Email from "next-auth/providers/email";
 import { db } from "./db/client";
+import { recordSignInFunnel } from "./lib/recordSignInFunnel";
 import { sendMagicLink } from "./lib/sendMagicLink";
 import {
   accounts,
@@ -19,6 +20,11 @@ export const authConfig = {
     sessionsTable: sessions,
     verificationTokensTable: verificationTokens,
   }),
+  events: {
+    async signIn({ user }) {
+      if (user.id) await recordSignInFunnel(user.id);
+    },
+  },
   providers: [
     Email({
       // Auth.js validates a Nodemailer `server` even when `sendVerificationRequest` sends via Resend/Mailpit.

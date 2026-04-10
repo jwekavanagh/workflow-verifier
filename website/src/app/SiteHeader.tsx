@@ -13,6 +13,7 @@ export async function SiteHeader() {
         </Link>
         <nav className="site-nav" aria-label="Primary">
           <Link href="/#try-it">Try</Link>
+          <Link href="/integrate">Integrate</Link>
           <Link href="/#example">Example</Link>
           <Link href="/pricing">Pricing</Link>
           {signedIn ? (

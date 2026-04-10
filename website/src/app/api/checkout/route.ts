@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { loadCommercialPlans } from "@/lib/plans";
 import type { PlanId } from "@/lib/plans";
 import { NextRequest, NextResponse } from "next/server";
+import { logFunnelEvent } from "@/lib/funnelEvent";
 import { getStripe } from "@/lib/stripeServer";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -45,6 +46,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       plan,
     },
   });
+
+  await logFunnelEvent({ event: "checkout_started", userId: session.user.id });
 
   return NextResponse.json({ url: checkout.url });
 }

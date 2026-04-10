@@ -49,12 +49,35 @@ if (!run("npx", ["vitest", "run", "src/commercial/licensePreflight.test.ts"], { 
 
 layers.regression = true;
 
-if (
-  !run("npx", ["vitest", "run"], {
-    cwd: path.join(root, "website"),
-    shell: true,
-  })
-) {
+if (!process.env.DATABASE_URL?.trim()) {
+  console.error(
+    "validate-commercial-funnel: DATABASE_URL is required (Postgres; drizzle-kit migrate runs before website Vitest).",
+  );
+  writeVerdict("not_solved", layers);
+  process.exit(1);
+}
+
+const websiteDir = path.join(root, "website");
+const websiteTestEnv = {
+  ...process.env,
+  CONTACT_SALES_EMAIL: process.env.CONTACT_SALES_EMAIL ?? "sales-ci@example.com",
+  AUTH_SECRET:
+    process.env.AUTH_SECRET && process.env.AUTH_SECRET.length >= 32
+      ? process.env.AUTH_SECRET
+      : "x".repeat(40),
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ?? "sk_test_placeholder",
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET ?? "whsec_placeholder",
+  STRIPE_PRICE_TEAM: process.env.STRIPE_PRICE_TEAM ?? "price_team_placeholder",
+  STRIPE_PRICE_BUSINESS: process.env.STRIPE_PRICE_BUSINESS ?? "price_business_placeholder",
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? "http://127.0.0.1:3000",
+};
+
+if (!run("npx", ["drizzle-kit", "migrate"], { cwd: websiteDir, shell: true, env: websiteTestEnv })) {
+  writeVerdict("not_solved", layers);
+  process.exit(1);
+}
+
+if (!run("npx", ["vitest", "run"], { cwd: websiteDir, shell: true, env: websiteTestEnv })) {
   writeVerdict("not_solved", layers);
   process.exit(1);
 }

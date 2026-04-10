@@ -70,6 +70,10 @@ Configure Stripe to send at least:
 
 Set **`STRIPE_WEBHOOK_SECRET`** from `stripe listen --forward-to …/api/webhooks/stripe`. Use a Postgres **`DATABASE_URL`** with migrations applied.
 
+**`CONTACT_SALES_EMAIL`** (bare email, regex in `website/.env.example`) is **required** so `next.config.ts` can load—`next dev` / `next build` fail without it.
+
+**Website Vitest:** `__tests__/funnel-persistence.integration.test.ts` requires **`DATABASE_URL`** pointing at Postgres with migrations applied (`npx drizzle-kit migrate` from `website/`). From the repo root, **`npm run validate-commercial`** enforces **`DATABASE_URL`**, runs migrate, then runs full website Vitest.
+
 Optional: **`RESERVE_EMERGENCY_ALLOW=1`** waives the **paid-plan + active subscription** check for **`intent=enforce`** only (never for starter). Quota still applies.
 
 ## Root package `prepublishOnly` (commercial CLI)

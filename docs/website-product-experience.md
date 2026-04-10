@@ -13,23 +13,17 @@ This document explains how the commercial Next.js site works and points to **nor
 
 ## Integrator
 
-Equivalent CLI invocations (from repo root, after `npm run build`):
-
-```bash
-workflow-verifier --workflow-id wf_complete --events examples/events.ndjson --registry examples/tools.json --db examples/demo.db
-workflow-verifier --workflow-id wf_missing --events examples/events.ndjson --registry examples/tools.json --db examples/demo.db
-workflow-verifier --workflow-id wf_inconsistent --events examples/events.ndjson --registry examples/tools.json --db examples/demo.db
-```
-
-The web demo allowlists only those three `workflowId` values.
+- **First run on your database (SSOT):** [`docs/first-run-integration.md`](first-run-integration.md) — same content as site route **`/integrate`** ([`website/src/app/integrate/page.tsx`](../website/src/app/integrate/page.tsx), resolves `docs/` via [`website/src/lib/resolveRepoDoc.ts`](../website/src/lib/resolveRepoDoc.ts)).
+- **Bundled demo scenarios** on the homepage map to the same three `workflowId` values as the CLI examples; allowlist and contracts remain in [`website/src/lib/demoScenarioIds.ts`](../website/src/lib/demoScenarioIds.ts) and [`website/src/lib/demoVerify.contract.ts`](../website/src/lib/demoVerify.contract.ts).
 
 ## Operator
 
 - **Node:** `>= 22.13.0` (website `engines` and `scripts/check-web-demo-prereqs.mjs`).
 - **Build:** `npm run build:website` from repo root (builds the engine, then Next).
 - **Vercel / serverless:** set `NEXT_CONFIG_TRACE_ROOT=1` so `examples/` and package `schemas/` are traced with the deployment (see [`website/next.config.ts`](../website/next.config.ts)).
-- **Preflight:** `npm run check:web-demo-prereqs` — verifies Node, `node:sqlite`, fixture files, and read-only open of `demo.db`. Run in CI via `npm run validate-commercial` after website Vitest.
+- **Preflight:** `npm run check:web-demo-prereqs` — verifies Node, `node:sqlite`, fixture files, and read-only open of `demo.db`. Repo root **`npm run validate-commercial`** runs this after website Vitest (which itself requires **`DATABASE_URL`** and `drizzle-kit migrate`).
 - **Next build auth:** `AUTH_SECRET` (and related env) remain required for full `next build` when API routes that touch auth are analyzed—see [`website/.env.example`](../website/.env.example).
+- **Enterprise mailto:** `CONTACT_SALES_EMAIL` — bare email, validated at [`website/next.config.ts`](../website/next.config.ts) load; see [`website/.env.example`](../website/.env.example).
 
 ## Product copy
 

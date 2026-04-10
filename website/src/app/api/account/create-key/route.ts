@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db/client";
 import { apiKeys } from "@/db/schema";
+import { logFunnelEvent } from "@/lib/funnelEvent";
 import { generateApiKeyPlaintext, hashApiKey, sha256Hex } from "@/lib/apiKeyCrypto";
 
 export async function POST(): Promise<NextResponse> {
@@ -33,6 +34,8 @@ export async function POST(): Promise<NextResponse> {
     keyHash,
     keyLookupSha256,
   });
+
+  await logFunnelEvent({ event: "api_key_created", userId: session.user.id });
 
   return NextResponse.json({ apiKey: plain });
 }

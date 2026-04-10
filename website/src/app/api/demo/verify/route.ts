@@ -7,6 +7,7 @@ import {
   DemoResultSchemaMismatchError,
   runDemoVerifyScenario,
 } from "@/lib/demoVerify";
+import { logFunnelEvent } from "@/lib/funnelEvent";
 import { DemoFixturesMissingError } from "@/lib/resolveRepoExamples";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -49,6 +50,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const out = await runDemoVerifyScenario(parsed.data.scenarioId);
+    await logFunnelEvent({ event: "demo_verify_ok" });
     return NextResponse.json({
       ok: true as const,
       scenarioId: out.scenarioId,

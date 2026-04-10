@@ -81,6 +81,7 @@ export const productCopy = {
 
   nextSteps: {
     title: "What to do next",
+    integrate: "Run on your database (copy-paste first run)",
     cli: "Run the one-minute CLI demo on your machine",
     signIn: "Sign in for account, API keys, and paid plans",
     pricing: "See pricing",

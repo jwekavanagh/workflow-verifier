@@ -1,0 +1,47 @@
+# Example: run the published commercial workflow-verifier CLI against this repo's examples/
+# with a real WORKFLOW_VERIFIER_API_KEY and a reachable license API (COMMERCIAL_LICENSE_API_BASE_URL).
+#
+# Prerequisites:
+# - GitHub secret WORKFLOW_VERIFIER_API_KEY from your product account
+# - License server must accept POST /api/v1/usage/reserve for intent=verify
+#
+# Copy to .github/workflows/ in a repo that vendors the same examples/ layout, or run from this monorepo.
+name: Workflow Verifier (commercial CLI)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "examples/**"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Create examples/demo.db from seed.sql
+        run: |
+          node --input-type=module -e "
+          import { readFileSync } from 'node:fs';
+          import { DatabaseSync } from 'node:sqlite';
+          const d = new DatabaseSync('examples/demo.db');
+          d.exec(readFileSync('examples/seed.sql', 'utf8'));
+          d.close();
+          "
+
+      - name: Install published workflow-verifier (commercial)
+        run: npm install workflow-verifier@latest
+
+      - name: Run contract verification
+        env:
+          WORKFLOW_VERIFIER_API_KEY: ${{ secrets.WORKFLOW_VERIFIER_API_KEY }}
+        run: |
+          npx workflow-verifier --workflow-id wf_complete \
+            --events examples/events.ndjson \
+            --registry examples/tools.json \
+            --db examples/demo.db

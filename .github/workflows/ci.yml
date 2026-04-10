@@ -32,3 +32,51 @@ jobs:
         run: npm ci
       - name: Build, tests, and adoption chain (CI / Postgres)
         run: npm run test:ci
+
+  commercial:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wfv_website
+      AUTH_SECRET: ci_auth_secret_value_at_least_32_chars_ok
+      CONTACT_SALES_EMAIL: sales-ci@example.com
+      STRIPE_SECRET_KEY: sk_test_ci_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
+      STRIPE_PRICE_TEAM: price_ci_team
+      STRIPE_PRICE_BUSINESS: price_ci_business
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Create website database
+        working-directory: website
+        run: |
+          node --input-type=module -e "
+          import postgres from 'postgres';
+          const sql = postgres('postgresql://postgres:postgres@localhost:5432/postgres');
+          try {
+            await sql.unsafe('CREATE DATABASE wfv_website');
+          } catch (e) {
+            const c = /** @type {{ code?: string }} */ (e).code;
+            if (c !== '42P04') throw e;
+          }
+          await sql.end();
+          "
+      - name: Validate commercial layer
+        run: npm run validate-commercial

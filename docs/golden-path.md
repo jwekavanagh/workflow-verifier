@@ -7,6 +7,7 @@
 
 ## Integrator
 
+- [First-run integration (SSOT)](first-run-integration.md) — your database, NDJSON, registry; site **`/integrate`**
 - [Adoption integrator command](workflow-verifier.md#adoption-integrator-command)
 
 ## Operator

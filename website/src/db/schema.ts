@@ -1,10 +1,12 @@
 import {
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
   timestamp,
   unique,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 /** Auth.js default table name `user`. */
@@ -110,4 +112,14 @@ export const usageReservations = pgTable(
 export const stripeEvents = pgTable("stripe_event", {
   id: text("id").primaryKey(),
   receivedAt: timestamp("received_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+export const funnelEvents = pgTable("funnel_event", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  event: text("event").notNull(),
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+    .notNull()
+    .defaultNow(),
 });

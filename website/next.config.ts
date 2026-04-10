@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 import path from "path";
+import { assertContactSalesEmail } from "./src/lib/contactSalesEmail";
+
+assertContactSalesEmail();
 
 /**
  * `outputFileTracingRoot` helps Vercel/monorepo serverless traces include the repo root.

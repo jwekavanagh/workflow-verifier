@@ -2,6 +2,8 @@
 
 This document is the **narrative SSOT** for the thin commercial layer (website, billing, API keys, CLI preflight). It does **not** redefine CLI verification semantics—see [verification-product-ssot.md](verification-product-ssot.md) and [workflow-verifier.md](workflow-verifier.md).
 
+**Related (integrator, not duplicated here):** [first-run-integration.md](first-run-integration.md) — run verification against your own SQL database; rendered on the site as **`/integrate`**.
+
 ## Approved product scope (v1)
 
 **Original stakeholder narrative (reference):** Starter free (100/mo); Team $100/mo (10k included, per-run overage); Business $300/mo (50k + volume); Enterprise custom.

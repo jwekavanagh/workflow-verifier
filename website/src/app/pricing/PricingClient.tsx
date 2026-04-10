@@ -14,7 +14,13 @@ export type PlanRow = {
   valueUnlock: string;
 };
 
-export function PricingClient({ plans }: { plans: PlanRow[] }) {
+export function PricingClient({
+  plans,
+  enterpriseMailto,
+}: {
+  plans: PlanRow[];
+  enterpriseMailto: string;
+}) {
   const { status } = useSession();
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
@@ -113,7 +119,7 @@ export function PricingClient({ plans }: { plans: PlanRow[] }) {
             {p.id === "enterprise" && (
               <a
                 className="btn"
-                href="mailto:sales@example.com"
+                href={enterpriseMailto}
                 style={{ display: "inline-block", marginTop: "0.75rem" }}
               >
                 Contact sales

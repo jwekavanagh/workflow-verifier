@@ -32,22 +32,22 @@ export function AccountClient({ hasKey }: { hasKey: boolean }) {
         </p>
       )}
       <p style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: "0.75rem" }}>
-        Use <code>WORKFLOW_VERIFIER_API_KEY</code> with the commercial CLI. Entitlement docs in the
-        repo:{" "}
+        Use <code>WORKFLOW_VERIFIER_API_KEY</code> with the commercial CLI. Start from{" "}
+        <a href="/integrate">Integrate</a> for a copy-paste first run on your database. Entitlements:{" "}
         <a
           href="https://github.com/jwekavanagh/workflow-verifier/blob/main/docs/commercial-entitlement-matrix.md"
           rel="noreferrer"
         >
           commercial-entitlement-matrix.md
-        </a>{" "}
-        (generated) and{" "}
+        </a>
+        ,{" "}
         <a
           href="https://github.com/jwekavanagh/workflow-verifier/blob/main/docs/commercial-entitlement-policy.md"
           rel="noreferrer"
         >
           commercial-entitlement-policy.md
-        </a>{" "}
-        (policy). <a href="/pricing">Pricing</a>.
+        </a>
+        . <a href="/pricing">Pricing</a>.
       </p>
     </div>
   );

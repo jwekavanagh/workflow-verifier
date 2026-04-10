@@ -1,4 +1,5 @@
 import { productCopy } from "@/content/productCopy";
+import { enterpriseMailtoHref } from "@/lib/contactSalesEmail";
 import { loadCommercialPlans } from "@/lib/plans";
 import { PricingClient, type PlanRow } from "./PricingClient";
 
@@ -16,11 +17,12 @@ export default function PricingPage() {
       valueUnlock: p.valueUnlock,
     };
   });
+  const enterpriseMailto = enterpriseMailtoHref();
   return (
     <main>
       <h1>Pricing</h1>
       <p className="muted pricing-recap">{productCopy.pricingRecap}</p>
-      <PricingClient plans={plans} />
+      <PricingClient plans={plans} enterpriseMailto={enterpriseMailto} />
     </main>
   );
 }

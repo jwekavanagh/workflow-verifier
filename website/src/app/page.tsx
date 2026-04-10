@@ -28,6 +28,9 @@ export default function HomePage() {
           <a className="btn" href="#try-it">
             Run verification
           </a>
+          <Link className="link-secondary" href="/integrate">
+            Integrate
+          </Link>
           <Link className="link-secondary" href="#example">
             View example
           </Link>
@@ -162,6 +165,9 @@ export default function HomePage() {
       >
         <h2 id="next-heading">{productCopy.nextSteps.title}</h2>
         <ul className="next-steps-list">
+          <li>
+            <Link href="/integrate">{productCopy.nextSteps.integrate}</Link>
+          </li>
           <li>
             <a href={productCopy.links.cliQuickstart}>{productCopy.nextSteps.cli}</a>
           </li>
