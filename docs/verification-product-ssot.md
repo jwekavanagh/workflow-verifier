@@ -69,7 +69,7 @@ Quick Verify is **provisional**: inference-based mapping, **uncertain** as a nor
 
 1. **Clone** the repository and **`npm install`**.
 2. **`npm run build`** (or **`npm test`**, which builds first).
-3. **`npm run first-run`** — creates **`examples/demo.db`** and runs the bundled batch demo (see [`workflow-verifier.md`](workflow-verifier.md) onboarding).
+3. **`npm run build && node scripts/first-run.mjs`** — creates **`examples/demo.db`** and runs the narrated onboarding smoke (see [`workflow-verifier.md`](workflow-verifier.md) onboarding; also runs as part of **`npm test`**).
 4. **Quick verify:**  
    `node dist/cli.js quick --input test/fixtures/quick-verify/pass-line.ndjson --db examples/demo.db --export-registry ./quick-export.json`  
    Supply structured tool activity on **stdin** with **`--input -`** when convenient. Optional **`--emit-events`** writes synthetic **`tool_observed`** NDJSON for **exported row tools** only; **`related_exists`** inference is **not** exported to the registry in this release (`contractEligible` is false on those units).

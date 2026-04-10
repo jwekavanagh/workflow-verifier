@@ -15,7 +15,7 @@ This document defines how the repository proves the **adoption golden path**: de
 | DOC_BOUNDARY | `adoption-docs-boundary.test.mjs` |
 | GOLDEN_PATH_POINTERS | `docs-golden-path-pointer-only.test.mjs` |
 | ARTIFACT_REGISTRY | `adoption_validation_spec_registry_matches_plan` |
-| VERDICT | `npm test` runs build, Vitest, pinned SQLite `node:test`, `node scripts/demo.mjs`, then writes `artifacts/adoption-validation-verdict.json` and runs `node scripts/record-adoption-verdict.mjs && node scripts/verify-adoption-verdict.mjs` |
+| VERDICT | `npm test` runs `npm run build`, Vitest, pinned SQLite `node:test`, `node scripts/first-run.mjs`, `node examples/minimal-ci-enforcement/run.mjs`, `node dist/cli.js assurance run --manifest examples/assurance/manifest.json`, and `npm run validate-ttfv` — **no** Postgres |
 | REGISTRY_NO_STEPS | `src/registryValidation.test.ts` |
 
 ## ADOPTION_ARTIFACT_PROOF (registry TSV)
@@ -56,4 +56,4 @@ test/npm-scripts-contract.test.mjs	modify
 test/pipeline.sqlite.test.mjs	modify
 ```
 
-Solved state is recorded in `artifacts/adoption-validation-verdict.json` after a successful `npm test`; the default test script runs `node scripts/demo.mjs` before `node scripts/record-adoption-verdict.mjs && node scripts/verify-adoption-verdict.mjs` so the verdict commit matches `git rev-parse HEAD` on a green branch tip.
+After a successful `npm test`, that chain (see VERDICT row) has exercised the onboarding smoke (`scripts/first-run.mjs`), the minimal CI enforcement example, `assurance run` against `examples/assurance/manifest.json`, and TTFV validation. Optional legacy scripts `scripts/record-adoption-verdict.mjs` and `scripts/verify-adoption-verdict.mjs` can still record `artifacts/adoption-validation-verdict.json` manually; they are **not** invoked by the default `npm test` script.

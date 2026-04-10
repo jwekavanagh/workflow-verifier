@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Onboarding driver — invoke via `npm start` or `npm run first-run` (runs build, then this file).
+ * Onboarding driver — run `npm run build && node scripts/first-run.mjs` (also runs as part of `npm test`).
  *
  * Stdout layout (in order):
  * 1. Banner + prerequisite explanation (plain language).
