@@ -5,7 +5,7 @@
 ```bash
 # From repo root (after npm install)
 cd website
-copy .env.example .env   # then edit DATABASE_URL (for Supabase/Vercel include ?sslmode=require or rely on auto-append for non-localhost URLs), AUTH_SECRET, etc.
+copy .env.example .env   # then edit DATABASE_URL (Supabase/Vercel: sslmode=require; app and drizzle.config auto-append TLS params for non-localhost URLs), AUTH_SECRET, etc.
 npx drizzle-kit migrate
 npm run dev
 ```
