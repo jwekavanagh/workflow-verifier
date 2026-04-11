@@ -31,6 +31,18 @@ test("README discovery fold body matches buildDiscoveryFoldBody", () => {
   assert.equal(inner, expected.trim());
 });
 
+test("README discovery-readme-title matches readmeTitle", () => {
+  const discovery = lib.loadDiscoveryAcquisition(root);
+  const readme = readFileSync(join(root, "README.md"), "utf8");
+  const tStart = "<!-- discovery-readme-title:start -->";
+  const tEnd = "<!-- discovery-readme-title:end -->";
+  const i0 = readme.indexOf(tStart);
+  const i1 = readme.indexOf(tEnd);
+  assert.ok(i0 >= 0 && i1 > i0);
+  const inner = readme.slice(i0 + tStart.length, i1).trim();
+  assert.equal(inner, `# ${discovery.readmeTitle}`);
+});
+
 test("invalid visitorProblemAnswer fails schema (negative)", () => {
   const schemaPath = join(root, "config", "discovery-acquisition.schema.json");
   const schema = JSON.parse(readFileSync(schemaPath, "utf8"));

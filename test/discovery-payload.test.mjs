@@ -75,6 +75,15 @@ test("llms.txt normalized equals renderLlmsTextFromPayload(build)", () => {
   assert.equal(dp.normalizeDiscoveryText(onDisk), rendered);
 });
 
+test("rendered llms includes When this hurts demand section", () => {
+  const payload = dp.buildDiscoveryPayload(root);
+  const rendered = dp.renderLlmsTextFromPayload(payload);
+  assert.ok(rendered.includes("## When this hurts (search-shaped)"));
+  for (const line of payload.appendix.demandMoments) {
+    assert.ok(rendered.includes(line), line);
+  }
+});
+
 test("assertUtf8ByteLength throws when over limit", () => {
   assert.throws(() => dp.assertUtf8ByteLength("x", "y", 0), /exceeds max/);
 });

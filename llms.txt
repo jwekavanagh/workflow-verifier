@@ -11,9 +11,9 @@ State verification engine: read-only SQL checks that database state matches expe
 - npm package: https://www.npmjs.com/package/workflow-verifier
 
 ## Intent phrases
-- verify agent workflow against database rows
+- green trace wrong database row agent workflow
 - trace says success but CRM row missing
-- read-only SQL check after automation run
+- read-only SQL check after LangGraph or automation run
 - structured tool activity NDJSON verification
 - ROW_ABSENT inconsistent workflow result
 
@@ -23,11 +23,17 @@ State verification engine: read-only SQL checks that database state matches expe
 - non-SQL systems without a queryable mirror
 
 ## Related queries
+- green LangGraph trace postgres row missing
 - how to verify AI agent wrote to postgres
-- green trace but database inconsistent
-- workflow verification sqlite read only
-- compare tool parameters to sql row
+- CI passed but database inconsistent side effect
+- compare tool parameters to sql row verification
 - agent run record workflow result json
+
+## When this hurts (search-shaped)
+- Green LangGraph or agent trace but wrong or missing Postgres row
+- OpenAI-style tool loop reported success; CRM or SQLite state does not match
+- CI passed on workflow logs; database side effect never showed up
+- Need a gate before production: read-only verification, not more log volume
 
 ## Problem framing (shareable)
 - Full page: https://workflow-verifier.vercel.app/database-truth-vs-traces

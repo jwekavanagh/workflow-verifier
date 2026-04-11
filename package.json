@@ -95,6 +95,12 @@
     "tool-calls",
     "compliance",
     "crm",
-    "ai-workflow"
+    "ai-workflow",
+    "langgraph",
+    "ci-gate",
+    "false-positive",
+    "postgres-verification",
+    "trace-vs-database",
+    "silent-failure"
   ]
 }

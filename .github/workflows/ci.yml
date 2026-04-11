@@ -83,7 +83,8 @@ jobs:
 
   distribution-consumer:
     needs: [test, commercial]
-    if: github.repository == 'jwekavanagh/workflow-verifier' && github.ref == 'refs/heads/main'
+    # Without this secret the default GITHUB_TOKEN cannot reach distributionConsumerRepository (see scripts/distribution-consumer-pipeline.mjs).
+    if: github.repository == 'jwekavanagh/workflow-verifier' && github.ref == 'refs/heads/main' && secrets.DISTRIBUTION_GITHUB_TOKEN != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read

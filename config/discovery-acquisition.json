@@ -1,9 +1,15 @@
 {
   "schemaVersion": 1,
   "slug": "/database-truth-vs-traces",
+  "readmeTitle": "Workflow Verifier — when traces say success but your database does not match",
   "heroTitle": "Your workflow said it worked. Did the database actually change?",
   "heroSubtitle": "Workflow Verifier answers with read-only SQL at verification time—not with trace success flags or chat narratives.",
   "homepageAcquisitionCtaLabel": "Why traces are not database truth",
+  "homepageHero": {
+    "what": "You just shipped an agent or automation run—LangGraph-style graphs, OpenAI tool loops, or CRM batch jobs—and the trace or success flag says everything worked. This product runs read-only SQL against your SQLite or Postgres to check whether persisted rows actually match what structured tool activity claimed.",
+    "why": "Traces and chat narratives describe intent and step outcomes; they do not prove the row you care about exists with the right values. That gap is how green CI and green traces still ship silent state failures.",
+    "when": "Use it after a workflow or replay when you need ground truth before customer-facing actions, compliance evidence, or a CI gate—whenever \"it looked fine in the trace\" is no longer good enough."
+  },
   "visitorProblemAnswer": "Teams ship agent and automation workflows where traces, tool responses, and success flags look green while the database row is missing, stale, or wrong. Workflow Verifier closes that gap by comparing structured tool activity to read-only SQL against your SQLite or Postgres at verification time: it tells you whether observed state matched expectations derived from what the workflow claimed—not whether a step narrative sounded successful. It is a snapshot check, not proof of causality or execution.",
   "pageMetadata": {
     "title": "Database truth vs traces — Workflow Verifier",
@@ -11,9 +17,9 @@
   },
   "sections": [
     {
-      "heading": "What goes wrong without a SQL check",
+      "heading": "The moment it bites",
       "paragraphs": [
-        "A CRM or support stack can show a closed ticket in the UI narrative while `tickets.status` never moved to resolved. An agent run can log a successful upsert while the row never landed. Traditional traces tell you a step ran; they do not prove the authoritative row shape you care about."
+        "Your run finished with a green trace or a tool response that looks like success, but the ticket is still open in Postgres, the CRM row never landed, or CI passed while production would fail. That embarrassment is the forcing function: you need read-only SQL against authoritative tables—not another narrative."
       ]
     },
     {
@@ -35,11 +41,22 @@
       ]
     }
   ],
+  "demandMoments": [
+    "Green LangGraph or agent trace but wrong or missing Postgres row",
+    "OpenAI-style tool loop reported success; CRM or SQLite state does not match",
+    "CI passed on workflow logs; database side effect never showed up",
+    "Need a gate before production: read-only verification, not more log volume"
+  ],
+  "cliFollowupLines": [
+    "More context (green trace vs database): {{ACQUISITION_URL}}",
+    "First-run on your database: {{INTEGRATE_URL}}",
+    "Canonical site: {{ORIGIN}}/"
+  ],
   "llms": {
     "intentPhrases": [
-      "verify agent workflow against database rows",
+      "green trace wrong database row agent workflow",
       "trace says success but CRM row missing",
-      "read-only SQL check after automation run",
+      "read-only SQL check after LangGraph or automation run",
       "structured tool activity NDJSON verification",
       "ROW_ABSENT inconsistent workflow result"
     ],
@@ -49,10 +66,10 @@
       "non-SQL systems without a queryable mirror"
     ],
     "relatedQueries": [
+      "green LangGraph trace postgres row missing",
       "how to verify AI agent wrote to postgres",
-      "green trace but database inconsistent",
-      "workflow verification sqlite read only",
-      "compare tool parameters to sql row",
+      "CI passed but database inconsistent side effect",
+      "compare tool parameters to sql row verification",
       "agent run record workflow result json"
     ]
   },

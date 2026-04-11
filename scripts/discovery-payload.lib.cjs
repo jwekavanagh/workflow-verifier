@@ -117,6 +117,7 @@ function buildDiscoveryPayload(root) {
       intentPhrases: llms.intentPhrases.map(String),
       notFor: llms.notFor.map(String),
       relatedQueries: llms.relatedQueries.map(String),
+      demandMoments: /** @type {string[]} */ (discovery.demandMoments).map(String),
     },
   };
 }
@@ -125,12 +126,13 @@ function buildDiscoveryPayload(root) {
  * @param {Record<string, unknown>} payload
  */
 function discoveryObjectFromAppendix(payload) {
-  const ap = /** @type {{ slug: string; visitorProblemAnswer: string; intentPhrases: string[]; notFor: string[]; relatedQueries: string[] }} */ (
+  const ap = /** @type {{ slug: string; visitorProblemAnswer: string; intentPhrases: string[]; notFor: string[]; relatedQueries: string[]; demandMoments: string[] }} */ (
     payload.appendix
   );
   return {
     slug: ap.slug,
     visitorProblemAnswer: ap.visitorProblemAnswer,
+    demandMoments: ap.demandMoments,
     llms: {
       intentPhrases: ap.intentPhrases,
       notFor: ap.notFor,

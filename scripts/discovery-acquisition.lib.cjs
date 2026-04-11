@@ -98,6 +98,9 @@ function appendDiscoveryLlmsAppendix(baseLlms, discovery, canonicalOrigin) {
   out += bullets(llms.notFor) + "\n";
   out += "\n## Related queries\n";
   out += bullets(llms.relatedQueries) + "\n";
+  const moments = /** @type {string[]} */ (discovery.demandMoments);
+  out += "\n## When this hurts (search-shaped)\n";
+  out += bullets(moments) + "\n";
   out += "\n## Problem framing (shareable)\n";
   out += `- Full page: ${origin}${slug}\n`;
   out += "\n## Visitor problem (canonical answer)\n\n";

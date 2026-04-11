@@ -145,17 +145,20 @@ describe(
         visitorProblemAnswer: string;
         heroTitle: string;
         homepageAcquisitionCtaLabel: string;
+        homepageHero: { what: string; why: string; when: string };
       };
 
       const hIntent = llmsText.indexOf("## Intent phrases");
       const hNot = llmsText.indexOf("## Not for");
       const hRel = llmsText.indexOf("## Related queries");
+      const hHurts = llmsText.indexOf("## When this hurts (search-shaped)");
       const hProb = llmsText.indexOf("## Problem framing (shareable)");
       const hVis = llmsText.indexOf("## Visitor problem (canonical answer)");
       expect(hIntent).toBeGreaterThanOrEqual(0);
       expect(hNot).toBeGreaterThan(hIntent);
       expect(hRel).toBeGreaterThan(hNot);
-      expect(hProb).toBeGreaterThan(hRel);
+      expect(hHurts).toBeGreaterThan(hRel);
+      expect(hProb).toBeGreaterThan(hHurts);
       expect(hVis).toBeGreaterThan(hProb);
 
       const acquisitionAbs = `${canonicalOrigin}${disc.slug}`;
@@ -175,6 +178,9 @@ describe(
 
       const homeAgain = await (await fetch("http://127.0.0.1:34100/")).text();
       expect(homeAgain).toContain(disc.heroTitle);
+      expect(homeAgain).toContain(disc.homepageHero.what);
+      expect(homeAgain).toContain(disc.homepageHero.why);
+      expect(homeAgain).toContain(disc.homepageHero.when);
       const ctaNeedle = 'data-testid="homepage-acquisition-cta"';
       const ctaIdx = homeAgain.indexOf(ctaNeedle);
       expect(ctaIdx).toBeGreaterThanOrEqual(0);

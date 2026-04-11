@@ -27,9 +27,9 @@ export const productCopy = {
 
   hero: {
     title: discoveryAcquisition.heroTitle,
-    what: "Workflow Verifier runs read-only SQL at verification time to check that your database matches what structured tool activity claims—row identity, fields, and relational rules.",
-    why: "Traces and agents often report success while rows are missing, stale, or wrong. Silent state drift is a production and compliance risk.",
-    when: "Use it after agent runs, automations, or human-in-the-loop flows when you need confidence in persisted SQL state—not in log lines or success flags alone.",
+    what: discoveryAcquisition.homepageHero.what,
+    why: discoveryAcquisition.homepageHero.why,
+    when: discoveryAcquisition.homepageHero.when,
   },
 
   homepageAcquisitionCta: {

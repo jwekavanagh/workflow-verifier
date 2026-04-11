@@ -1,4 +1,6 @@
-# workflow-verifier
+<!-- discovery-readme-title:start -->
+# Workflow Verifier — when traces say success but your database does not match
+<!-- discovery-readme-title:end -->
 
 <!-- discovery-acquisition-fold:start -->
 ## Your workflow said it worked. Did the database actually change?

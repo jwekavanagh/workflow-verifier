@@ -15,9 +15,9 @@
     "slug": "/database-truth-vs-traces",
     "visitorProblemAnswer": "Teams ship agent and automation workflows where traces, tool responses, and success flags look green while the database row is missing, stale, or wrong. Workflow Verifier closes that gap by comparing structured tool activity to read-only SQL against your SQLite or Postgres at verification time: it tells you whether observed state matched expectations derived from what the workflow claimed—not whether a step narrative sounded successful. It is a snapshot check, not proof of causality or execution.",
     "intentPhrases": [
-      "verify agent workflow against database rows",
+      "green trace wrong database row agent workflow",
       "trace says success but CRM row missing",
-      "read-only SQL check after automation run",
+      "read-only SQL check after LangGraph or automation run",
       "structured tool activity NDJSON verification",
       "ROW_ABSENT inconsistent workflow result"
     ],
@@ -27,11 +27,17 @@
       "non-SQL systems without a queryable mirror"
     ],
     "relatedQueries": [
+      "green LangGraph trace postgres row missing",
       "how to verify AI agent wrote to postgres",
-      "green trace but database inconsistent",
-      "workflow verification sqlite read only",
-      "compare tool parameters to sql row",
+      "CI passed but database inconsistent side effect",
+      "compare tool parameters to sql row verification",
       "agent run record workflow result json"
+    ],
+    "demandMoments": [
+      "Green LangGraph or agent trace but wrong or missing Postgres row",
+      "OpenAI-style tool loop reported success; CRM or SQLite state does not match",
+      "CI passed on workflow logs; database side effect never showed up",
+      "Need a gate before production: read-only verification, not more log volume"
     ]
   }
 }

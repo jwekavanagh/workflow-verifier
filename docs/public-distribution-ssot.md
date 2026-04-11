@@ -11,11 +11,11 @@ Single place for **public identity**, **anchor sync**, **CI / Vitest public orig
 | `config/public-product-anchors.json` | Authoritative: `identityOneLiner`, `productionCanonicalOrigin`, **`distributionConsumerRepository`** (owner/name), git/npm/bugs URLs, `keywords` | Yes |
 | `docs/distribution-product-requirement.md` | REQ-DIST stakeholder requirement prose | Yes |
 | `scripts/distribution-consumer-pipeline.mjs` | Cross-repo consumer lifecycle + P6.5 + P7 + P8 proof | No (logic) |
-| `src/publicDistribution.generated.ts` | CLI footer URL (from sync) | No |
+| `src/publicDistribution.generated.ts` | CLI stderr **`formatDistributionFooter()`** (multi-line funnel + SSOT; from sync) | No |
 | `src/distributionFooter.ts` | Re-export footer for CLI | Yes (thin) |
 | `AGENTS.md` | Agent pointer to SSOT | No (sync-written) |
 | `test/distribution-*.test.mjs` | Clause, traceability, pipeline unit tests | No |
-| `config/discovery-acquisition.json` | Acquisition copy, visitor problem answer, homepage CTA label, `llms` appendix arrays, README fold template; consumed by sync and the website | Yes |
+| `config/discovery-acquisition.json` | Acquisition copy: `readmeTitle`, `homepageHero` (what/why/when), `demandMoments`, `cliFollowupLines`, visitor problem answer, homepage CTA label, `llms` appendix arrays, README fold template; consumed by sync and the website | Yes |
 | `config/discovery-acquisition.schema.json` | JSON Schema (draft-07): product-law patterns on `visitorProblemAnswer`, required fields | Yes |
 | `scripts/discovery-acquisition.lib.cjs` | Validate discovery JSON, build README fold body (including appended acquisition markdown link); `llms` appendix sections consumed via [`discovery-payload.lib.cjs`](../scripts/discovery-payload.lib.cjs) | No (logic) |
 | `scripts/discovery-payload.lib.cjs` | Single `DiscoveryPayload` v1 builder + `llms.txt` / CI Markdown renders + PR upsert selector | No (logic) |
@@ -29,7 +29,7 @@ Single place for **public identity**, **anchor sync**, **CI / Vitest public orig
 | `schemas/openapi-commercial-v1.yaml` | Derived from sync | No |
 | `website/public/openapi-commercial-v1.yaml` | Derived (gitignored); `servers[0].url` and self-URL use effective public origin | No |
 | Root `package.json` | `description`, `repository`, `homepage`, `bugs`, `keywords` from sync | No (those fields) |
-| `README.md` | Regions between `<!-- discovery-acquisition-fold:start/end -->` and `<!-- public-product-anchors:start/end -->` | No inside markers (both are sync-written) |
+| `README.md` | Regions between `<!-- discovery-readme-title:start/end -->`, `<!-- discovery-acquisition-fold:start/end -->`, and `<!-- public-product-anchors:start/end -->` | No inside markers (all are sync-written) |
 
 ### Maintainer sync (normative)
 
