@@ -234,6 +234,12 @@ function gh(args, token, extraEnv = {}) {
   return { status: r.status ?? 1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 }
 
+/** `gh` uses exit code 1 for HTTP 404; never compare `status === 404`. */
+function ghOutputLooksLikeNotFound(stderr, stdout) {
+  const t = `${stderr || ""}${stdout || ""}`;
+  return /HTTP\s+404|Not Found/i.test(t);
+}
+
 /**
  * @param {string} token
  * @param {string} owner
@@ -402,7 +408,14 @@ export function runDistributionConsumerPipeline() {
     fail("CONSUMER_GET_FAILED", "config/public-product-anchors.json: missing distributionConsumerRepository");
   }
   const [cOwner, cRepo] = consumerFull.split("/");
-  const token = process.env.DISTRIBUTION_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "";
+  const distributionToken = (process.env.DISTRIBUTION_GITHUB_TOKEN || "").trim();
+  if (process.env.GITHUB_ACTIONS === "true" && !distributionToken) {
+    fail(
+      "CONSUMER_GET_FAILED",
+      "DISTRIBUTION_GITHUB_TOKEN repository secret is required in GitHub Actions. The default GITHUB_TOKEN is scoped to this repository only and cannot read or update the distribution consumer repository.",
+    );
+  }
+  const token = distributionToken || (process.env.GITHUB_TOKEN || "").trim();
   if (!token) fail("CONSUMER_GET_FAILED", "GITHUB_TOKEN or DISTRIBUTION_GITHUB_TOKEN required");
 
   const primary =
@@ -414,8 +427,15 @@ export function runDistributionConsumerPipeline() {
     : parsePrimaryRepoFromAnchors(anchors);
 
   const resRepo = gh(["api", `repos/${cOwner}/${cRepo}`], token);
-  if (resRepo.status === 404) fail("CONSUMER_GET_FAILED", `consumer repo not found: ${consumerFull}`);
-  if (resRepo.status !== 0) fail("CONSUMER_GET_FAILED", resRepo.stderr || resRepo.stdout);
+  if (resRepo.status !== 0) {
+    if (ghOutputLooksLikeNotFound(resRepo.stderr, resRepo.stdout)) {
+      fail(
+        "CONSUMER_GET_FAILED",
+        `consumer repo not found or not accessible with this token: ${consumerFull}. Confirm the repo exists and DISTRIBUTION_GITHUB_TOKEN has Contents and Actions (workflow) access on that repository.`,
+      );
+    }
+    fail("CONSUMER_GET_FAILED", resRepo.stderr || resRepo.stdout);
+  }
 
   const def = ghGetDefaultBranch(token, cOwner, cRepo);
   if (def !== "main") fail("CONSUMER_DEFAULT_BRANCH_NOT_MAIN", `expected main, got ${def}`);

@@ -99,6 +99,7 @@ jobs:
         run: npm run build
       - name: Distribution consumer pipeline (P1–P8)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          # Required: default token cannot access repos/${distributionConsumerRepository}. Fine-grained PAT must include that repo (Contents + Actions).
           DISTRIBUTION_GITHUB_TOKEN: ${{ secrets.DISTRIBUTION_GITHUB_TOKEN }}
         run: node scripts/distribution-consumer-pipeline.mjs
