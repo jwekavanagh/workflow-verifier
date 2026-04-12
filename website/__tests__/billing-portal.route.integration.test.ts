@@ -5,7 +5,7 @@ import {
   STRIPE_CUSTOMER_MISSING_ERROR,
   STRIPE_CUSTOMER_MISSING_MESSAGE,
 } from "@/lib/billingPortalConstants";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { portalCreate } = vi.hoisted(() => ({
@@ -150,5 +150,38 @@ describe.skipIf(!hasDatabaseUrl)("POST /api/account/billing-portal", () => {
     const res = await postBillingPortal();
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({ error: "Internal Server Error" });
+  });
+
+  it("returns 404 STRIPE_CUSTOMER_MISSING and clears DB when Stripe reports missing customer", async () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.example.com");
+    const [u] = await db
+      .insert(users)
+      .values({
+        email: "bp-stale-cus@example.com",
+        emailVerified: new Date(),
+        stripeCustomerId: "cus_deleted_in_stripe",
+      })
+      .returning();
+    authMock.mockResolvedValue({
+      user: { id: u!.id, email: "bp-stale-cus@example.com", name: null },
+    });
+    portalCreate.mockRejectedValue(
+      Object.assign(new Error("No such customer: 'cus_deleted_in_stripe'"), {
+        code: "resource_missing",
+      }),
+    );
+
+    const res = await postBillingPortal();
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toEqual({
+      error: STRIPE_CUSTOMER_MISSING_ERROR,
+      message: STRIPE_CUSTOMER_MISSING_MESSAGE,
+    });
+
+    const [row] = await db
+      .select({ stripeCustomerId: users.stripeCustomerId })
+      .from(users)
+      .where(eq(users.id, u!.id));
+    expect(row?.stripeCustomerId).toBeNull();
   });
 });

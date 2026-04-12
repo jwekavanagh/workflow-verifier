@@ -5,6 +5,7 @@ import {
   STRIPE_CUSTOMER_MISSING_ERROR,
   STRIPE_CUSTOMER_MISSING_MESSAGE,
 } from "@/lib/billingPortalConstants";
+import { isStripeMissingCustomerError } from "@/lib/stripeMissingCustomerError";
 import { getStripe } from "@/lib/stripeServer";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -43,6 +44,19 @@ export async function POST(): Promise<NextResponse> {
     }
     return NextResponse.json({ url: portal.url });
   } catch (e) {
+    if (isStripeMissingCustomerError(e)) {
+      await db.update(users).set({ stripeCustomerId: null }).where(eq(users.id, session.user.id));
+      console.error(
+        JSON.stringify({
+          kind: "billing_portal_stale_stripe_customer_cleared",
+          customerId,
+        }),
+      );
+      return NextResponse.json(
+        { error: STRIPE_CUSTOMER_MISSING_ERROR, message: STRIPE_CUSTOMER_MISSING_MESSAGE },
+        { status: 404 },
+      );
+    }
     const msg = e instanceof Error ? e.message : String(e);
     console.error(JSON.stringify({ kind: "billing_portal_session_failed", message: msg }));
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

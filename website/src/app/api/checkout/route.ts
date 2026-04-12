@@ -9,8 +9,10 @@ import { logFunnelEvent } from "@/lib/funnelEvent";
 import { loadCommercialPlans } from "@/lib/plans";
 import type { PlanId } from "@/lib/plans";
 import { checkoutStripePriceFromEnvKey } from "@/lib/priceIdToPlanId";
+import { isStripeMissingCustomerError } from "@/lib/stripeMissingCustomerError";
 import { buildStripeCheckoutSessionCreateParams } from "@/lib/stripeCheckoutSessionParams";
 import { getStripe } from "@/lib/stripeServer";
+import type Stripe from "stripe";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -56,6 +58,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .where(eq(users.id, session.user.id))
     .limit(1);
 
+  const trimmedStoredCustomerId =
+    typeof urow?.stripeCustomerId === "string" ? urow.stripeCustomerId.trim() : "";
+
   const priorReserve = await db
     .select()
     .from(funnelEvents)
@@ -73,8 +78,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     plan,
     userId: session.user.id,
   });
-  try {
-    const checkout = await getStripe().checkout.sessions.create(sessionParams);
+
+  const stripe = getStripe();
+
+  async function createCheckoutAndRespond(
+    params: Stripe.Checkout.SessionCreateParams,
+  ): Promise<NextResponse> {
+    const checkout = await stripe.checkout.sessions.create(params);
     const url = checkout.url;
     if (!url) {
       return NextResponse.json(
@@ -93,7 +103,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     return NextResponse.json({ url });
+  }
+
+  try {
+    return await createCheckoutAndRespond(sessionParams);
   } catch (e) {
+    if (trimmedStoredCustomerId.length > 0 && isStripeMissingCustomerError(e)) {
+      await db.update(users).set({ stripeCustomerId: null }).where(eq(users.id, session.user.id));
+      const fallbackParams = buildStripeCheckoutSessionCreateParams({
+        stripeCustomerId: null,
+        customerEmail: session.user.email,
+        priceId,
+        baseUrl: base,
+        plan,
+        userId: session.user.id,
+      });
+      try {
+        return await createCheckoutAndRespond(fallbackParams);
+      } catch (e2) {
+        const message =
+          e2 instanceof Error ? e2.message : "Checkout failed. Please try again or contact support.";
+        return NextResponse.json({ error: message }, { status: 500 });
+      }
+    }
     const message =
       e instanceof Error ? e.message : "Checkout failed. Please try again or contact support.";
     return NextResponse.json({ error: message }, { status: 500 });
