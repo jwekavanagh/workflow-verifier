@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "workflowResult": {
+    "workflowId": "wf_complete",
+    "status": "complete",
+    "runLevelReasons": [],
+    "verificationPolicy": {
+      "consistencyMode": "strong",
+      "verificationWindowMs": 0,
+      "pollIntervalMs": 0
+    },
+    "eventSequenceIntegrity": {
+      "kind": "normal"
+    },
+    "steps": [
+      {
+        "seq": 0,
+        "toolId": "crm.upsert_contact",
+        "intendedEffect": {
+          "narrative": "Upsert contact \"c_ok\" with fields {\"name\":\"Alice\",\"status\":\"active\"}"
+        },
+        "verificationRequest": {
+          "kind": "sql_row",
+          "table": "contacts",
+          "identityEq": [
+            {
+              "column": "id",
+              "value": "c_ok"
+            }
+          ],
+          "requiredFields": {
+            "name": "Alice",
+            "status": "active"
+          }
+        },
+        "status": "verified",
+        "reasons": [],
+        "evidenceSummary": {
+          "rowCount": 1
+        },
+        "repeatObservationCount": 1,
+        "evaluatedObservationOrdinal": 1,
+        "observedExecution": {
+          "paramsCanonical": "{\"fields\":{\"name\":\"Alice\",\"status\":\"active\"},\"recordId\":\"c_ok\"}"
+        }
+      }
+    ],
+    "schemaVersion": 15,
+    "verificationRunContext": {
+      "maxWireSchemaVersion": 1,
+      "retrievalEvents": [],
+      "controlEvents": [],
+      "modelTurnEvents": [],
+      "toolSkippedEvents": [],
+      "toolObservedIngestIndexBySeq": {
+        "0": 0
+      },
+      "firstToolObservedIngestIndex": 0,
+      "hasRunCompletedControl": false,
+      "lastRunEvent": {
+        "ingestIndex": 0,
+        "type": "tool_observed"
+      }
+    },
+    "workflowTruthReport": {
+      "schemaVersion": 9,
+      "workflowId": "wf_complete",
+      "workflowStatus": "complete",
+      "trustSummary": "TRUSTED: Every step matched the database under the configured verification rules.",
+      "runLevelIssues": [],
+      "eventSequence": {
+        "kind": "normal"
+      },
+      "steps": [
+        {
+          "seq": 0,
+          "toolId": "crm.upsert_contact",
+          "outcomeLabel": "VERIFIED",
+          "observations": {
+            "evaluatedOrdinal": 1,
+            "repeatCount": 1
+          },
+          "reasons": [],
+          "intendedEffect": {
+            "narrative": "Upsert contact \"c_ok\" with fields {\"name\":\"Alice\",\"status\":\"active\"}"
+          },
+          "observedExecution": {
+            "paramsCanonical": "{\"fields\":{\"name\":\"Alice\",\"status\":\"active\"},\"recordId\":\"c_ok\"}"
+          },
+          "verifyTarget": "table=contacts identity=[id=c_ok] required_fields=[name, status]",
+          "observedStateSummary": "rowCount=1"
+        }
+      ],
+      "failureAnalysis": null,
+      "executionPathFindings": [],
+      "executionPathSummary": "Full upstream execution-path visibility requires schemaVersion 2 run events (retrieval, model_turn, control, tool_skipped) with run graph fields.",
+      "failureExplanation": null,
+      "correctnessDefinition": null
+    }
+  },
+  "truthReportText": "workflow_id: wf_complete\nworkflow_status: complete\ntrust: TRUSTED: Every step matched the database under the configured verification rules.\nsteps:\n  - seq=0 tool=crm.upsert_contact result=Matched the database.\n"
+}

@@ -20,7 +20,8 @@
     "demandMoments",
     "cliFollowupLines",
     "shareableTerminalDemo",
-    "indexableGuides"
+    "indexableGuides",
+    "indexableExamples"
   ],
   "properties": {
     "schemaVersion": { "type": "integer", "const": 1 },
@@ -168,7 +169,7 @@
     "indexableGuides": {
       "type": "array",
       "minItems": 3,
-      "maxItems": 5,
+      "maxItems": 10,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -191,6 +192,45 @@
           }
         }
       }
+    },
+    "indexableExamples": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "navLabel", "problemAnchor", "embedKey"],
+          "properties": {
+            "path": { "const": "/examples/wf-complete" },
+            "navLabel": { "type": "string", "minLength": 8, "maxLength": 80 },
+            "problemAnchor": {
+              "type": "string",
+              "minLength": 40,
+              "maxLength": 400,
+              "not": { "pattern": "`" }
+            },
+            "embedKey": { "type": "string", "const": "wf_complete" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "navLabel", "problemAnchor", "embedKey"],
+          "properties": {
+            "path": { "const": "/examples/wf-missing" },
+            "navLabel": { "type": "string", "minLength": 8, "maxLength": 80 },
+            "problemAnchor": {
+              "type": "string",
+              "minLength": 40,
+              "maxLength": 400,
+              "not": { "pattern": "`" }
+            },
+            "embedKey": { "type": "string", "const": "wf_missing" }
+          }
+        }
+      ]
     }
   }
 }

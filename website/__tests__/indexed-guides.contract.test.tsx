@@ -5,12 +5,22 @@ import ToolLoopPage from "@/app/guides/tool-loop-success-crm-state-wrong/page";
 import CiGreenPage from "@/app/guides/ci-green-logs-row-absent/page";
 import PreProdPage from "@/app/guides/pre-production-read-only-sql-gate/page";
 import LangGraphPage from "@/app/guides/verify-langgraph-workflows/page";
+import AiAgentWrongCrmPage from "@/app/guides/ai-agent-wrong-crm-data/page";
+import AutomationMismatchPage from "@/app/guides/automation-success-database-mismatch/page";
+import DebugPostgresLangGraphPage from "@/app/guides/debug-postgres-after-langgraph/page";
+import StripeWebhookPage from "@/app/guides/stripe-webhook-database-alignment/page";
+import CiGreenMissingPage from "@/app/guides/ci-green-missing-database-side-effect/page";
 import GuidesHubPage from "@/app/guides/page";
 import * as traceMeta from "@/app/guides/trace-green-postgres-row-missing/page";
 import * as toolMeta from "@/app/guides/tool-loop-success-crm-state-wrong/page";
 import * as ciMeta from "@/app/guides/ci-green-logs-row-absent/page";
 import * as preMeta from "@/app/guides/pre-production-read-only-sql-gate/page";
 import * as lgMeta from "@/app/guides/verify-langgraph-workflows/page";
+import * as aiMeta from "@/app/guides/ai-agent-wrong-crm-data/page";
+import * as autoMeta from "@/app/guides/automation-success-database-mismatch/page";
+import * as dbgMeta from "@/app/guides/debug-postgres-after-langgraph/page";
+import * as stripeMeta from "@/app/guides/stripe-webhook-database-alignment/page";
+import * as ciMissMeta from "@/app/guides/ci-green-missing-database-side-effect/page";
 import * as hubMeta from "@/app/guides/page";
 import discoveryAcquisition from "@/lib/discoveryAcquisition";
 import { indexableGuideCanonical } from "@/lib/indexableGuides";
@@ -57,6 +67,11 @@ describe("indexed guides", () => {
     assertGuideContract(ToolLoopPage, "/guides/tool-loop-success-crm-state-wrong");
     assertGuideContract(CiGreenPage, "/guides/ci-green-logs-row-absent");
     assertGuideContract(PreProdPage, "/guides/pre-production-read-only-sql-gate");
+    assertGuideContract(AiAgentWrongCrmPage, "/guides/ai-agent-wrong-crm-data");
+    assertGuideContract(AutomationMismatchPage, "/guides/automation-success-database-mismatch");
+    assertGuideContract(DebugPostgresLangGraphPage, "/guides/debug-postgres-after-langgraph");
+    assertGuideContract(StripeWebhookPage, "/guides/stripe-webhook-database-alignment");
+    assertGuideContract(CiGreenMissingPage, "/guides/ci-green-missing-database-side-effect");
   });
 
   it("metadata titles and descriptions are unique and canonical matches origin+path", () => {
@@ -66,6 +81,11 @@ describe("indexed guides", () => {
       toolMeta.metadata,
       ciMeta.metadata,
       preMeta.metadata,
+      aiMeta.metadata,
+      autoMeta.metadata,
+      dbgMeta.metadata,
+      stripeMeta.metadata,
+      ciMissMeta.metadata,
     ];
     const keys = metas.map((m) => `${String(m.title)}|${String(m.description)}`);
     expect(new Set(keys).size).toBe(keys.length);

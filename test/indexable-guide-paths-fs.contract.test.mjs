@@ -20,3 +20,14 @@ test("indexableGuides paths resolve to page.tsx under website/src/app/guides", (
     assert.ok(existsSync(pagePath), `missing page for ${g.path}: ${pagePath}`);
   }
 });
+
+test("indexableExamples paths resolve to page.tsx under website/src/app/examples", () => {
+  const discovery = JSON.parse(readFileSync(join(root, "config", "discovery-acquisition.json"), "utf8"));
+  const examples = discovery.indexableExamples;
+  assert.ok(Array.isArray(examples));
+  for (const e of examples) {
+    const seg = String(e.path).replace(/^\/examples\//, "");
+    const pagePath = join(root, "website", "src", "app", "examples", seg, "page.tsx");
+    assert.ok(existsSync(pagePath), `missing page for ${e.path}: ${pagePath}`);
+  }
+});

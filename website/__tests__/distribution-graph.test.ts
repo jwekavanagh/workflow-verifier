@@ -176,8 +176,13 @@ describe(
         "raw.githubusercontent.com/jwekavanagh/agentskeptic/refs/heads/main/llms.txt",
       );
 
+      const hGuides = llmsText.indexOf("## Indexable guides");
+      const hExamples = llmsText.indexOf("## Indexable examples");
       const hDemo = llmsText.indexOf(`## ${disc.shareableTerminalDemo.title}`);
       const hIntent = llmsText.indexOf("## Intent phrases");
+      expect(hGuides).toBeGreaterThanOrEqual(0);
+      expect(hExamples).toBeGreaterThan(hGuides);
+      expect(hDemo).toBeGreaterThan(hExamples);
       expect(hDemo).toBeGreaterThanOrEqual(0);
       expect(hIntent).toBeGreaterThan(hDemo);
       const hNot = llmsText.indexOf("## Not for");
@@ -256,6 +261,7 @@ describe(
       expect(navPrimary).toBeGreaterThanOrEqual(0);
       const navSlice = homeAgain.slice(navPrimary, navPrimary + 4000);
       expect(navSlice).toContain(`href="${disc.slug}"`);
+      expect(navSlice).toContain('href="/examples"');
       expect(htmlForTextNeedleMatch(navSlice)).toContain("Database truth vs traces");
       expect(homeAgain).toContain('href="/security"');
 
@@ -270,6 +276,9 @@ describe(
       expect(sitemapXml).toContain(`${canonicalOrigin}/openapi-commercial-v1.yaml`);
       expect(sitemapXml).toContain(`${canonicalOrigin}/security`);
       expect(sitemapXml).toContain(acquisitionAbs);
+      expect(sitemapXml).toContain(`${canonicalOrigin}/examples/wf-complete`);
+      expect(sitemapXml).toContain(`${canonicalOrigin}/examples/wf-missing`);
+      expect(sitemapXml).not.toMatch(/\/r\//);
 
       const robotsTxt = await (await fetch("http://127.0.0.1:34100/robots.txt")).text();
       expect(robotsTxt).toContain(`${canonicalOrigin}/sitemap.xml`);

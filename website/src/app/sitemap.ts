@@ -9,10 +9,12 @@ function abs(path: string): string {
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const guidePaths = discoveryAcquisition.indexableGuides.map((g) => g.path);
+  const examplePaths = discoveryAcquisition.indexableExamples.map((e) => e.path);
   const paths = [
     "/",
     discoveryAcquisition.slug,
     ...guidePaths,
+    ...examplePaths,
     "/integrate",
     "/pricing",
     "/security",

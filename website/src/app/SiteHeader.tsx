@@ -16,6 +16,7 @@ export async function SiteHeader() {
         <nav className="site-nav" aria-label="Primary">
           <Link href="/#try-it">Try</Link>
           <Link href="/guides">Guides</Link>
+          <Link href="/examples">Examples</Link>
           <Link href={productCopy.homepageAcquisitionCta.href}>{productCopy.navAcquisitionLabel}</Link>
           <Link href="/integrate">Integrate</Link>
           <a href={productCopy.links.cliQuickstart} rel="noreferrer">

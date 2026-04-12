@@ -118,6 +118,39 @@ function validateIndexableGuides(discovery) {
 }
 
 /**
+ * @param {Record<string, unknown>} discovery
+ */
+function validateIndexableExamples(discovery) {
+  const ex = /** @type {{ path: string; navLabel: string; problemAnchor: string; embedKey: string }[]} */ (
+    discovery.indexableExamples
+  );
+  if (!Array.isArray(ex)) {
+    throw new Error("discovery-acquisition: indexableExamples must be an array");
+  }
+  if (ex.length !== 2) {
+    throw new Error("discovery-acquisition: indexableExamples must have length exactly 2");
+  }
+  if (ex[0].path !== "/examples/wf-complete" || ex[1].path !== "/examples/wf-missing") {
+    throw new Error(
+      "discovery-acquisition: indexableExamples paths must be /examples/wf-complete then /examples/wf-missing",
+    );
+  }
+  if (ex[0].embedKey !== "wf_complete" || ex[1].embedKey !== "wf_missing") {
+    throw new Error(
+      "discovery-acquisition: indexableExamples embedKey order must be wf_complete then wf_missing",
+    );
+  }
+  for (let i = 0; i < ex.length; i++) {
+    const row = ex[i];
+    const nl = String(row.navLabel);
+    const pa = String(row.problemAnchor);
+    if (nl.includes("`") || pa.includes("`")) {
+      throw new Error(`discovery-acquisition: indexableExamples[${i}] must not contain backtick`);
+    }
+  }
+}
+
+/**
  * @param {string} baseLlms
  * @param {Record<string, unknown>} discovery
  * @param {string} canonicalOrigin
@@ -134,6 +167,13 @@ function appendDiscoveryLlmsAppendix(baseLlms, discovery, canonicalOrigin) {
     out += "\n## Indexable guides\n";
     for (const g of guides) {
       out += `- ${origin}${String(g.path)}\n`;
+    }
+  }
+  const examples = /** @type {{ path: string }[] | undefined} */ (discovery.indexableExamples);
+  if (Array.isArray(examples) && examples.length > 0) {
+    out += "\n## Indexable examples\n";
+    for (const ex of examples) {
+      out += `- ${origin}${String(ex.path)}\n`;
     }
   }
   const demo = discovery.shareableTerminalDemo;
@@ -182,6 +222,7 @@ function validateDiscoveryAcquisition(root) {
     );
   }
   validateIndexableGuides(discovery);
+  validateIndexableExamples(discovery);
   return discovery;
 }
 
@@ -191,5 +232,6 @@ module.exports = {
   appendDiscoveryLlmsAppendix,
   validateDiscoveryAcquisition,
   validateIndexableGuides,
+  validateIndexableExamples,
   discoveryPaths,
 };

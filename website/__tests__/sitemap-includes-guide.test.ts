@@ -11,7 +11,11 @@ describe("sitemap", () => {
     for (const g of discoveryAcquisition.indexableGuides) {
       expect(urls.some((u) => u === `${base}${g.path}`)).toBe(true);
     }
+    for (const e of discoveryAcquisition.indexableExamples) {
+      expect(urls.some((u) => u === `${base}${e.path}`)).toBe(true);
+    }
     expect(urls.some((u) => u.endsWith("/security"))).toBe(true);
     expect(urls).not.toContain(`${base}/guides`);
+    expect(urls).not.toContain(`${base}/examples`);
   });
 });

@@ -125,6 +125,7 @@ function buildDiscoveryPayload(root) {
       relatedQueries: llms.relatedQueries.map(String),
       demandMoments: /** @type {string[]} */ (discovery.demandMoments).map(String),
       indexableGuides: /** @type {unknown} */ (discovery.indexableGuides),
+      indexableExamples: /** @type {unknown} */ (discovery.indexableExamples),
       shareableTerminalDemo: {
         title: String(demo.title),
         transcript: String(demo.transcript),
@@ -137,7 +138,7 @@ function buildDiscoveryPayload(root) {
  * @param {Record<string, unknown>} payload
  */
 function discoveryObjectFromAppendix(payload) {
-  const ap = /** @type {{ slug: string; visitorProblemAnswer: string; intentPhrases: string[]; notFor: string[]; relatedQueries: string[]; demandMoments: string[]; indexableGuides?: { path: string; navLabel: string; problemAnchor: string }[]; shareableTerminalDemo?: { title: string; transcript: string } }} */ (
+  const ap = /** @type {{ slug: string; visitorProblemAnswer: string; intentPhrases: string[]; notFor: string[]; relatedQueries: string[]; demandMoments: string[]; indexableGuides?: { path: string; navLabel: string; problemAnchor: string }[]; indexableExamples?: { path: string; navLabel: string; problemAnchor: string; embedKey: string }[]; shareableTerminalDemo?: { title: string; transcript: string } }} */ (
     payload.appendix
   );
   const out = {
@@ -155,6 +156,9 @@ function discoveryObjectFromAppendix(payload) {
   }
   if (Array.isArray(ap.indexableGuides)) {
     Object.assign(out, { indexableGuides: ap.indexableGuides });
+  }
+  if (Array.isArray(ap.indexableExamples)) {
+    Object.assign(out, { indexableExamples: ap.indexableExamples });
   }
   return out;
 }

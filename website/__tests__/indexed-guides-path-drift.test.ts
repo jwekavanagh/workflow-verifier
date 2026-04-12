@@ -19,4 +19,20 @@ describe("indexableGuides path drift", () => {
     );
     expect(new Set(guideUrlsInSitemap)).toEqual(expected);
   });
+
+  it("sitemap example URLs match discovery indexableExamples exactly", async () => {
+    const base = publicProductAnchors.productionCanonicalOrigin.replace(/\/$/, "");
+    const expected = new Set(
+      discoveryAcquisition.indexableExamples.map((e) => `${base}${e.path}`),
+    );
+    const entries = await sitemap();
+    const urls = new Set(entries.map((e) => e.url));
+    for (const u of expected) {
+      expect(urls.has(u)).toBe(true);
+    }
+    const exampleUrlsInSitemap = [...urls].filter((u) =>
+      discoveryAcquisition.indexableExamples.some((e) => u.endsWith(e.path)),
+    );
+    expect(new Set(exampleUrlsInSitemap)).toEqual(expected);
+  });
 });

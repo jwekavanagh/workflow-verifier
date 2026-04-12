@@ -38,7 +38,7 @@
       "heading": "What to do next",
       "paragraphs": [
         "Run the homepage demo, follow /integrate for first-run on your database, or install the CLI from the repository README. When you need licensed npm features, use the commercial package and API keys described on the site.",
-        "To turn a verification run into a private pasteable URL, use the CLI flag documented in docs/shareable-verification-reports.md. For indexable discovery pages, see /guides and docs/discovery-guides.md."
+        "To turn a verification run into a private pasteable URL, use the CLI flag documented in docs/shareable-verification-reports.md. For indexable discovery pages, see /guides, /examples, docs/discovery-guides.md, and docs/discovery-surfaces.md."
       ]
     }
   ],
@@ -46,7 +46,12 @@
     "Green LangGraph or agent trace but wrong or missing Postgres row",
     "OpenAI-style tool loop reported success; CRM or SQLite state does not match",
     "CI passed on workflow logs; database side effect never showed up",
-    "Need a gate before production: read-only verification, not more log volume"
+    "Need a gate before production: read-only verification, not more log volume",
+    "Green dashboards still happen when an AI agent writes wrong CRM data and you need read-only SQL before you trust the row.",
+    "When automation reports success while database records disagree with declared tool parameters until read-only verification, treat trace color as non-authoritative.",
+    "Debugging Postgres after a LangGraph run requires row-level truth at verification time beyond trace completion flags alone for customer-facing data.",
+    "When a Stripe webhook returns OK you still need the ledger database row to match before finance treats settlement as final and read-only SQL verifies persisted state.",
+    "CI can stay green on workflow logs while the database side effect is missing until a read-only gate surfaces ROW_ABSENT before production."
   ],
   "cliFollowupLines": [
     "More context (green trace vs database): {{ACQUISITION_URL}}",
@@ -118,6 +123,45 @@
       "path": "/guides/pre-production-read-only-sql-gate",
       "navLabel": "Pre-production read-only SQL gate",
       "problemAnchor": "Need a gate before production: read-only verification, not more log volume"
+    },
+    {
+      "path": "/guides/ai-agent-wrong-crm-data",
+      "navLabel": "AI agent wrong CRM data read-only check",
+      "problemAnchor": "Green dashboards still happen when an AI agent writes wrong CRM data"
+    },
+    {
+      "path": "/guides/automation-success-database-mismatch",
+      "navLabel": "Automation success vs database mismatch",
+      "problemAnchor": "When automation reports success while database records disagree with declared tool parameters until read-only verification"
+    },
+    {
+      "path": "/guides/debug-postgres-after-langgraph",
+      "navLabel": "Debug Postgres after LangGraph runs",
+      "problemAnchor": "Debugging Postgres after a LangGraph run requires row-level truth at verification time beyond trace completion flags alone"
+    },
+    {
+      "path": "/guides/stripe-webhook-database-alignment",
+      "navLabel": "Stripe webhook OK vs database alignment",
+      "problemAnchor": "When a Stripe webhook returns OK you still need the ledger database row to match before finance treats settlement as final"
+    },
+    {
+      "path": "/guides/ci-green-missing-database-side-effect",
+      "navLabel": "CI green but missing database side effect",
+      "problemAnchor": "CI can stay green on workflow logs while the database side effect is missing until a read-only gate surfaces ROW_ABSENT before production"
+    }
+  ],
+  "indexableExamples": [
+    {
+      "path": "/examples/wf-complete",
+      "navLabel": "Bundled verified workflow (wf_complete)",
+      "problemAnchor": "Bundled wf_complete demo: read-only SQL matched the expected contacts row under the packaged registry at verification time.",
+      "embedKey": "wf_complete"
+    },
+    {
+      "path": "/examples/wf-missing",
+      "navLabel": "Bundled inconsistent workflow (wf_missing)",
+      "problemAnchor": "Bundled wf_missing demo: ROW_ABSENT when structured tool activity implied a row read-only SQL did not find at verification time.",
+      "embedKey": "wf_missing"
     }
   ]
 }

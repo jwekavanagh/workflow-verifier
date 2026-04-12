@@ -75,22 +75,43 @@ test("llms.txt normalized equals renderLlmsTextFromPayload(build)", () => {
   assert.equal(dp.normalizeDiscoveryText(onDisk), rendered);
 });
 
-test("rendered llms Indexable guides lists indexableGuides in order before terminal demo", () => {
+test("rendered llms Indexable guides lists indexableGuides in order before Indexable examples", () => {
   const discovery = JSON.parse(readFileSync(join(root, "config", "discovery-acquisition.json"), "utf8"));
   const payload = dp.buildDiscoveryPayload(root);
   const rendered = dp.renderLlmsTextFromPayload(payload);
   const hGuides = rendered.indexOf("## Indexable guides");
+  const hExamples = rendered.indexOf("## Indexable examples");
   const demoTitle = payload.appendix.shareableTerminalDemo.title;
   const hDemo = rendered.indexOf(`## ${demoTitle}`);
   assert.ok(hGuides >= 0);
-  assert.ok(hDemo > hGuides);
-  const section = rendered.slice(hGuides, hDemo);
+  assert.ok(hExamples > hGuides);
+  assert.ok(hDemo > hExamples);
+  const section = rendered.slice(hGuides, hExamples);
   const lines = section
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.startsWith("- https://"));
   const origin = String(payload.links.site).replace(/\/$/, "");
   const expected = discovery.indexableGuides.map((g) => `- ${origin}${g.path}`);
+  assert.deepEqual(lines, expected);
+});
+
+test("rendered llms Indexable examples lists indexableExamples in order before terminal demo", () => {
+  const discovery = JSON.parse(readFileSync(join(root, "config", "discovery-acquisition.json"), "utf8"));
+  const payload = dp.buildDiscoveryPayload(root);
+  const rendered = dp.renderLlmsTextFromPayload(payload);
+  const hExamples = rendered.indexOf("## Indexable examples");
+  const demoTitle = payload.appendix.shareableTerminalDemo.title;
+  const hDemo = rendered.indexOf(`## ${demoTitle}`);
+  assert.ok(hExamples >= 0);
+  assert.ok(hDemo > hExamples);
+  const section = rendered.slice(hExamples, hDemo);
+  const lines = section
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("- https://"));
+  const origin = String(payload.links.site).replace(/\/$/, "");
+  const expected = discovery.indexableExamples.map((e) => `- ${origin}${e.path}`);
   assert.deepEqual(lines, expected);
 });
 

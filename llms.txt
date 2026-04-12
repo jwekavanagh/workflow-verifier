@@ -18,6 +18,15 @@ State verification engine: read-only SQL checks that database state matches expe
 - https://agentskeptic.com/guides/tool-loop-success-crm-state-wrong
 - https://agentskeptic.com/guides/ci-green-logs-row-absent
 - https://agentskeptic.com/guides/pre-production-read-only-sql-gate
+- https://agentskeptic.com/guides/ai-agent-wrong-crm-data
+- https://agentskeptic.com/guides/automation-success-database-mismatch
+- https://agentskeptic.com/guides/debug-postgres-after-langgraph
+- https://agentskeptic.com/guides/stripe-webhook-database-alignment
+- https://agentskeptic.com/guides/ci-green-missing-database-side-effect
+
+## Indexable examples
+- https://agentskeptic.com/examples/wf-complete
+- https://agentskeptic.com/examples/wf-missing
 
 ## Pasteable terminal proof (bundled demo)
 
@@ -84,6 +93,11 @@ steps:
 - OpenAI-style tool loop reported success; CRM or SQLite state does not match
 - CI passed on workflow logs; database side effect never showed up
 - Need a gate before production: read-only verification, not more log volume
+- Green dashboards still happen when an AI agent writes wrong CRM data and you need read-only SQL before you trust the row.
+- When automation reports success while database records disagree with declared tool parameters until read-only verification, treat trace color as non-authoritative.
+- Debugging Postgres after a LangGraph run requires row-level truth at verification time beyond trace completion flags alone for customer-facing data.
+- When a Stripe webhook returns OK you still need the ledger database row to match before finance treats settlement as final and read-only SQL verifies persisted state.
+- CI can stay green on workflow logs while the database side effect is missing until a read-only gate surfaces ROW_ABSENT before production.
 
 ## Problem framing (shareable)
 - Full page: https://agentskeptic.com/database-truth-vs-traces
