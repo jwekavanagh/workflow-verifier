@@ -21,10 +21,12 @@ const b = spawnSync(process.execPath, [path.join(root, "scripts", "build-commerc
 });
 if (b.status !== 0) process.exit(b.status ?? 1);
 
-const cliJs = path.join(root, "dist", "cli.js");
-const src = readFileSync(cliJs, "utf8");
+const flagsJs = path.join(root, "dist", "generated", "commercialBuildFlags.js");
+const src = readFileSync(flagsJs, "utf8");
 if (!src.includes("smoke.example.com")) {
-  console.error("pack-smoke-commercial: dist/cli.js missing embedded license base URL");
+  console.error(
+    "pack-smoke-commercial: dist/generated/commercialBuildFlags.js missing embedded license base URL",
+  );
   process.exit(1);
 }
 

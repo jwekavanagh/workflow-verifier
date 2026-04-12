@@ -25,7 +25,7 @@ jobs:
           COMMERCIAL_LICENSE_API_BASE_URL: ${{ github.event.inputs.commercial_license_api_base_url }}
         run: node scripts/build-commercial.mjs
       - name: Assert embedded license URL
-        run: grep -Fq "${{ github.event.inputs.commercial_license_api_base_url }}" dist/cli.js
+        run: grep -Fq "${{ github.event.inputs.commercial_license_api_base_url }}" dist/generated/commercialBuildFlags.js
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
