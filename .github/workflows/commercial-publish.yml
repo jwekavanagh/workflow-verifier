@@ -1,3 +1,6 @@
+# Requires secrets.NPM_TOKEN: when npm 2FA is enabled for writes, the granular token must
+# have "Bypass two-factor authentication" checked (npm website → Access Tokens →
+# Generate New Token). See https://docs.npmjs.com/creating-and-viewing-access-tokens
 name: Commercial npm publish
 
 on:
