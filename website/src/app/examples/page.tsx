@@ -13,10 +13,8 @@ export default function ExamplesHubPage() {
   return (
     <main className="integrate-main">
       <h1>Examples</h1>
-      <p className="lede">
-        Static, indexable pages that render committed public-report envelopes—separate from private{" "}
-        <code>/r/</code> share links (those stay <strong>noindex</strong>).
-      </p>
+      <p className="lede">{productCopy.examplesHubLedes.primary}</p>
+      <p className="lede muted">{productCopy.examplesHubLedes.secondaryMuted}</p>
       <ul className="mechanism-list">
         {discoveryAcquisition.indexableExamples.map((e) => (
           <li key={e.path}>
@@ -25,8 +23,9 @@ export default function ExamplesHubPage() {
         ))}
       </ul>
       <p className="lede">
-        For first-run on your database, follow <Link href="/integrate">/integrate</Link> and read-only SQL verification
-        contracts in the repository docs.
+        {productCopy.examplesHubIntegrateLede.before}
+        <Link href="/integrate">/integrate</Link>
+        {productCopy.examplesHubIntegrateLede.after}
       </p>
     </main>
   );

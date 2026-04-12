@@ -3,7 +3,7 @@
 <!-- discovery-readme-title:end -->
 
 <!-- discovery-acquisition-fold:start -->
-## Your workflow said it worked. Did the database actually change?
+## Ship with database truth, not trace color.
 
 AgentSkeptic answers with read-only SQL at verification time—not with trace success flags or chat narratives.
 
@@ -52,7 +52,7 @@ steps:
 }
 ```
 
-[Database truth vs traces](https://agentskeptic.com/database-truth-vs-traces)
+[Product brief (traces vs database)](https://agentskeptic.com/database-truth-vs-traces)
 <!-- discovery-acquisition-fold:end -->
 
 **One-sentence value:** Read-only SQL checks that your database **at verification time** matches **expectations derived from structured tool activity**—not whether a trace step “succeeded.”

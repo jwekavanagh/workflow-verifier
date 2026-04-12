@@ -1,33 +1,79 @@
 import { productCopy } from "@/content/productCopy";
+import { publicProductAnchors } from "@/lib/publicProductAnchors";
+import { buildHomeTrustStripLinks, openapiHrefFromProcessEnv } from "@/lib/siteChrome";
 import Link from "next/link";
 import { Fragment } from "react";
 import { TryItSection } from "./home/TryItSection";
 import { HOME_SECTION_ORDER, type HomeSectionId } from "./page.sections";
 
+const anchors = {
+  gitRepositoryUrl: publicProductAnchors.gitRepositoryUrl,
+  npmPackageUrl: publicProductAnchors.npmPackageUrl,
+  bugsUrl: publicProductAnchors.bugsUrl,
+};
+
 export default function HomePage() {
+  const trustLinks = buildHomeTrustStripLinks({
+    anchors,
+    acquisitionHref: productCopy.homepageAcquisitionCta.href,
+    openapiHref: openapiHrefFromProcessEnv(),
+  });
+
   const sectionRenderers: Record<HomeSectionId, React.ReactNode> = {
     hero: (
       <section
         key="hero"
-        className="home-section"
+        className="home-section home-hero"
         data-testid={productCopy.uiTestIds.hero}
         aria-labelledby="hero-heading"
       >
-        <h1 id="hero-heading">{productCopy.hero.title}</h1>
-        <p className="lede">{productCopy.homepageDecisionFraming}</p>
-        <p className="lede">{productCopy.hero.subtitle}</p>
-        <p className="home-cta-row" data-testid="home-hero-cta-row">
-          <a className="btn" href="#try-it">
-            Run verification
-          </a>
-          <Link
-            className="link-secondary"
-            href={productCopy.homepageAcquisitionCta.href}
-            data-testid={productCopy.homepageAcquisitionCta.testId}
-          >
-            {productCopy.homepageAcquisitionCta.label}
-          </Link>
-        </p>
+        <div className="home-hero-grid">
+          <div className="home-hero-copy">
+            <h1 id="hero-heading">{productCopy.hero.title}</h1>
+            <p className="lede">{productCopy.homepageDecisionFraming}</p>
+            <p className="lede">{productCopy.hero.subtitle}</p>
+            <p className="home-cta-row" data-testid="home-hero-cta-row">
+              <Link className="btn" href="/pricing">
+                {productCopy.homeHeroCtaLabels.pricing}
+              </Link>
+              <a className="btn secondary" href="#try-it">
+                {productCopy.homeHeroCtaLabels.verify}
+              </a>
+              <Link
+                className="link-secondary"
+                href={productCopy.homepageAcquisitionCta.href}
+                data-testid={productCopy.homepageAcquisitionCta.testId}
+              >
+                {productCopy.homepageAcquisitionCta.label}
+              </Link>
+            </p>
+          </div>
+        </div>
+      </section>
+    ),
+    homeTrustStrip: (
+      <section
+        key="homeTrustStrip"
+        className="home-trust-strip"
+        data-testid="home-trust-strip"
+        aria-labelledby="home-trust-strip-heading"
+      >
+        <h2 id="home-trust-strip-heading" className="home-trust-strip-heading">
+          {productCopy.homeTrustStripSectionHeading}
+        </h2>
+        <ul className="home-trust-strip-list">
+          {trustLinks.map((item) => (
+            <li key={item.key} data-testid={`home-trust-strip-${item.key}`}>
+              {item.external ? (
+                <a href={item.href} rel="noreferrer" target="_blank">
+                  {item.label}
+                </a>
+              ) : (
+                <a href={item.href}>{item.label}</a>
+              )}
+            </li>
+          ))}
+        </ul>
       </section>
     ),
     howItWorks: (

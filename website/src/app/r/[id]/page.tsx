@@ -51,5 +51,5 @@ export default async function PublicReportPage({ params }: { params: Promise<{ i
   }
   await logFunnelEvent({ event: "report_share_view", metadata: { id } });
   const payload = row.payload as unknown as PublicReportEnvelope;
-  return <VerificationReportView humanText={row.humanText} payload={payload} />;
+  return <VerificationReportView humanText={row.humanText} payload={payload} variant="standalone" />;
 }

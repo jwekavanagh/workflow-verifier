@@ -27,7 +27,7 @@ export function ExampleVerificationEmbed({ variant }: Props) {
     <section className="home-section" aria-labelledby={`example-embed-${variant}`}>
       <h2 id={`example-embed-${variant}`}>{titles[variant]}</h2>
       <p className="muted">{blurbs[variant]}</p>
-      <VerificationReportView humanText={humanText} payload={embed} />
+      <VerificationReportView humanText={humanText} payload={embed} variant="embed" />
     </section>
   );
 }

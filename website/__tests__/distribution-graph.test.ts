@@ -236,6 +236,7 @@ describe(
       const sitemapXml = await getSiteHtml("/sitemap.xml");
       expect(sitemapXml).toContain(`${canonicalOrigin}/llms.txt`);
       expect(sitemapXml).toContain(`${canonicalOrigin}/integrate`);
+      expect(sitemapXml).toContain(`${canonicalOrigin}/company`);
       expect(sitemapXml).toContain(`${canonicalOrigin}/openapi-commercial-v1.yaml`);
       expect(sitemapXml).toContain(`${canonicalOrigin}/security`);
       expect(sitemapXml).toContain(acquisitionAbs);

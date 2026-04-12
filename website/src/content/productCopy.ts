@@ -3,6 +3,145 @@
 import discoveryAcquisition from "@/lib/discoveryAcquisition";
 import { publicProductAnchors } from "@/lib/publicProductAnchors";
 
+export type InternalHref = "/security" | "/company" | "/pricing" | "/privacy" | "/terms" | "/integrate";
+
+export type PricingTrustBandBeforeGrid = {
+  title: string;
+  paragraphs: readonly [string, string];
+  links: readonly [{ label: string; href: "/security" }, { label: string; href: "/company" }];
+};
+
+export type SecurityQuickFacts = {
+  title: string;
+  bullets: readonly [string, string, string, string];
+};
+
+export type CompanyPage = {
+  h1: string;
+  intro: string;
+  sections: readonly [
+    {
+      kind: "supportIssues";
+      h2: string;
+      paragraph: string;
+      issuesLinkLabel: string;
+    },
+    {
+      kind: "buying";
+      h2: string;
+      paragraph: string;
+      cta: { label: string; href: "/pricing" };
+    },
+    {
+      kind: "legal";
+      h2: string;
+      links: readonly [
+        { label: string; href: "/security" },
+        { label: string; href: "/privacy" },
+        { label: string; href: "/terms" },
+      ];
+    },
+    {
+      kind: "artifacts";
+      h2: string;
+      items: readonly [{ label: string; key: "source" }, { label: string; key: "npm" }];
+    },
+  ];
+};
+
+export type CompanyPageMetadata = { title: string; description: string };
+
+export type ExamplesHubLedes = { primary: string; secondaryMuted: string };
+
+export type HomeHeroCtaLabels = { pricing: string; verify: string };
+
+export const companyPageMetadata = {
+  title: "Company and support — AgentSkeptic",
+  description:
+    "Who operates AgentSkeptic, how to get support, how to buy Enterprise, and where legal and security documentation live.",
+} as const satisfies CompanyPageMetadata;
+
+export const companyPage = {
+  h1: "Company and support",
+  intro:
+    "AgentSkeptic is the commercial product surface for a read-only SQL verification engine shipped as open source from the same repository. This page states how to reach the operator, how to report issues, and where to read legal and security documentation.",
+  sections: [
+    {
+      kind: "supportIssues" as const,
+      h2: "Support and issues",
+      paragraph:
+        "For product defects, integration questions, and reproducible bugs, use GitHub Issues on the public repository. That is the default support channel.",
+      issuesLinkLabel: "Open GitHub Issues",
+    },
+    {
+      kind: "buying" as const,
+      h2: "Buying and Enterprise",
+      paragraph:
+        "Self-serve plans and Stripe checkout are on Pricing. Enterprise procurement uses Contact sales on the Enterprise pricing card—this page does not publish a sales email address.",
+      cta: { label: "Go to Pricing", href: "/pricing" as const },
+    },
+    {
+      kind: "legal" as const,
+      h2: "Legal and security",
+      links: [
+        { label: "Security & Trust", href: "/security" as const },
+        { label: "Privacy", href: "/privacy" as const },
+        { label: "Terms", href: "/terms" as const },
+      ],
+    },
+    {
+      kind: "artifacts" as const,
+      h2: "Product artifacts",
+      items: [
+        { label: "Source", key: "source" as const },
+        { label: "npm", key: "npm" as const },
+      ],
+    },
+  ],
+} as const satisfies CompanyPage;
+
+export const examplesHubLedes = {
+  primary:
+    "These pages show real verification envelopes for bundled workflows so you can see verified versus ROW_ABSENT outcomes without running the CLI.",
+  secondaryMuted:
+    "They are indexable public examples. Private paste links use /r/ and stay noindex by design.",
+} as const satisfies ExamplesHubLedes;
+
+/** Third lede on `/examples`: visible text split around the `/integrate` link. */
+export const examplesHubIntegrateLede = {
+  before: "For first-run on your database, follow ",
+  after: " and read-only SQL verification contracts in the repository docs.",
+} as const;
+
+export const pricingTrustBandBeforeGrid = {
+  title: "Buying confidence",
+  paragraphs: [
+    "Plans cover licensed npm verification, API keys, and monthly quota on the commercial path. Open-source contract verification from the repository remains available without a subscription—the OSS reminder above stays authoritative for what is free versus licensed.",
+    "Checkout and billing run through Stripe (Checkout for subscribe; Customer Portal from Account). For procurement, custom limits, or enterprise terms, use Contact sales on the Enterprise pricing card—do not email a sales inbox from this page unless your deployment operator publishes one.",
+  ],
+  links: [
+    { label: "Security & Trust", href: "/security" as const },
+    { label: "Company and support", href: "/company" as const },
+  ],
+} as const satisfies PricingTrustBandBeforeGrid;
+
+export const securityQuickFacts = {
+  title: "Quick facts for buyers",
+  bullets: [
+    "CLI and verification engine run in your infrastructure against databases you configure; the homepage demo runs bundled fixtures on this server for evaluation only.",
+    "Verification compares structured tool activity to read-only SELECT results at verification time; it does not prove a specific network call caused a row.",
+    "Accounts on this site use email magic links; paid plans use Stripe; see Privacy and Terms for site-side data handling.",
+    "Authoritative semantics and commercial limits are in the linked repository markdown cited on this page—not marketing paraphrase.",
+  ],
+} as const satisfies SecurityQuickFacts;
+
+export const homeHeroCtaLabels = {
+  pricing: "View plans and quota",
+  verify: "Run verification",
+} as const satisfies HomeHeroCtaLabels;
+
+export const homeTrustStripSectionHeading = "Proof and contracts (no signup)";
+
 export const productCopy = {
   links: {
     cliQuickstart: `${publicProductAnchors.gitRepositoryUrl}#try-it-about-one-minute`,
@@ -210,4 +349,13 @@ export const productCopy = {
       "Create and view API keys on the account page after sign-in.",
     ],
   },
+
+  homeHeroCtaLabels,
+  homeTrustStripSectionHeading,
+  pricingTrustBandBeforeGrid,
+  securityQuickFacts,
+  examplesHubLedes,
+  examplesHubIntegrateLede,
+  companyPageMetadata,
+  companyPage,
 };

@@ -18,7 +18,7 @@ describe("VerificationReportView intro", () => {
       payload.kind === "workflow"
         ? "Human report text for test."
         : "Human report text for test.";
-    render(<VerificationReportView humanText={humanText} payload={payload} />);
+    render(<VerificationReportView humanText={humanText} payload={payload} variant="standalone" />);
     const muted = screen.getAllByText(productCopy.publicShareReportIntro);
     expect(muted.length).toBeGreaterThanOrEqual(1);
     const article = screen.getByTestId("verification-report-view");

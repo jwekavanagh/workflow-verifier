@@ -14,6 +14,14 @@ export default function SecurityPage() {
     <main className="integrate-main">
       <h1>{st.title}</h1>
       <p className="lede">{st.intro}</p>
+      <section data-testid="security-quick-facts" aria-labelledby="security-quick-facts-title">
+        <h2 id="security-quick-facts-title">{productCopy.securityQuickFacts.title}</h2>
+        <ul>
+          {productCopy.securityQuickFacts.bullets.map((t, i) => (
+            <li key={`sq-${i}`}>{t}</li>
+          ))}
+        </ul>
+      </section>
       {st.sections.map((section) => (
         <section key={section.heading} className="home-section">
           <h2>{section.heading}</h2>

@@ -22,7 +22,7 @@ export function IndexedGuideShell({ children }: Props) {
       <section className="home-section" aria-labelledby="embed-heading">
         <h2 id="embed-heading">{productCopy.indexedGuideEmbedTitle}</h2>
         <p className="muted">{productCopy.indexedGuideEmbedMuted}</p>
-        <VerificationReportView humanText={humanText} payload={embed} />
+        <VerificationReportView humanText={humanText} payload={embed} variant="embed" />
       </section>
       <p className="home-cta-row">
         <Link className="btn" href="/integrate">

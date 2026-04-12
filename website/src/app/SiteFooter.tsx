@@ -1,31 +1,45 @@
 import Link from "next/link";
 import { publicProductAnchors } from "@/lib/publicProductAnchors";
+import {
+  buildSiteFooterLegalLinks,
+  buildSiteFooterProductLinks,
+  openapiHrefFromProcessEnv,
+} from "@/lib/siteChrome";
 
 export function SiteFooter() {
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
-  const openapiHref =
-    base.length > 0 ? `${base}/openapi-commercial-v1.yaml` : "/openapi-commercial-v1.yaml";
+  const anchors = {
+    gitRepositoryUrl: publicProductAnchors.gitRepositoryUrl,
+    npmPackageUrl: publicProductAnchors.npmPackageUrl,
+    bugsUrl: publicProductAnchors.bugsUrl,
+  };
+  const openapiHref = openapiHrefFromProcessEnv();
+  const productLinks = buildSiteFooterProductLinks({ anchors, openapiHref });
+  const legalLinks = buildSiteFooterLegalLinks();
 
   return (
     <footer className="site-footer">
       <div className="site-footer-inner">
         <nav aria-label="Product links">
-          <a href={publicProductAnchors.gitRepositoryUrl} rel="noreferrer">
-            GitHub
-          </a>
-          <span className="site-footer-sep"> · </span>
-          <a href={publicProductAnchors.npmPackageUrl} rel="noreferrer">
-            npm
-          </a>
-          <span className="site-footer-sep"> · </span>
-          <a href={openapiHref}>OpenAPI</a>
+          {productLinks.map((link, i) => (
+            <span key={link.key}>
+              {i > 0 ? <span className="site-footer-sep"> · </span> : null}
+              {link.external ? (
+                <a href={link.href} rel="noreferrer">
+                  {link.label}
+                </a>
+              ) : (
+                <Link href={link.href}>{link.label}</Link>
+              )}
+            </span>
+          ))}
         </nav>
         <nav aria-label="Trust and legal">
-          <Link href="/security">Security & Trust</Link>
-          <span className="site-footer-sep"> · </span>
-          <Link href="/privacy">Privacy</Link>
-          <span className="site-footer-sep"> · </span>
-          <Link href="/terms">Terms</Link>
+          {legalLinks.map((link, i) => (
+            <span key={link.key}>
+              {i > 0 ? <span className="site-footer-sep"> · </span> : null}
+              <Link href={link.href}>{link.label}</Link>
+            </span>
+          ))}
         </nav>
       </div>
     </footer>

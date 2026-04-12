@@ -37,7 +37,7 @@ describe("indexed examples", () => {
     expect(e.path).toBe("/examples/wf-complete");
     const { container } = render(<WfCompletePage />);
     expect(container.textContent).toContain(e.problemAnchor);
-    expect(container.querySelector('[data-testid="verification-report-view"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="verification-report-embed"]')).toBeTruthy();
   });
 
   it("wf-missing page shows problem anchor and ROW_ABSENT in view", () => {
@@ -46,7 +46,7 @@ describe("indexed examples", () => {
     const { container } = render(<WfMissingPage />);
     expect(container.textContent).toContain(e.problemAnchor);
     expect(container.textContent).toContain("ROW_ABSENT");
-    expect(container.querySelector('[data-testid="verification-report-view"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="verification-report-embed"]')).toBeTruthy();
   });
 
   it("metadata for example leaf pages is indexable with fixed titles", () => {
