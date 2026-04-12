@@ -155,28 +155,9 @@ button.secondary {
   padding-left: 1.25rem;
   max-width: 40rem;
 }
-.two-col-lists {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.5rem;
-}
-.two-col-lists ul {
-  margin: 0.5rem 0 0;
-  padding-left: 1.25rem;
-}
 .guarantee-sub {
   font-size: 1rem;
   margin: 1rem 0 0.35rem;
-}
-.example-block {
-  margin-top: 1.5rem;
-  padding: 1rem 0;
-  border-top: 1px solid #2f3336;
-}
-.example-sub {
-  font-size: 0.9rem;
-  color: var(--muted);
-  margin: 0.75rem 0 0.35rem;
 }
 .code-block {
   background: var(--card);
@@ -225,10 +206,10 @@ button.secondary {
 .error-text {
   color: #f4212e;
 }
-.next-steps-list {
-  padding-left: 1.25rem;
+.commercial-links {
+  margin-top: 0.75rem;
 }
-.next-steps-list a {
+.commercial-links a {
   font-weight: 600;
 }
 

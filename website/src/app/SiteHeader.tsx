@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { productCopy } from "@/content/productCopy";
 import Link from "next/link";
 
 export async function SiteHeader() {
@@ -14,7 +15,9 @@ export async function SiteHeader() {
         <nav className="site-nav" aria-label="Primary">
           <Link href="/#try-it">Try</Link>
           <Link href="/integrate">Integrate</Link>
-          <Link href="/#example">Example</Link>
+          <a href={productCopy.links.cliQuickstart} rel="noreferrer">
+            CLI
+          </a>
           <Link href="/pricing">Pricing</Link>
           {signedIn ? (
             <Link href="/account">Account</Link>

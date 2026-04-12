@@ -134,6 +134,7 @@ describe(
         slug: string;
         visitorProblemAnswer: string;
         heroTitle: string;
+        heroSubtitle: string;
         homepageAcquisitionCtaLabel: string;
         homepageHero: { what: string; why: string; when: string };
         pageMetadata: { description: string };
@@ -208,14 +209,16 @@ describe(
         disc.shareableTerminalDemo.transcript.slice(0, 80),
       );
 
+      // Homepage `/` contract (simplified): hero title + subtitle only, no cold-proof block,
+      // no pasted terminal transcript; acquisition page still carries shareableTerminalDemo.
       const homeAgain = await (await fetch("http://127.0.0.1:34100/")).text();
       const homeAgainText = htmlForTextNeedleMatch(homeAgain);
       expect(homeAgainText).toContain(disc.heroTitle);
-      expect(homeAgainText).toContain(disc.homepageHero.what);
-      expect(homeAgainText).toContain(disc.homepageHero.why);
-      expect(homeAgainText).toContain(disc.homepageHero.when);
-      expect(homeAgain).toContain('data-testid="home-cold-proof"');
-      expect(homeAgainText).toContain(disc.shareableTerminalDemo.transcript.slice(0, 80));
+      expect(homeAgainText).toContain(disc.heroSubtitle);
+      expect(homeAgain).not.toContain('data-testid="home-cold-proof"');
+      expect(homeAgainText).not.toContain(disc.shareableTerminalDemo.transcript.slice(0, 80));
+      expect(homeAgain).toContain('data-testid="home-how-it-works"');
+      expect(homeAgain).toContain('data-testid="home-try-it"');
       const ctaNeedle = 'data-testid="homepage-acquisition-cta"';
       const ctaIdx = homeAgain.indexOf(ctaNeedle);
       expect(ctaIdx).toBeGreaterThanOrEqual(0);

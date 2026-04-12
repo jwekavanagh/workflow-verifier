@@ -13,24 +13,25 @@ export const productCopy = {
 
   uiTestIds: {
     hero: "home-hero",
-    coldProof: "home-cold-proof",
-    scenario: "home-scenario",
-    mechanism: "home-mechanism",
-    qualification: "home-qualification",
-    guarantees: "home-guarantees",
-    example: "home-example",
+    howItWorks: "home-how-it-works",
+    fitAndLimits: "home-fit-and-limits",
     tryIt: "home-try-it",
     commercialSurface: "home-commercial-surface",
-    nextSteps: "home-next-steps",
     tryTruthReport: "try-truth-report",
     tryWorkflowJson: "try-workflow-json",
   },
 
   hero: {
     title: discoveryAcquisition.heroTitle,
-    what: discoveryAcquisition.homepageHero.what,
-    why: discoveryAcquisition.homepageHero.why,
-    when: discoveryAcquisition.homepageHero.when,
+    subtitle: discoveryAcquisition.heroSubtitle,
+  },
+
+  howItWorks: {
+    sectionTitle: "How it works",
+  },
+
+  fitAndLimits: {
+    sectionTitle: "Fit and limits",
   },
 
   homepageAcquisitionCta: {
@@ -82,8 +83,6 @@ export const productCopy = {
     ],
   },
 
-  exampleSectionTitle: "Example: same engine as the CLI",
-
   tryIt: {
     title: "Try it (no account)",
     intro: "Pick a bundled scenario. The server runs the same verification engine as the open-source CLI against demo fixtures.",
@@ -94,16 +93,8 @@ export const productCopy = {
 
   commercialSurface: {
     title: "Commercial surface (what the product charges for)",
-    body:
-      "The default OSS build from this repository gives you full contract verify without an API key. The published npm package uses license preflight: licensed verify, quick verify, and CI locks require an active Individual, Team, Business, or Enterprise subscription (Stripe trial counts), then consume monthly quota. Higher tiers add headroom. Machine contracts: OpenAPI and plans JSON are linked from docs and the account page.",
-  },
-
-  nextSteps: {
-    title: "What to do next",
-    integrate: "Run on your database (copy-paste first run)",
-    cli: "Run the one-minute CLI demo on your machine",
-    signIn: "Sign in for account, API keys, and paid plans",
-    pricing: "See pricing",
+    lead:
+      "Open-source lets you contract-verify from the repo without an API key; licensed npm usage, quota, and keys follow Pricing and Account. Machine-readable contracts stay on the site.",
   },
 
   pricingRecap:

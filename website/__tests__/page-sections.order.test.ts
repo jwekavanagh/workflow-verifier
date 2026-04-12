@@ -2,37 +2,27 @@ import { HOME_SECTION_ORDER } from "@/app/page.sections";
 import { describe, expect, it } from "vitest";
 
 describe("HOME_SECTION_ORDER", () => {
-  it("matches conversion funnel order", () => {
+  it("matches conversion funnel order (five sections)", () => {
     expect([...HOME_SECTION_ORDER]).toEqual([
       "hero",
-      "coldProof",
-      "scenario",
-      "mechanism",
-      "qualification",
-      "guarantees",
-      "example",
+      "howItWorks",
+      "fitAndLimits",
       "tryIt",
       "commercialSurface",
-      "nextSteps",
     ]);
+    expect(HOME_SECTION_ORDER.length).toBe(5);
   });
 
-  it("places coldProof after hero and before scenario", () => {
+  it("orders hero through commercialSurface monotonically", () => {
     const he = HOME_SECTION_ORDER.indexOf("hero");
-    const cp = HOME_SECTION_ORDER.indexOf("coldProof");
-    const sc = HOME_SECTION_ORDER.indexOf("scenario");
-    expect(he).toBeLessThan(cp);
-    expect(cp).toBeLessThan(sc);
-  });
-
-  it("places tryIt before commercialSurface and nextSteps; example before tryIt", () => {
-    const ex = HOME_SECTION_ORDER.indexOf("example");
+    const hw = HOME_SECTION_ORDER.indexOf("howItWorks");
+    const fl = HOME_SECTION_ORDER.indexOf("fitAndLimits");
     const tr = HOME_SECTION_ORDER.indexOf("tryIt");
     const cs = HOME_SECTION_ORDER.indexOf("commercialSurface");
-    const nx = HOME_SECTION_ORDER.indexOf("nextSteps");
-    expect(ex).toBeLessThan(tr);
+    expect(he).toBeLessThan(hw);
+    expect(hw).toBeLessThan(fl);
+    expect(fl).toBeLessThan(tr);
     expect(tr).toBeLessThan(cs);
-    expect(cs).toBeLessThan(nx);
   });
 
   it("excludes pricing", () => {

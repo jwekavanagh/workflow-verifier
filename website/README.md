@@ -51,13 +51,6 @@ The homepage **Try it** flow calls `POST /api/demo/verify`, which runs the same 
 
 - **Preflight** (Node ≥ 22.13, `node:sqlite`, fixture files): from repo root run **`npm run check:web-demo-prereqs`** (also executed at the end of **`npm run validate-commercial`**).
 
-- After **engine output** changes, regenerate committed example snippets for the static **Example** section:
-
-  ```bash
-  npm run build
-  npm run generate:web-demo-snippets
-  ```
-
 Architecture, contracts, and operator checklist: **[`docs/website-product-experience.md`](../docs/website-product-experience.md)**.
 
 **Partner quickstart (repo root):** `npm run partner-quickstart` (see root `package.json`). **`/integrate`** renders generated **[`docs/partner-quickstart-commands.md`](../docs/partner-quickstart-commands.md)** then **[`docs/first-run-integration.md`](../docs/first-run-integration.md)**.

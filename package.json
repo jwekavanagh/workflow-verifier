@@ -41,7 +41,6 @@
     "test:commercial-layer": "node scripts/validate-commercial-funnel.mjs",
     "build:website": "npm run build && npm run build -w agentskeptic-web",
     "check:web-demo-prereqs": "node scripts/check-web-demo-prereqs.mjs",
-    "generate:web-demo-snippets": "node scripts/generate-web-demo-snippets.mjs",
     "generate:partner-quickstart-commands": "node scripts/generate-partner-quickstart-commands.mjs",
     "sync-integrator-docs-embedded": "node scripts/sync-integrator-docs-embedded.mjs",
     "check:partner-quickstart-ssot": "node scripts/check-partner-quickstart-ssot.mjs",
