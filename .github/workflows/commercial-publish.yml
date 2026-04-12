@@ -62,5 +62,15 @@ jobs:
         run: |
           set -e
           ver=$(node -p "require('./package.json').version")
-          curl -fsS -o /dev/null "https://registry.npmjs.org/agentskeptic/${ver}"
-          npm view "agentskeptic@${ver}" version --registry=https://registry.npmjs.org
+          # Registry read-after-write can lag briefly after PUT; retry before failing the job.
+          for i in $(seq 1 25); do
+            if curl -fsS -o /dev/null "https://registry.npmjs.org/agentskeptic/${ver}" 2>/dev/null \
+              && npm view "agentskeptic@${ver}" version --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+              npm view "agentskeptic@${ver}" version --registry=https://registry.npmjs.org
+              exit 0
+            fi
+            echo "verify: agentskeptic@${ver} not visible yet (attempt ${i}/25), sleeping 3s"
+            sleep 3
+          done
+          echo "verify: timed out waiting for agentskeptic@${ver}"
+          exit 1
