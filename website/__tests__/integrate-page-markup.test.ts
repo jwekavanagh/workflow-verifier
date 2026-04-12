@@ -14,11 +14,12 @@ describe("integrate page markup", { timeout: 180_000 }, () => {
     await ensureMarketingSiteRunning();
   });
 
-  it("has exactly one main h1 with integrate title", async () => {
+  it("has exactly one page-level main h1 with integrate title", async () => {
     const html = await getSiteHtml("/integrate");
     const $ = cheerio.load(html);
-    const $h1 = $("main h1");
+    // Embedded markdown uses `#` headings → nested `<h1>` inside `.integrate-prose`; only the route title is a direct child of `<main>`.
+    const $h1 = $("main.integrate-main > h1");
     expect($h1.length).toBe(1);
-    expect($h1.first().text().trim()).toBe(siteMetadata.integrate.title);
+    expect($h1.text().trim()).toBe(siteMetadata.integrate.title);
   });
 });
