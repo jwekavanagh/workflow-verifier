@@ -4,6 +4,14 @@ Single place for **public identity**, **anchor sync**, **CI / Vitest public orig
 
 ## Engineer
 
+### Ownership: discovery JSON vs productCopy.ts
+
+| Source | Role |
+|--------|------|
+| **`config/discovery-acquisition.json`** | Acquisition fold, visitor answer, hero titles, CTA label, and machine-readable appendix inputs consumed by sync and the Next.js app. |
+| **`website/src/content/productCopy.ts`** | Site-only strings (pricing commercial terms bullets, account licensed steps, shell-only lines) that are not duplicated in discovery JSON. |
+| **`llms.txt`** | Committed root agent surface (byte-synced with the site after **`npm run sync:public-product-anchors`**). |
+
 ### Artifact ownership
 
 | Path | Role | Hand edit? |

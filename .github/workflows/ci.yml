@@ -87,6 +87,8 @@ jobs:
           "
       - name: Validate commercial layer
         run: npm run validate-commercial
+      - name: Verify web marketing copy contract
+        run: npm run verify:web-marketing-copy
 
   distribution-consumer:
     needs: [test, commercial]

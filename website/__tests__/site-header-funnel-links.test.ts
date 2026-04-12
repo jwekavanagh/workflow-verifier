@@ -8,7 +8,7 @@ describe("SiteHeader funnel links", () => {
   it("exposes guides, acquisition, integrate, pricing, sign-in callback, account, sign-out, and CLI quickstart in primary nav", () => {
     expect(src).toContain('href="/guides"');
     expect(src).toContain("href={productCopy.homepageAcquisitionCta.href}");
-    expect(src).toContain("{productCopy.navAcquisitionLabel}");
+    expect(src).toContain("{discoveryAcquisition.homepageAcquisitionCtaLabel}");
     expect(src).toContain('href="/integrate"');
     expect(src).toContain('href="/pricing"');
     expect(src).toContain('href="/auth/signin?callbackUrl=%2Faccount"');

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { publicProductAnchors } from "@/lib/publicProductAnchors";
 import type { CommercialAccountStatePayload } from "@/lib/commercialAccountState";
 import type { PriceMapping } from "@/lib/accountEntitlementSummary";
 import {
@@ -11,8 +10,6 @@ import {
   STRIPE_CUSTOMER_MISSING_MESSAGE,
 } from "@/lib/billingPortalConstants";
 import { SignOutButton } from "../SignOutButton";
-
-const ghMain = `${publicProductAnchors.gitRepositoryUrl}/blob/main`;
 
 function billingSyncDisplay(mapping: PriceMapping): { label: string; title: string } {
   if (mapping === "mapped") {
@@ -240,22 +237,6 @@ export function AccountClient({
           {key}
         </p>
       )}
-      <p style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: "0.75rem" }}>
-        Licensed CLI use requires an active subscription, a Stripe price this deployment maps to your plan,
-        and a successful license reserve for each run—your API key alone does not grant verification until
-        those conditions hold. Use <code>AGENTSKEPTIC_API_KEY</code> with the commercial CLI once they
-        do. Machine contracts:{" "}
-        <a href="/openapi-commercial-v1.yaml">OpenAPI</a>,{" "}
-        <a href="/api/v1/commercial/plans">plans JSON</a>. Entitlements:{" "}
-        <a href={`${ghMain}/docs/commercial-entitlement-matrix.md`} rel="noreferrer">
-          commercial-entitlement-matrix.md
-        </a>
-        ,{" "}
-        <a href={`${ghMain}/docs/commercial-entitlement-policy.md`} rel="noreferrer">
-          commercial-entitlement-policy.md
-        </a>
-        . <a href="/pricing">Pricing</a>.
-      </p>
 
       <h2 style={{ marginTop: "1.5rem" }}>Next steps</h2>
       <p style={{ marginTop: "0.35rem" }}>

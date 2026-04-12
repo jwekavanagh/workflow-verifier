@@ -15,6 +15,7 @@ export default function IntegratePage() {
   const md = embeddedFirstRunIntegrationMd;
   return (
     <main className="integrate-main">
+      <h1>{siteMetadata.integrate.title}</h1>
       <p className="muted">{productCopy.integrateIntro}</p>
       <FirstRunActivationGuide />
       <details className="integrate-full-doc-details">

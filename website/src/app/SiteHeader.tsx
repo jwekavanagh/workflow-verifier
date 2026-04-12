@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { productCopy } from "@/content/productCopy";
+import discoveryAcquisition from "@/lib/discoveryAcquisition";
 import Link from "next/link";
 import { SignOutButton } from "./SignOutButton";
 
@@ -17,7 +18,9 @@ export async function SiteHeader() {
           <Link href="/#try-it">Try</Link>
           <Link href="/guides">Guides</Link>
           <Link href="/examples">Examples</Link>
-          <Link href={productCopy.homepageAcquisitionCta.href}>{productCopy.navAcquisitionLabel}</Link>
+          <Link href={productCopy.homepageAcquisitionCta.href}>
+            {discoveryAcquisition.homepageAcquisitionCtaLabel}
+          </Link>
           <Link href="/integrate">Integrate</Link>
           <a href={productCopy.links.cliQuickstart} rel="noreferrer">
             CLI

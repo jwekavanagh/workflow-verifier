@@ -38,6 +38,7 @@
     "sync:public-product-anchors": "node scripts/public-product-anchors.cjs",
     "distribution:consumer-pipeline": "node scripts/distribution-consumer-pipeline.mjs",
     "check:discovery-acquisition": "node scripts/validate-discovery-acquisition.mjs",
+    "verify:web-marketing-copy": "node scripts/validate-discovery-acquisition.mjs && node --test test/visitor-problem-outcome.test.mjs && npm run build -w agentskeptic-web && npm run test:vitest -w agentskeptic-web",
     "check:public-product-anchors": "node scripts/public-product-anchors.cjs --check",
     "test:commercial-layer": "node scripts/validate-commercial-funnel.mjs",
     "build:website": "npm run build && npm run build -w agentskeptic-web",

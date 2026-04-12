@@ -1,9 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-
-export const dynamic = "force-dynamic";
-
+import { AccountLicensedStepsList } from "@/components/account/AccountLicensedStepsList";
 import { AccountClient } from "./AccountClient";
 import { db } from "@/db/client";
 import { apiKeys, users } from "@/db/schema";
@@ -13,6 +11,10 @@ import {
   normalizeSubscriptionStatusForAccount,
 } from "@/lib/commercialAccountState";
 import type { PlanId } from "@/lib/plans";
+
+export const dynamic = "force-dynamic";
+
+export { AccountLicensedStepsList };
 
 export default async function AccountPage() {
   const session = await auth();
@@ -46,6 +48,10 @@ export default async function AccountPage() {
           Signed in as <strong>{session.user.email}</strong>
         </p>
         {masked && <p>API key: {masked}</p>}
+      </div>
+      <div className="card" style={{ marginTop: "1rem" }}>
+        <h2 style={{ marginTop: 0 }}>Licensed verification</h2>
+        <AccountLicensedStepsList />
       </div>
       <Suspense fallback={<div className="card" style={{ marginTop: "1rem" }}>Loading…</div>}>
         <AccountClient hasKey={keys.length > 0} initialCommercial={initialCommercial} />

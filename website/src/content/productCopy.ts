@@ -33,6 +33,50 @@ export const productCopy = {
     when: discoveryAcquisition.homepageHero.when,
   },
 
+  /** Discovery SSOT: single above-the-fold paragraph on `/` (“when to use / is this for me”). */
+  homepageDecisionFraming: discoveryAcquisition.homepageDecisionFraming,
+
+  /** Acquisition page closing section title (UI-only). */
+  acquisitionDeepContextSectionTitle: "How this fits the problem",
+
+  /** Guides hub second lede (UI-only). */
+  guidesHubSupportingSentence:
+    "Each guide maps a symptom to read-only SQL verification when logs or traces disagree with your database—then points you to first-run integration on your own Postgres or SQLite.",
+
+  /** Indexable guide shell embed (UI-only). */
+  indexedGuideEmbedTitle:
+    "Example: activity that looked successful in logs or traces, missing row (ROW_ABSENT)",
+  indexedGuideEmbedMuted:
+    "The block below uses the bundled `wf_missing` demo so this page stays aligned with the engine.",
+
+  /** Examples index metadata.description (UI-only). */
+  examplesIndexDescription:
+    "Public examples render bundled workflow verification envelopes (wf_complete and wf_missing) for organic discovery—not private /r/ share links.",
+
+  /** Shared report view one-liner (UI-only). */
+  publicShareReportIntro:
+    "Private verification snapshot for sharing in tickets or Slack. This URL is not indexed for search; see Security & Trust for how the site handles data.",
+
+  /** Commercial terms above pricing grid — server-rendered from this list. */
+  pricingCommercialTermsBullets: [
+    {
+      lead: "Licensed npm CLI",
+      body: "Licensed verification with the published npm CLI requires an active Individual, Team, Business, or Enterprise subscription (trial counts); monthly quota applies after subscribe.",
+    },
+    {
+      lead: "CI and enforce",
+      body: "CI locks, the enforce command, and quick verify with lock flags use the same subscription requirement.",
+    },
+  ] as const,
+
+  /** Ordered steps shown on the account page (server); do not duplicate in AccountClient. */
+  accountLicensedVerifySteps: [
+    "Keep an active paid subscription (Individual, Team, Business, or Enterprise) and a Stripe price this deployment maps to your plan.",
+    "Each licensed run must succeed license reserve—your API key alone does not grant verification until subscription, price mapping, and reserve conditions hold.",
+    "Set AGENTSKEPTIC_API_KEY (legacy WORKFLOW_VERIFIER_API_KEY still works), then run the commercial CLI from your repo (see Integrate for the full verify command).",
+    "Machine contracts: OpenAPI at /openapi-commercial-v1.yaml and plans JSON at /api/v1/commercial/plans; entitlements in commercial-entitlement-matrix.md and commercial-entitlement-policy.md on GitHub main; open Pricing to subscribe or change plans.",
+  ] as const,
+
   howItWorks: {
     sectionTitle: "How it works",
   },
@@ -46,9 +90,6 @@ export const productCopy = {
     label: discoveryAcquisition.homepageAcquisitionCtaLabel,
     testId: "homepage-acquisition-cta" as const,
   },
-
-  /** Primary nav label for the acquisition page (same `href` as homepage acquisition CTA). */
-  navAcquisitionLabel: "Database truth vs traces",
 
   /** Shown once above the pricing grid; must stay aligned with commercial-ssot OSS path. */
   pricingOssPathReminder:
@@ -115,7 +156,7 @@ export const productCopy = {
       "Observed — what read-only queries returned at verification time.",
     ],
     notObservability:
-      "This is not generic observability or log search. It is a deterministic comparison of expected state to live database reads—not proof that a specific API call caused a row.",
+      "This is not generic observability or log search. It compares expected database state to read-only query results at verification time.",
   },
 
   forYou: [
@@ -165,7 +206,7 @@ export const productCopy = {
     intro:
       "Use your email for a magic link. Signing in lets you subscribe to paid plans, manage your account, and generate API keys—not required for the homepage demo.",
     benefits: [
-      "Subscribe to Team or Business (Stripe Checkout; trial available)—required before licensed npm verify.",
+      "Subscribe to Individual, Team, or Business (Stripe Checkout; trial available on eligible plans)—required before licensed npm verify.",
       "Create and view API keys on the account page after sign-in.",
     ],
   },

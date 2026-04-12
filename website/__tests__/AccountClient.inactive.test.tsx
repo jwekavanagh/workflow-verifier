@@ -77,9 +77,8 @@ describe("AccountClient inactive subscription", () => {
 
   it("documents licensed CLI prerequisites next to API key", () => {
     render(<AccountClient hasKey={false} initialCommercial={baseCommercial()} />);
-    expect(screen.getByText(/licensed cli use requires an active subscription/i)).toBeInTheDocument();
-    expect(screen.getByText(/successful license reserve for each run/i)).toBeInTheDocument();
-    expect(screen.getByText(/your api key alone does not grant verification/i)).toBeInTheDocument();
+    expect(screen.getByText(/AGENTSKEPTIC_API_KEY/i)).toBeInTheDocument();
+    expect(screen.getByText(/npx agentskeptic verify/i)).toBeInTheDocument();
   });
 
   it("does not show inactive notice when subscription is active", () => {

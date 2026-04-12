@@ -1,3 +1,4 @@
+import { productCopy } from "@/content/productCopy";
 import type { PublicReportEnvelope } from "@/lib/publicVerificationReportService";
 
 type Props = {
@@ -13,6 +14,7 @@ export function VerificationReportView({ humanText, payload }: Props) {
   return (
     <article className="integrate-main" data-testid="verification-report-view">
       <h1>Verification report</h1>
+      <p className="muted">{productCopy.publicShareReportIntro}</p>
       <p className="muted">
         Kind: <strong>{payload.kind}</strong>
       </p>

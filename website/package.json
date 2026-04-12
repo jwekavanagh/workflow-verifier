@@ -17,6 +17,7 @@
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.4",
     "@vercel/analytics": "^2.0.1",
+    "agentskeptic": "file:..",
     "drizzle-orm": "^0.38.3",
     "next": "^16.2.3",
     "next-auth": "^5.0.0-beta.25",
@@ -28,7 +29,6 @@
     "remark-gfm": "^4.0.1",
     "resend": "^4.0.1",
     "stripe": "^17.5.0",
-    "agentskeptic": "file:..",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -38,6 +38,7 @@
     "@types/nodemailer": "^6.4.14",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "cheerio": "^1.0.0",
     "drizzle-kit": "^0.30.1",
     "jsdom": "^26.1.0",
     "tar": "7.5.13",

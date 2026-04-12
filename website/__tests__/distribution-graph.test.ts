@@ -1,9 +1,9 @@
-import { spawn, execSync, execFileSync, type ChildProcess } from "node:child_process";
+import { execSync } from "node:child_process";
 import { readFileSync, readdirSync, mkdtempSync, rmSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
-import { describe, expect, beforeAll, afterAll, it } from "vitest";
+import { describe, expect, beforeAll, it } from "vitest";
 import { extract as extractTar } from "tar";
 import { parse } from "yaml";
 import { productCopy } from "@/content/productCopy";
@@ -12,6 +12,11 @@ import {
   loadAnchors,
   expectedNpmPackageJsonFields,
 } from "./helpers/distributionGraphHelpers";
+import {
+  ensureMarketingSiteRunning,
+  getSiteHtml,
+  registerMarketingSiteTeardown,
+} from "./helpers/siteTestServer";
 
 const require = createRequire(import.meta.url);
 const { normalize } = require("../../scripts/public-product-anchors.cjs") as {
@@ -32,12 +37,13 @@ function htmlForTextNeedleMatch(html: string): string {
     .replace(/&#39;/g, "'");
 }
 
+registerMarketingSiteTeardown();
+
 describe(
   "distribution graph",
   { timeout: 180_000 },
   () => {
     const repoRoot = getRepoRoot();
-    let child: ChildProcess | undefined;
 
     beforeAll(async () => {
       const anchors0 = loadAnchors();
@@ -47,19 +53,6 @@ describe(
       if (!process.env.DATABASE_URL?.trim()) {
         throw new Error("distribution-graph: run website Vitest via npm run validate-commercial from repo root");
       }
-
-      execSync("npm run sync:public-product-anchors", {
-        cwd: repoRoot,
-        env: process.env,
-        stdio: "inherit",
-        shell: true,
-      });
-
-      execFileSync("npm", ["run", "build"], {
-        cwd: join(repoRoot, "website"),
-        env: process.env,
-        stdio: "inherit",
-      });
 
       const a = loadAnchors();
       const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
@@ -78,9 +71,10 @@ describe(
       expect(slice).toContain(`${a.productionCanonicalOrigin}/llms.txt`);
 
       const packDest = mkdtempSync(join(tmpdir(), "wfv-pack-"));
-      execFileSync("npm", ["pack", "--pack-destination", packDest], {
+      execSync(`npm pack --pack-destination "${packDest.replace(/\\/g, "/")}"`, {
         cwd: repoRoot,
         stdio: "inherit",
+        shell: true,
       });
       const tgzNames = readdirSync(packDest).filter((f) => f.endsWith(".tgz"));
       expect(tgzNames.length).toBe(1);
@@ -94,42 +88,7 @@ describe(
       rmSync(packDest, { recursive: true, force: true });
       rmSync(extractDir, { recursive: true, force: true });
 
-      const websiteDir = join(repoRoot, "website");
-      const requireWebsite = createRequire(join(websiteDir, "package.json"));
-      const nextBin = join(
-        dirname(requireWebsite.resolve("next/package.json")),
-        "dist",
-        "bin",
-        "next",
-      );
-      if (!existsSync(nextBin)) {
-        throw new Error(
-          `distribution-graph: Next.js CLI missing at ${nextBin} (install website dependencies)`,
-        );
-      }
-      child = spawn(process.execPath, [nextBin, "start", "-H", "127.0.0.1", "-p", "34100"], {
-        cwd: websiteDir,
-        env: process.env,
-        stdio: "ignore",
-        detached: false,
-      });
-
-      let ready = false;
-      for (let i = 0; i < 90; i++) {
-        await new Promise((r) => setTimeout(r, 200));
-        try {
-          const res = await fetch("http://127.0.0.1:34100/");
-          if (res.status === 200) {
-            ready = true;
-            break;
-          }
-        } catch {
-          /* retry */
-        }
-      }
-      if (!ready) {
-        throw new Error("distribution-graph: next start did not become ready");
-      }
+      await ensureMarketingSiteRunning();
 
       const discoveryPath = join(repoRoot, "config", "discovery-acquisition.json");
       const disc = JSON.parse(readFileSync(discoveryPath, "utf8")) as {
@@ -138,12 +97,13 @@ describe(
         heroTitle: string;
         heroSubtitle: string;
         homepageAcquisitionCtaLabel: string;
+        homepageDecisionFraming: string;
         homepageHero: { what: string; why: string; when: string };
         pageMetadata: { description: string };
         shareableTerminalDemo: { title: string; transcript: string };
       };
 
-      const html = await (await fetch("http://127.0.0.1:34100/")).text();
+      const html = await getSiteHtml("/");
       const o = normalize(process.env.NEXT_PUBLIC_APP_URL ?? "");
       const canonicalOrigin = normalize(a.productionCanonicalOrigin);
       expect(html).toContain(a.gitRepositoryUrl);
@@ -160,7 +120,7 @@ describe(
       expect(html).toContain('name="description"');
       expect(htmlDecoded).not.toContain(a.identityOneLiner);
 
-      const llmsText = await (await fetch("http://127.0.0.1:34100/llms.txt")).text();
+      const llmsText = await getSiteHtml("/llms.txt");
       expect(llmsText).toContain(a.identityOneLiner);
       expect(llmsText).toContain(`${canonicalOrigin}/integrate`);
       expect(llmsText).toContain(`${canonicalOrigin}/openapi-commercial-v1.yaml`);
@@ -206,42 +166,47 @@ describe(
       const visitorBodyRaw = nextSection === -1 ? afterVis : afterVis.slice(0, nextSection);
       expect(visitorBodyRaw.trim()).toBe(disc.visitorProblemAnswer.trim());
 
-      const acqHtml = await (await fetch(`http://127.0.0.1:34100${disc.slug}`)).text();
+      const acqHtml = await getSiteHtml(disc.slug);
       const acqText = htmlForTextNeedleMatch(acqHtml);
+      const visitorFirst = disc.visitorProblemAnswer.split(/\n\n+/)[0] ?? disc.visitorProblemAnswer;
+      const acqVis = acqText.indexOf(visitorFirst);
+      const acqSub = acqText.indexOf(disc.heroSubtitle);
+      const acqTerm = acqText.indexOf(disc.shareableTerminalDemo.transcript.slice(0, 80));
       const acqWhy = acqText.indexOf(disc.homepageHero.why);
       const acqWhat = acqText.indexOf(disc.homepageHero.what);
       const acqWhen = acqText.indexOf(disc.homepageHero.when);
-      const acqSub = acqText.indexOf(disc.heroSubtitle);
-      const acqVis = acqText.indexOf(disc.visitorProblemAnswer);
-      expect(acqWhy).toBeGreaterThanOrEqual(0);
+      expect(acqVis).toBeGreaterThanOrEqual(0);
+      expect(acqSub).toBeGreaterThan(acqVis);
+      expect(acqTerm).toBeGreaterThan(acqSub);
+      expect(acqWhy).toBeGreaterThan(acqTerm);
       expect(acqWhat).toBeGreaterThan(acqWhy);
       expect(acqWhen).toBeGreaterThan(acqWhat);
-      expect(acqSub).toBeGreaterThan(acqWhen);
-      expect(acqVis).toBeGreaterThan(acqSub);
       expect(acqHtml).toContain('data-testid="acquisition-hero-title"');
       expect(acqHtml).toContain(disc.heroTitle);
       expect(acqHtml).toContain('data-testid="visitor-problem-answer"');
-      expect(acqHtml).toContain(disc.visitorProblemAnswer);
+      expect(acqHtml).toContain(visitorFirst);
       expect(acqHtml).toContain('data-testid="acquisition-terminal-demo"');
       expect(htmlForTextNeedleMatch(acqHtml)).toContain(
         disc.shareableTerminalDemo.transcript.slice(0, 80),
       );
 
-      // Homepage `/`: homepageHero why→what→when, then heroSubtitle, then how-it-works; no terminal transcript.
-      const homeAgain = await (await fetch("http://127.0.0.1:34100/")).text();
+      // Homepage `/`: homepageDecisionFraming, heroSubtitle, then how-it-works; no homepageHero narrative; no terminal transcript.
+      const homeAgain = await getSiteHtml("/");
       const homeAgainText = htmlForTextNeedleMatch(homeAgain);
       expect(homeAgainText).toContain(disc.heroTitle);
+      expect(homeAgainText).toContain(disc.homepageDecisionFraming);
       expect(homeAgainText).toContain(disc.heroSubtitle);
-      const idxWhy = homeAgainText.indexOf(disc.homepageHero.why);
-      const idxWhat = homeAgainText.indexOf(disc.homepageHero.what);
-      const idxWhen = homeAgainText.indexOf(disc.homepageHero.when);
+      const idxTitle = homeAgainText.indexOf(disc.heroTitle);
+      const idxFrame = homeAgainText.indexOf(disc.homepageDecisionFraming);
       const idxSub = homeAgainText.indexOf(disc.heroSubtitle);
       const idxHow = homeAgainText.indexOf('data-testid="home-how-it-works"');
-      expect(idxWhy).toBeGreaterThanOrEqual(0);
-      expect(idxWhat).toBeGreaterThan(idxWhy);
-      expect(idxWhen).toBeGreaterThan(idxWhat);
-      expect(idxSub).toBeGreaterThan(idxWhen);
+      expect(idxTitle).toBeGreaterThanOrEqual(0);
+      expect(idxFrame).toBeGreaterThan(idxTitle);
+      expect(idxSub).toBeGreaterThan(idxFrame);
       expect(idxHow).toBeGreaterThan(idxSub);
+      expect(homeAgainText).not.toContain(disc.homepageHero.why);
+      expect(homeAgainText).not.toContain(disc.homepageHero.what);
+      expect(homeAgainText).not.toContain(disc.homepageHero.when);
       expect(homeAgain).not.toContain('data-testid="home-cold-proof"');
       expect(homeAgainText).not.toContain(disc.shareableTerminalDemo.transcript.slice(0, 80));
       expect(homeAgain).toContain('data-testid="home-how-it-works"');
@@ -262,15 +227,13 @@ describe(
       const navSlice = homeAgain.slice(navPrimary, navPrimary + 4000);
       expect(navSlice).toContain(`href="${disc.slug}"`);
       expect(navSlice).toContain('href="/examples"');
-      expect(htmlForTextNeedleMatch(navSlice)).toContain("Database truth vs traces");
+      expect(htmlForTextNeedleMatch(navSlice)).toContain(disc.homepageAcquisitionCtaLabel);
       expect(homeAgain).toContain('href="/security"');
 
-      const secRes = await fetch("http://127.0.0.1:34100/security");
-      expect(secRes.status).toBe(200);
-      const secHtml = await secRes.text();
+      const secHtml = await getSiteHtml("/security");
       expect(htmlForTextNeedleMatch(secHtml)).toContain(productCopy.securityTrust.title);
 
-      const sitemapXml = await (await fetch("http://127.0.0.1:34100/sitemap.xml")).text();
+      const sitemapXml = await getSiteHtml("/sitemap.xml");
       expect(sitemapXml).toContain(`${canonicalOrigin}/llms.txt`);
       expect(sitemapXml).toContain(`${canonicalOrigin}/integrate`);
       expect(sitemapXml).toContain(`${canonicalOrigin}/openapi-commercial-v1.yaml`);
@@ -280,13 +243,11 @@ describe(
       expect(sitemapXml).toContain(`${canonicalOrigin}/examples/wf-missing`);
       expect(sitemapXml).not.toMatch(/\/r\//);
 
-      const robotsTxt = await (await fetch("http://127.0.0.1:34100/robots.txt")).text();
+      const robotsTxt = await getSiteHtml("/robots.txt");
       expect(robotsTxt).toContain(`${canonicalOrigin}/sitemap.xml`);
       expect(robotsTxt).toMatch(/Allow:\s*\//);
 
-      const yamlText = await (
-        await fetch("http://127.0.0.1:34100/openapi-commercial-v1.yaml")
-      ).text();
+      const yamlText = await getSiteHtml("/openapi-commercial-v1.yaml");
       const integrateUrl = `${canonicalOrigin}/integrate`;
       const selfServed = `${o}/openapi-commercial-v1.yaml`;
       const doc = parse(yamlText) as Record<string, unknown>;
@@ -310,43 +271,6 @@ describe(
       expect(String(dist.npmPackage)).toBe(a.npmPackageUrl);
       expect(normalize(String(dist.openApi))).toBe(normalize(selfServed));
     }, 180_000);
-
-    afterAll(async () => {
-      if (!child) return;
-      const proc = child;
-
-      async function waitClose(ms: number): Promise<void> {
-        if (proc.exitCode !== null || proc.signalCode !== null) return;
-        await new Promise<void>((resolve, reject) => {
-          const t = setTimeout(() => {
-            proc.off("close", onClose);
-            reject(new Error("distribution-graph: wait for process close timed out"));
-          }, ms);
-          const onClose = () => {
-            clearTimeout(t);
-            resolve();
-          };
-          proc.once("close", onClose);
-        });
-      }
-
-      proc.kill("SIGTERM");
-      try {
-        await waitClose(20_000);
-        return;
-      } catch {
-        /* Next may ignore or delay SIGTERM; escalate */
-      }
-
-      if (proc.exitCode === null && proc.signalCode === null) {
-        proc.kill("SIGKILL");
-        try {
-          await waitClose(10_000);
-        } catch {
-          throw new Error("distribution-graph: next start did not exit");
-        }
-      }
-    });
 
     it("suite setup completed in beforeAll", () => {
       expect(true).toBe(true);

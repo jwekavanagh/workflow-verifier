@@ -31,6 +31,13 @@ export default function PricingPage() {
       <p className="muted pricing-oss-reminder" data-testid="pricing-oss-reminder">
         {productCopy.pricingOssPathReminder}
       </p>
+      <ul aria-label="Commercial terms" className="muted" style={{ marginTop: "1rem", maxWidth: "42rem" }}>
+        {productCopy.pricingCommercialTermsBullets.map((row) => (
+          <li key={row.lead} style={{ marginBottom: "0.5rem" }}>
+            <strong>{row.lead}</strong> {row.body}
+          </li>
+        ))}
+      </ul>
       <PricingClient plans={plans} enterpriseMailto={enterpriseMailto} />
     </main>
   );

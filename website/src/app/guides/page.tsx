@@ -1,3 +1,4 @@
+import { productCopy } from "@/content/productCopy";
 import discoveryAcquisition from "@/lib/discoveryAcquisition";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -13,6 +14,7 @@ export default function GuidesHubPage() {
     <main className="integrate-main">
       <h1>Guides</h1>
       <p className="lede">Problem-oriented guides for trace-shaped success versus database truth.</p>
+      <p className="lede">{productCopy.guidesHubSupportingSentence}</p>
       <ul className="mechanism-list">
         {discoveryAcquisition.indexableGuides.map((g) => (
           <li key={g.path}>

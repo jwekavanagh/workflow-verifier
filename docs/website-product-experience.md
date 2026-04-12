@@ -39,6 +39,24 @@ This document explains how the commercial Next.js site works and points to **nor
 - **Public anchors (GitHub, npm, one-liner, keywords):** [`website/src/lib/publicProductAnchors.ts`](../website/src/lib/publicProductAnchors.ts) imports [`config/public-product-anchors.json`](../config/public-product-anchors.json). **Outbound identity links** (repo, npm, served OpenAPI URL) live in the **footer** product nav — see [`website/src/app/SiteFooter.tsx`](../website/src/app/SiteFooter.tsx) (footer also links **Security & Trust**, Privacy, and Terms). This keeps marketing copy, README, npm `package.json`, and the site aligned without scattering hardcoded `github.com/...` strings.
 - **Auth callback hardening:** [`website/src/lib/sanitizeInternalCallbackUrl.ts`](../website/src/lib/sanitizeInternalCallbackUrl.ts) — `emailSignInOptions` is what the sign-in page passes to `signIn("email", …)`.
 
+### Route render order (copy contract)
+
+This section is the human-readable mirror of the Vitest contracts that read rendered HTML via **`siteTestServer`** / **`getSiteHtml`**.
+
+1. **`/`** — `heroTitle`, then **`homepageDecisionFraming`**, then `heroSubtitle`, then hero CTAs; the long **`homepageHero`** why/what/when narrative does **not** appear in `<main>` on the homepage (it only closes acquisition). Causality and mechanism limits are covered by **`homepage-causality-invariant`**.
+2. **`/database-truth-vs-traces`** — visitor answer block (`data-testid="visitor-problem-answer"`), `heroSubtitle`, terminal demo, ordered **`sections[]`**, then the deep-context closing block. Same acquisition slug string **`database-truth-vs-traces`** is used in nav and CTAs.
+3. **`/pricing`** — recap copy, then the server-rendered `<ul aria-label="Commercial terms">` list asserted by **`pricing-commercial-terms-html`** (each item’s first child is a single `<strong>` lead).
+4. **`/account`** — the server card renders **`AccountLicensedStepsList`** (implemented in [`website/src/components/account/AccountLicensedStepsList.tsx`](../website/src/components/account/AccountLicensedStepsList.tsx) and re-exported from the account route module) above the client entitlement UI so support steps stay in first paint HTML.
+5. **`/integrate`** — exactly one `<main><h1>` whose text matches `siteMetadata.integrate.title` (see **`integrate-page-markup`**).
+
+### Integrator: server-rendered commercial and account copy
+
+Integrators should treat **`productCopy`** plus the acquisition JSON as the live strings for pricing recap, commercial terms bullets, account licensed steps, and sign-in framing, while long-form semantics remain in **`docs/first-run-integration.md`**. The **`pricing`** and **`account`** routes intentionally duplicate nothing that belongs only in the client bundle.
+
+### Operator: post-change verification
+
+When you change discovery acquisition JSON, **`productCopy.ts`**, or any route markup covered by the marketing Vitest suite, run **`npm run verify:web-marketing-copy`** from the repository root as the single gate before merging.
+
 ### Discovery surfaces (machine + crawl + share)
 
 **Why canonical production URLs:** **`/llms.txt`** (generated) and [`website/src/app/sitemap.ts`](../website/src/app/sitemap.ts) use **`productionCanonicalOrigin`** from [`config/public-product-anchors.json`](../config/public-product-anchors.json) so machine-readable links stay stable on production even when preview deploys use a different `NEXT_PUBLIC_APP_URL`.

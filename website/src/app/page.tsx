@@ -14,9 +14,7 @@ export default function HomePage() {
         aria-labelledby="hero-heading"
       >
         <h1 id="hero-heading">{productCopy.hero.title}</h1>
-        <p className="lede">{productCopy.homepageHeroNarrative.why}</p>
-        <p className="lede">{productCopy.homepageHeroNarrative.what}</p>
-        <p className="lede">{productCopy.homepageHeroNarrative.when}</p>
+        <p className="lede">{productCopy.homepageDecisionFraming}</p>
         <p className="lede">{productCopy.hero.subtitle}</p>
         <p className="home-cta-row" data-testid="home-hero-cta-row">
           <a className="btn" href="#try-it">
@@ -58,6 +56,9 @@ export default function HomePage() {
           ))}
         </ol>
         <p className="muted">{productCopy.mechanism.notObservability}</p>
+        <p className="muted">
+          <Link href="/security">Security & Trust</Link> — trust boundary and what verification does not guarantee.
+        </p>
       </section>
     ),
     fitAndLimits: (

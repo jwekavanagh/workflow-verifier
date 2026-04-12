@@ -1,11 +1,11 @@
+import { productCopy } from "@/content/productCopy";
 import discoveryAcquisition from "@/lib/discoveryAcquisition";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Examples — AgentSkeptic",
-  description:
-    "Index of indexable public verification examples (bundled wf_complete and wf_missing) backed by committed JSON envelopes.",
+  description: productCopy.examplesIndexDescription,
   robots: { index: false, follow: true },
 };
 

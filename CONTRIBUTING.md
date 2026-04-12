@@ -22,6 +22,13 @@ Thanks for helping improve **agentskeptic**.
 - If you change user-visible CLI behavior, stdout/stderr, or schemas, update the relevant **docs** and **tests** (many behaviors are guarded by doc-contract and golden tests).
 - Do not duplicate normative numbers or stream contracts in the README when they belong in `docs/quick-verify-normative.md` or `docs/agentskeptic.md`.
 
+### Marketing copy and discovery sync
+
+- **Discovery:** edit **`config/discovery-acquisition.json`** (must validate against **`config/discovery-acquisition.schema.json`**).
+- **Site-only copy:** edit **`website/src/content/productCopy.ts`** for strings that should not live in discovery JSON (for example commercial terms list items or account licensed steps).
+- **Sync:** after changing discovery titles, visitor answer, CLI footer lines, or anchor-derived fields, run **`npm run sync:public-product-anchors`** from repo root and commit the regenerated README marker regions, root **`llms.txt`**, and **`src/publicDistribution.generated.ts`** as emitted by the script.
+- **Gate:** before merging marketing or discovery changes, run **`npm run verify:web-marketing-copy`** so schema validation, visitor-outcome node tests, the website build, and the full website Vitest suite (including **`docs-marketing-contract`**) all pass.
+
 ## GitHub Actions (operator)
 
 This section is the **normative** single source of truth for CI and release workflows. Workflow YAML header comments are pointers only; behavioral rules must not live only in workflow comments.

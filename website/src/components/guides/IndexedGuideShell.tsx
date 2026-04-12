@@ -1,4 +1,5 @@
 import { VerificationReportView } from "@/components/VerificationReportView";
+import { productCopy } from "@/content/productCopy";
 import indexedGuideFixture from "@/content/indexedGuideFixture";
 import type { PublicReportEnvelope } from "@/lib/publicVerificationReportService";
 import Link from "next/link";
@@ -19,10 +20,8 @@ export function IndexedGuideShell({ children }: Props) {
     <main className="integrate-main" data-testid="indexed-guide-shell">
       {children}
       <section className="home-section" aria-labelledby="embed-heading">
-        <h2 id="embed-heading">Example: green-shaped activity, missing row (ROW_ABSENT)</h2>
-        <p className="muted">
-          The block below uses the bundled <code>wf_missing</code> demo so this page stays aligned with the engine.
-        </p>
+        <h2 id="embed-heading">{productCopy.indexedGuideEmbedTitle}</h2>
+        <p className="muted">{productCopy.indexedGuideEmbedMuted}</p>
         <VerificationReportView humanText={humanText} payload={embed} />
       </section>
       <p className="home-cta-row">

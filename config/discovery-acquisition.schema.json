@@ -17,6 +17,7 @@
     "readmeFold",
     "readmeTitle",
     "homepageHero",
+    "homepageDecisionFraming",
     "demandMoments",
     "cliFollowupLines",
     "shareableTerminalDemo",
@@ -55,6 +56,18 @@
         "why": { "type": "string", "minLength": 40 },
         "when": { "type": "string", "minLength": 40 }
       }
+    },
+    "homepageDecisionFraming": {
+      "type": "string",
+      "minLength": 80,
+      "maxLength": 500,
+      "allOf": [
+        { "pattern": "[Rr]ead-?\\s*[Oo]nly" },
+        { "pattern": "[Ss][Qq][Ll]" },
+        { "pattern": "[Dd]atabase|[Rr]ow|[Pp]ersisted|[Ss]tate|[Tt]able" },
+        { "pattern": "[Tt]race|[Ll]og|[Ss]uccess|[Ww]orkflow|[Aa]gent|[Aa]utomation" },
+        { "pattern": "[Vv]erification\\s+time|[Aa]t\\s+verification|[Bb]efore\\s+you" }
+      ]
     },
     "demandMoments": {
       "type": "array",
