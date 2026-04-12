@@ -96,7 +96,7 @@ if (!skip && normalize(process.env.NEXT_PUBLIC_APP_URL) !== normalize(canonicalF
 
 ### `distribution-graph.test.ts` and visitor outcome
 
-**`npm run validate-commercial`** from repo root runs, in order after `drizzle-kit migrate`: **`node --test test/visitor-problem-outcome.test.mjs`** (README discovery fold strict equality + schema validation), then **`node --test test/registry-metadata-parity.test.mjs`** (committed **`package.json` `description`** matches **`pageMetadata.description`** and not **`identityOneLiner`**), then **`npx vitest run`** in `website/` (includes `website/__tests__/distribution-graph.test.ts`). Requires Postgres **`DATABASE_URL`**, injected public origin, and full harness. Running bare `cd website && npx vitest` without that harness is **unsupported** for `distribution-graph.test.ts`.
+**`npm run validate-commercial`** from repo root runs, in order after `drizzle-kit migrate`: **`node --test test/visitor-problem-outcome.test.mjs`** (README discovery fold strict equality + schema validation), then **`node --test test/registry-metadata-parity.test.mjs`** (committed **`package.json` `description`** matches **`pageMetadata.description`** and not **`identityOneLiner`**), then **`npx vitest run`** in `website/` (includes `website/__tests__/distribution-graph.test.ts`), then **`scripts/check-web-demo-prereqs.mjs`**, then **`scripts/pack-smoke-commercial.mjs`**, then **`npm run build`** (restore OSS **`dist/`**). Requires Postgres **`DATABASE_URL`**, injected public origin, and full harness. Running bare `cd website && npx vitest` without that harness is **unsupported** for `distribution-graph.test.ts`.
 
 ---
 

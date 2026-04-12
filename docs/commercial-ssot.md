@@ -36,6 +36,8 @@ This document is the **narrative SSOT** for the thin commercial layer (website, 
 
 Codegen: **`node scripts/write-commercial-build-flags.mjs`** writes **`src/generated/commercialBuildFlags.ts`** (gitignored) before `tsc`. **`npm run build`** passes **`--oss`** so the default artifact stays OSS even if **`WF_BUILD_PROFILE`** is set in the shell; **`npm run build:commercial`** invokes the script with **`--commercial`** and requires **`COMMERCIAL_LICENSE_API_BASE_URL`**.
 
+After **`tsc`**, the embedded license API origin is **`LICENSE_API_BASE_URL`** in **`dist/generated/commercialBuildFlags.js`** (not necessarily duplicated inside **`dist/cli.js`**). The **`Commercial npm publish`** workflow asserts the dispatch input URL against that file.
+
 Forks: build with `oss` to omit the gate.
 
 ## HTTP — `POST /api/v1/usage/reserve`
@@ -109,7 +111,7 @@ Single row semantics (match subscription + customer when possible; else fall bac
 
 ### Operator verification
 
-From the repo root, **`npm run validate-commercial`** requires **`DATABASE_URL`**, runs **`drizzle-kit migrate`** in **`website/`**, then full website Vitest (including funnel DB tests).
+From the repo root, **`npm run validate-commercial`** requires **`DATABASE_URL`**, runs **`drizzle-kit migrate`** in **`website/`**, then full website Vitest (including funnel DB tests), then **`scripts/pack-smoke-commercial.mjs`** and **`npm run build`** to restore OSS **`dist/`**.
 
 ## Machine contracts (OpenAPI)
 

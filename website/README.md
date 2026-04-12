@@ -49,7 +49,7 @@ The homepage **Try it** flow calls `POST /api/demo/verify`, which runs the same 
   npm run build:website
   ```
 
-- **Preflight** (Node ≥ 22.13, `node:sqlite`, fixture files): from repo root run **`npm run check:web-demo-prereqs`** (also executed at the end of **`npm run validate-commercial`**).
+- **Preflight** (Node ≥ 22.13, `node:sqlite`, fixture files): from repo root run **`npm run check:web-demo-prereqs`** (also run during **`npm run validate-commercial`**, before **`scripts/pack-smoke-commercial.mjs`**; ad hoc check: **`npm run pack-smoke`** from repo root).
 
 Architecture, contracts, and operator checklist: **[`docs/website-product-experience.md`](../docs/website-product-experience.md)**.
 
@@ -63,10 +63,10 @@ Forward Stripe webhooks to **`/api/webhooks/stripe`** (local: `stripe listen --f
 
 Normative contracts (webhook event list, Checkout vs Billing Portal, account **`commercial-state`** and **`billing-portal`** routes, reserve **`BILLING_PRICE_UNMAPPED`**, emergency flag semantics): **[`docs/commercial-ssot.md`](../docs/commercial-ssot.md)** — *Commercial layer — single source of truth*.
 
-**Website Vitest:** from the repo root, **`npm run validate-commercial`** enforces **`DATABASE_URL`**, runs migrate in **`website/`**, then full website Vitest.
+**Website Vitest:** from the repo root, **`npm run validate-commercial`** enforces **`DATABASE_URL`**, runs migrate in **`website/`**, then full website Vitest, then **`scripts/pack-smoke-commercial.mjs`** and **`npm run build`** to restore OSS **`dist/`**.
 
 **`RESERVE_EMERGENCY_ALLOW=1`:** see SSOT — waives inactive-subscription checks only where documented; does not bypass **`BILLING_PRICE_UNMAPPED`**.
 
 ## Root package `prepublishOnly` (commercial CLI)
 
-The repo root **`package.json`** runs **`prepublishOnly` → `node scripts/build-commercial.mjs`**. That commercial TypeScript build **requires** **`COMMERCIAL_LICENSE_API_BASE_URL`** set to your deployed site origin (the base URL for **`/api/v1/usage/reserve`**) so **`scripts/write-commercial-build-flags.mjs`** can embed the license API base in the published binary.
+The repo root **`package.json`** runs **`prepublishOnly` → `node scripts/build-commercial.mjs`**. That commercial TypeScript build **requires** **`COMMERCIAL_LICENSE_API_BASE_URL`** set to your deployed site origin (the base URL for **`/api/v1/usage/reserve`**) so **`scripts/write-commercial-build-flags.mjs`** can embed **`LICENSE_API_BASE_URL`** in **`dist/generated/commercialBuildFlags.js`** (consumed by the CLI preflight module).

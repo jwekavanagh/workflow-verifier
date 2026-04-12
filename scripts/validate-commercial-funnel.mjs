@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
  * Layer 1 commercial validation + optional Layer 2 (Playwright).
+ * Always runs pack-smoke (commercial build + npm pack) then restores OSS `dist/` via `npm run build`.
+ * Set COMMERCIAL_LICENSE_API_BASE_URL for pack-smoke (defaults to https://pack-smoke.example.com).
  * Writes artifacts/commercial-validation-verdict.json
  */
 import { execSync, spawnSync } from "node:child_process";
@@ -107,19 +109,23 @@ if (!run(process.execPath, ["scripts/check-web-demo-prereqs.mjs"])) {
   process.exit(1);
 }
 
-if (process.env.COMMERCIAL_PACK_SMOKE === "1") {
-  if (
-    !run(process.execPath, ["scripts/pack-smoke-commercial.mjs"], {
-      env: {
-        ...process.env,
-        COMMERCIAL_LICENSE_API_BASE_URL:
-          process.env.COMMERCIAL_LICENSE_API_BASE_URL ?? "https://pack-smoke.example.com",
-      },
-    })
-  ) {
-    writeVerdict("not_solved", layers);
-    process.exit(1);
-  }
+const packSmokeUrl =
+  process.env.COMMERCIAL_LICENSE_API_BASE_URL?.trim() || "https://pack-smoke.example.com";
+if (
+  !run(process.execPath, ["scripts/pack-smoke-commercial.mjs"], {
+    env: {
+      ...process.env,
+      COMMERCIAL_LICENSE_API_BASE_URL: packSmokeUrl,
+    },
+  })
+) {
+  writeVerdict("not_solved", layers);
+  process.exit(1);
+}
+
+if (!run("npm", ["run", "build"], { shell: true })) {
+  writeVerdict("not_solved", layers);
+  process.exit(1);
 }
 
 if (process.env.COMMERCIAL_VALIDATE_PLAYWRIGHT === "1") {

@@ -28,7 +28,7 @@ This document explains how the commercial Next.js site works and points to **nor
 - **Node:** `>= 22.13.0` (website `engines` and `scripts/check-web-demo-prereqs.mjs`).
 - **Build:** `npm run build:website` from repo root (builds the engine, then Next).
 - **Vercel / serverless:** set `NEXT_CONFIG_TRACE_ROOT=1` so `examples/` and package `schemas/` are traced with the deployment (see [`website/next.config.ts`](../website/next.config.ts)).
-- **Preflight:** `npm run check:web-demo-prereqs` — verifies Node, `node:sqlite`, fixture files, and read-only open of `demo.db`. Repo root **`npm run validate-commercial`** runs this after website Vitest (which itself requires **`DATABASE_URL`** and `drizzle-kit migrate`).
+- **Preflight:** `npm run check:web-demo-prereqs` — verifies Node, `node:sqlite`, fixture files, and read-only open of `demo.db`. Repo root **`npm run validate-commercial`** runs this after website Vitest (which itself requires **`DATABASE_URL`** and `drizzle-kit migrate`), then **`scripts/pack-smoke-commercial.mjs`** and **`npm run build`** to restore OSS **`dist/`**.
 - **Next build auth:** `AUTH_SECRET` (and related env) remain required for full `next build` when API routes that touch auth are analyzed—see [`website/.env.example`](../website/.env.example).
 - **Enterprise mailto:** `CONTACT_SALES_EMAIL` — bare email, validated at [`website/next.config.ts`](../website/next.config.ts) load; see [`website/.env.example`](../website/.env.example).
 

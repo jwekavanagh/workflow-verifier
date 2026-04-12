@@ -34,6 +34,7 @@
     "check:commercial-ssot": "node scripts/check-commercial-plans-ssot.mjs",
     "stripe-bootstrap": "node scripts/stripe-bootstrap.mjs",
     "validate-commercial": "node scripts/validate-commercial-funnel.mjs",
+    "pack-smoke": "node scripts/pack-smoke-commercial.mjs",
     "sync:public-product-anchors": "node scripts/public-product-anchors.cjs",
     "distribution:consumer-pipeline": "node scripts/distribution-consumer-pipeline.mjs",
     "check:discovery-acquisition": "node scripts/validate-discovery-acquisition.mjs",
