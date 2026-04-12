@@ -14,8 +14,6 @@ import type { PlanId } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
-export { AccountLicensedStepsList };
-
 export default async function AccountPage() {
   const session = await auth();
   if (!session?.user?.id) {

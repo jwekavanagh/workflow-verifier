@@ -14,7 +14,7 @@
   },
   "appendix": {
     "slug": "/database-truth-vs-traces",
-    "visitorProblemAnswer": "Teams ship agent and automation workflows where traces, tool responses, and success flags look green while the database row is missing, stale, or wrong. AgentSkeptic closes that gap by comparing structured tool activity to read-only SQL against your SQLite or Postgres at verification time: it tells you whether observed state matched expectations derived from what the workflow claimed—not whether a step narrative sounded successful. It is a snapshot check, not proof of causality or execution.",
+    "visitorProblemAnswer": "Teams ship agent and automation workflows where traces, tool responses, and success flags look green while the database row is missing, stale, or wrong. AgentSkeptic compares structured tool activity to read-only SQL against your SQLite or Postgres at verification time and reports whether observed state matched expectations derived from what the workflow claimed—not whether the step narrative read as successful.\n\nUse it when you need persisted rows checked against declared tool parameters at verification time before customer-facing actions, compliance evidence, or CI gates.",
     "intentPhrases": [
       "green trace wrong database row agent workflow",
       "trace says success but CRM row missing",

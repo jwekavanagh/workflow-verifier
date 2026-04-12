@@ -43,14 +43,20 @@ async function startInternal(): Promise<void> {
     shell: true,
   });
 
-  execSync("npm run build", {
-    cwd: join(repoRoot, "website"),
-    env: process.env,
-    stdio: "inherit",
-    shell: true,
-  });
-
   const websiteDir = join(repoRoot, "website");
+  const buildIdPath = join(websiteDir, ".next", "BUILD_ID");
+  const reuseDist =
+    process.env.WEBSITE_TEST_REUSE_DIST === "1" &&
+    existsSync(buildIdPath) &&
+    process.env.FORCE_WEBSITE_TEST_BUILD !== "1";
+  if (!reuseDist) {
+    execSync("npm run build", {
+      cwd: websiteDir,
+      env: process.env,
+      stdio: "inherit",
+      shell: true,
+    });
+  }
   const requireWebsite = createRequire(join(websiteDir, "package.json"));
   const nextBin = join(dirname(requireWebsite.resolve("next/package.json")), "dist", "bin", "next");
   if (!existsSync(nextBin)) {
