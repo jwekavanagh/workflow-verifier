@@ -53,6 +53,9 @@ function makeTx() {
 
 vi.mock("@/db/client", () => ({
   db: {
+    insert: () => ({
+      values: () => Promise.resolve(undefined),
+    }),
     select: () => ({
       from: () => ({
         innerJoin: () => ({

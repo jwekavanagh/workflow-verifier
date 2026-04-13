@@ -3,7 +3,7 @@ import { POST as postCheckout } from "@/app/api/checkout/route";
 import { POST as postDemo } from "@/app/api/demo/verify/route";
 import { db } from "@/db/client";
 import { funnelEvents, users } from "@/db/schema";
-import { applyStripeWebhookEvent } from "@/lib/applyStripeWebhookEvent";
+import { applyStripeWebhookDbSide } from "@/lib/applyStripeWebhookDbSide";
 import { recordSignInFunnel } from "@/lib/recordSignInFunnel";
 import { sql, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
@@ -194,22 +194,18 @@ describe("subscription_checkout_completed", () => {
     vi.mocked(getStripe).mockReset();
   });
 
-  it("applyStripeWebhookEvent updates user from Stripe subscription price and logs funnel", async () => {
+  it("applyStripeWebhookDbSide updates user from Stripe subscription price and logs funnel", async () => {
     vi.stubEnv("STRIPE_PRICE_TEAM", "price_sub_fixture_team");
     const [u] = await db
       .insert(users)
       .values({ email: "sub-1@example.com", emailVerified: new Date(), plan: "starter" })
       .returning();
-    vi.mocked(getStripe).mockReturnValue({
-      subscriptions: {
-        retrieve: vi.fn().mockResolvedValue({
-          id: "sub_x",
-          customer: "cus_x",
-          status: "active",
-          items: { data: [{ price: { id: "price_sub_fixture_team" } }] },
-        }),
-      },
-    } as unknown as ReturnType<typeof getStripe>);
+    const checkoutSubscription = {
+      id: "sub_x",
+      customer: "cus_x",
+      status: "active",
+      items: { data: [{ price: { id: "price_sub_fixture_team" } }] },
+    } as unknown as Stripe.Subscription;
 
     const event = {
       id: `evt_test_${crypto.randomUUID()}`,
@@ -226,7 +222,9 @@ describe("subscription_checkout_completed", () => {
       },
     } as unknown as Stripe.Event;
 
-    await applyStripeWebhookEvent(event);
+    await db.transaction(async (tx) => {
+      await applyStripeWebhookDbSide(tx, event, { checkoutSubscription });
+    });
 
     const row = await db.select().from(users).where(eq(users.id, u!.id)).limit(1);
     expect(row[0]?.plan).toBe("team");
@@ -238,7 +236,10 @@ describe("subscription_checkout_completed", () => {
       .where(eq(funnelEvents.event, "subscription_checkout_completed"));
     expect(fun).toHaveLength(1);
     expect(fun[0]?.userId).toBe(u!.id);
-    expect((fun[0]?.metadata as { plan?: string })?.plan).toBe("team");
+    expect(fun[0]?.metadata).toEqual({
+      plan: "team",
+      stripeEventId: event.id,
+    });
   });
 });
 
@@ -274,7 +275,9 @@ describe("customer.subscription.deleted", () => {
       },
     } as unknown as Stripe.Event;
 
-    await applyStripeWebhookEvent(event);
+    await db.transaction(async (tx) => {
+      await applyStripeWebhookDbSide(tx, event, {});
+    });
 
     const row = await db.select().from(users).where(eq(users.id, u!.id)).limit(1);
     expect(row[0]?.plan).toBe("starter");

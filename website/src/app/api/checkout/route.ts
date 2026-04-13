@@ -8,6 +8,7 @@ import {
 import { logFunnelEvent } from "@/lib/funnelEvent";
 import { loadCommercialPlans } from "@/lib/plans";
 import type { PlanId } from "@/lib/plans";
+import { getCanonicalSiteOrigin } from "@/lib/canonicalSiteOrigin";
 import { checkoutStripePriceFromEnvKey } from "@/lib/priceIdToPlanId";
 import { isStripeMissingCustomerError } from "@/lib/stripeMissingCustomerError";
 import { buildStripeCheckoutSessionCreateParams } from "@/lib/stripeCheckoutSessionParams";
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Missing Stripe price env" }, { status: 500 });
   }
 
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://127.0.0.1:3000";
+  const base = getCanonicalSiteOrigin();
 
   const [urow] = await db
     .select({ stripeCustomerId: users.stripeCustomerId })
@@ -90,10 +91,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const checkout = await stripe.checkout.sessions.create(params);
     const url = checkout.url;
     if (!url) {
-      return NextResponse.json(
-        { error: "Checkout session did not return a redirect URL." },
-        { status: 502 },
-      );
+      return NextResponse.json({ error: "CHECKOUT_FAILED" }, { status: 502 });
     }
 
     await logFunnelEvent({
@@ -124,13 +122,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       try {
         return await createCheckoutAndRespond(fallbackParams);
       } catch (e2) {
-        const message =
-          e2 instanceof Error ? e2.message : "Checkout failed. Please try again or contact support.";
-        return NextResponse.json({ error: message }, { status: 500 });
+        console.error(e2);
+        return NextResponse.json({ error: "CHECKOUT_FAILED" }, { status: 500 });
       }
     }
-    const message =
-      e instanceof Error ? e.message : "Checkout failed. Please try again or contact support.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error(e);
+    return NextResponse.json({ error: "CHECKOUT_FAILED" }, { status: 500 });
   }
 }

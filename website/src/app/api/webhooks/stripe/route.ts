@@ -1,10 +1,12 @@
-import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { db } from "@/db/client";
 import { stripeEvents } from "@/db/schema";
-import { applyStripeWebhookEvent } from "@/lib/applyStripeWebhookEvent";
+import {
+  applyStripeWebhookDbSide,
+  type StripeWebhookDbContext,
+} from "@/lib/applyStripeWebhookDbSide";
 import { getStripe } from "@/lib/stripeServer";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -22,23 +24,40 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return new NextResponse("Invalid signature", { status: 400 });
   }
 
-  const existing = await db
-    .select()
-    .from(stripeEvents)
-    .where(eq(stripeEvents.id, event.id))
-    .limit(1);
-  if (existing.length > 0) {
-    return NextResponse.json({ received: true, duplicate: true });
+  const ctx: StripeWebhookDbContext = {};
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const userId = session.metadata?.userId;
+    const subRef = session.subscription;
+    const subId = typeof subRef === "string" ? subRef : subRef?.id;
+    if (userId && subId) {
+      ctx.checkoutSubscription = await getStripe().subscriptions.retrieve(subId, {
+        expand: ["items.data.price"],
+      });
+    }
   }
 
-  await db.insert(stripeEvents).values({ id: event.id });
-
+  let duplicate = false;
   try {
-    await applyStripeWebhookEvent(event);
+    duplicate = await db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(stripeEvents)
+        .values({ id: event.id })
+        .onConflictDoNothing()
+        .returning({ id: stripeEvents.id });
+      if (inserted.length === 0) {
+        return true;
+      }
+      await applyStripeWebhookDbSide(tx, event, ctx);
+      return false;
+    });
   } catch (e) {
     console.error(e);
     return new NextResponse("Handler error", { status: 500 });
   }
 
+  if (duplicate) {
+    return NextResponse.json({ received: true, duplicate: true });
+  }
   return NextResponse.json({ received: true });
 }

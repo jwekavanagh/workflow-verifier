@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { CommercialAccountStatePayload } from "@/lib/commercialAccountState";
 import type { PriceMapping } from "@/lib/accountEntitlementSummary";
@@ -34,11 +34,13 @@ export function AccountClient({
   hasKey: boolean;
   initialCommercial: CommercialAccountStatePayload;
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const checkout = searchParams.get("checkout");
   const expectedPlanRaw = searchParams.get("expectedPlan");
 
   const [key, setKey] = useState<string | null>(null);
+  const [hasActiveKey, setHasActiveKey] = useState(hasKey);
   const [err, setErr] = useState<string | null>(null);
   const [commercial, setCommercial] = useState<CommercialAccountStatePayload>(initialCommercial);
   const [activationUi, setActivationUi] = useState<"idle" | "pending" | "ready" | "timeout">("idle");
@@ -50,6 +52,10 @@ export function AccountClient({
   useEffect(() => {
     setCommercial(initialCommercial);
   }, [initialCommercial]);
+
+  useEffect(() => {
+    setHasActiveKey(hasKey);
+  }, [hasKey]);
 
   useEffect(() => {
     if (checkout !== "success" || !expectedPlanRaw) {
@@ -119,7 +125,34 @@ export function AccountClient({
       setErr(j.error ?? "Failed");
       return;
     }
-    if (j.apiKey) setKey(j.apiKey);
+    if (j.apiKey) {
+      setKey(j.apiKey);
+      setHasActiveKey(true);
+    }
+  }
+
+  async function revokeKey() {
+    if (
+      !window.confirm(
+        "Revoke your API key? Licensed verification will stop until you generate a new key.",
+      )
+    ) {
+      return;
+    }
+    setErr(null);
+    const r = await fetch("/api/account/revoke-key", { method: "POST" });
+    const j = (await r.json()) as { ok?: boolean; revoked?: boolean; error?: string };
+    if (r.status === 401) {
+      setErr(j.error ?? "Unauthorized");
+      return;
+    }
+    if (!r.ok || !j.ok) {
+      setErr("Revoke failed");
+      return;
+    }
+    setKey(null);
+    setHasActiveKey(false);
+    router.refresh();
   }
 
   const showInactiveBillingCta = commercial.subscriptionStatus === "inactive";
@@ -234,7 +267,14 @@ export function AccountClient({
       <p style={{ marginTop: "0.75rem" }}>{commercial.entitlementSummary}</p>
 
       <h2 style={{ marginTop: "1.5rem" }}>API key</h2>
-      {!hasKey && !key && (
+      {(hasActiveKey || key) && (
+        <p style={{ marginTop: "0.5rem" }}>
+          <button type="button" onClick={() => void revokeKey()}>
+            Revoke API key
+          </button>
+        </p>
+      )}
+      {!hasActiveKey && !key && (
         <button type="button" onClick={createKey}>
           Generate API key
         </button>

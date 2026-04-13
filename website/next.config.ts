@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { createRequire } from "node:module";
 import path from "path";
+import { COMMERCIAL_SITE_SECURITY_HEADERS } from "./src/lib/httpSecurityHeaders";
 import { DEMO_VERIFY_OUTPUT_FILE_TRACING_GLOBS } from "./src/lib/demoVerifyOutputFileTracingGlobs";
 
 const require = createRequire(import.meta.url);
@@ -28,6 +29,13 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      {
+        source: "/:path*",
+        headers: COMMERCIAL_SITE_SECURITY_HEADERS.map((h) => ({
+          key: h.key,
+          value: h.value,
+        })),
+      },
       {
         source: "/r/:path*",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],

@@ -23,9 +23,11 @@ import { getRepoRoot } from "./helpers/distributionGraphHelpers";
 
 describe("POST /api/public/verification-reports", () => {
   const prev = process.env.PUBLIC_VERIFICATION_REPORTS_ENABLED;
+  const prevUrl = process.env.NEXT_PUBLIC_APP_URL;
 
   beforeEach(() => {
     process.env.PUBLIC_VERIFICATION_REPORTS_ENABLED = "1";
+    process.env.NEXT_PUBLIC_APP_URL = "https://agentskeptic.com";
     insert.mockClear();
     values.mockClear();
     returning.mockReset();
@@ -34,6 +36,8 @@ describe("POST /api/public/verification-reports", () => {
 
   afterEach(() => {
     process.env.PUBLIC_VERIFICATION_REPORTS_ENABLED = prev;
+    if (prevUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+    else process.env.NEXT_PUBLIC_APP_URL = prevUrl;
     vi.clearAllMocks();
   });
 
@@ -59,8 +63,7 @@ describe("POST /api/public/verification-reports", () => {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-forwarded-proto": "https",
-        "host": "agentskeptic.com",
+        "x-forwarded-host": "evil.test",
       },
       body: raw,
     });
@@ -69,9 +72,7 @@ describe("POST /api/public/verification-reports", () => {
     const json = (await res.json()) as { schemaVersion: number; id: string; url: string };
     expect(json.schemaVersion).toBe(1);
     expect(json.id).toBe("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
-    expect(json.url).toBe(
-      "https://agentskeptic.com/r/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-    );
+    expect(json.url).toBe("https://agentskeptic.com/r/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
     expect(insert).toHaveBeenCalled();
   });
 

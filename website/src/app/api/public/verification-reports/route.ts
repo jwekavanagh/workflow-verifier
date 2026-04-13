@@ -1,5 +1,4 @@
-import { publicProductAnchors } from "@/lib/publicProductAnchors";
-import { publicOriginFromHeaders } from "@/lib/publicOrigin";
+import { getCanonicalSiteOrigin } from "@/lib/canonicalSiteOrigin";
 import {
   assertBodySizeWithinLimit,
   insertPublicVerificationReport,
@@ -41,7 +40,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const envelope = parseAndValidateEnvelope(parsed);
     const { id } = await insertPublicVerificationReport(envelope);
-    const origin = publicOriginFromHeaders(req.headers, publicProductAnchors.productionCanonicalOrigin);
+    const origin = getCanonicalSiteOrigin();
     const url = `${origin.replace(/\/$/, "")}/r/${id}`;
     await logFunnelEvent({ event: "report_share_created", metadata: { id, kind: envelope.kind } });
     return NextResponse.json({ schemaVersion: 1, id, url }, { status: 201 });

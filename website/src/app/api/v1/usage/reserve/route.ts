@@ -11,6 +11,7 @@ import {
 import type { PlanId } from "@/lib/plans";
 import { buildReserveAllowedMetadata } from "@/lib/funnelCommercialMetadata";
 import { logFunnelEvent } from "@/lib/funnelEvent";
+import { getCanonicalSiteOrigin } from "@/lib/canonicalSiteOrigin";
 import { billingPriceUnmappedMessage } from "@/lib/billingPriceUnmappedMessage";
 import { loadCommercialPlans } from "@/lib/plans";
 import { priceIdToPlanId } from "@/lib/priceIdToPlanId";
@@ -20,10 +21,7 @@ function ymNow(): string {
 }
 
 function publicUpgradeUrl(): string {
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? "http://127.0.0.1:3000").replace(
-    /\/$/,
-    "",
-  );
+  const base = getCanonicalSiteOrigin().replace(/\/$/, "");
   return `${base}/pricing`;
 }
 

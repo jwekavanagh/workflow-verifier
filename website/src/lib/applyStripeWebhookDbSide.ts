@@ -1,12 +1,15 @@
 import { and, eq, or, isNull } from "drizzle-orm";
 import type Stripe from "stripe";
-import { db } from "@/db/client";
 import { users } from "@/db/schema";
+import type { AppDbClient } from "@/lib/funnelEvent";
 import { logFunnelEvent } from "@/lib/funnelEvent";
 import type { PlanId } from "@/lib/plans";
 import { primarySubscriptionPriceId, priceIdToPlanId } from "@/lib/priceIdToPlanId";
-import { getStripe } from "@/lib/stripeServer";
 import { subscriptionStatusFromStripe } from "@/lib/stripeSubscriptionStatus";
+
+export type StripeWebhookDbContext = {
+  checkoutSubscription?: Stripe.Subscription | null;
+};
 
 function customerIdOf(sub: Stripe.Subscription): string {
   return typeof sub.customer === "string" ? sub.customer : sub.customer.id;
@@ -36,10 +39,13 @@ function subscriptionPatchFromStripe(sub: Stripe.Subscription, priorPlan: PlanId
 }
 
 /**
- * Stripe webhook business logic (user updates + funnel). Caller must handle idempotency and
- * `stripe_event` insert before invoking this.
+ * Stripe webhook DB mutations only (no network I/O). Caller owns `stripe_event` claim insert in the same transaction.
  */
-export async function applyStripeWebhookEvent(event: Stripe.Event): Promise<void> {
+export async function applyStripeWebhookDbSide(
+  tx: AppDbClient,
+  event: Stripe.Event,
+  ctx: StripeWebhookDbContext,
+): Promise<void> {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.userId;
@@ -48,32 +54,36 @@ export async function applyStripeWebhookEvent(event: Stripe.Event): Promise<void
     if (!userId || !subId) {
       return;
     }
-    const [existing] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const sub = ctx.checkoutSubscription;
+    if (!sub) {
+      return;
+    }
+    const [existing] = await tx.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!existing) {
       return;
     }
-    const sub = await getStripe().subscriptions.retrieve(subId, {
-      expand: ["items.data.price"],
-    });
     const patch = subscriptionPatchFromStripe(sub, existing.plan as PlanId);
-    const updated = await db
+    const updated = await tx
       .update(users)
       .set(patch)
       .where(eq(users.id, userId))
       .returning({ id: users.id });
     if (updated.length > 0) {
-      await logFunnelEvent({
-        event: "subscription_checkout_completed",
-        userId,
-        metadata: { plan: patch.plan },
-      });
+      await logFunnelEvent(
+        {
+          event: "subscription_checkout_completed",
+          userId,
+          metadata: { plan: patch.plan, stripeEventId: event.id },
+        },
+        tx,
+      );
     }
   }
 
   if (event.type === "customer.subscription.updated") {
     const sub = event.data.object as Stripe.Subscription;
     const customerId = customerIdOf(sub);
-    const rows = await db
+    const rows = await tx
       .select({ id: users.id, plan: users.plan })
       .from(users)
       .where(
@@ -82,17 +92,20 @@ export async function applyStripeWebhookEvent(event: Stripe.Event): Promise<void
           or(eq(users.stripeSubscriptionId, sub.id), isNull(users.stripeSubscriptionId)),
         ),
       );
-    const targets = rows.length > 0 ? rows : await db.select({ id: users.id, plan: users.plan }).from(users).where(eq(users.stripeCustomerId, customerId));
+    const targets =
+      rows.length > 0
+        ? rows
+        : await tx.select({ id: users.id, plan: users.plan }).from(users).where(eq(users.stripeCustomerId, customerId));
     for (const row of targets) {
       const patch = subscriptionPatchFromStripe(sub, row.plan as PlanId);
-      await db.update(users).set(patch).where(eq(users.id, row.id));
+      await tx.update(users).set(patch).where(eq(users.id, row.id));
     }
   }
 
   if (event.type === "customer.subscription.deleted") {
     const sub = event.data.object as Stripe.Subscription;
     const customerId = customerIdOf(sub);
-    const narrowed = await db
+    const narrowed = await tx
       .update(users)
       .set({
         subscriptionStatus: "inactive",
@@ -103,7 +116,7 @@ export async function applyStripeWebhookEvent(event: Stripe.Event): Promise<void
       .where(and(eq(users.stripeCustomerId, customerId), eq(users.stripeSubscriptionId, sub.id)))
       .returning({ id: users.id });
     if (narrowed.length === 0) {
-      await db
+      await tx
         .update(users)
         .set({
           subscriptionStatus: "inactive",

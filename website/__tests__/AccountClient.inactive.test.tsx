@@ -8,6 +8,7 @@ import type { CommercialAccountStatePayload } from "@/lib/commercialAccountState
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 vi.mock("next/link", () => ({

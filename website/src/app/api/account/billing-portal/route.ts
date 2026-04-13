@@ -5,6 +5,7 @@ import {
   STRIPE_CUSTOMER_MISSING_ERROR,
   STRIPE_CUSTOMER_MISSING_MESSAGE,
 } from "@/lib/billingPortalConstants";
+import { getCanonicalSiteOrigin } from "@/lib/canonicalSiteOrigin";
 import { isStripeMissingCustomerError } from "@/lib/stripeMissingCustomerError";
 import { getStripe } from "@/lib/stripeServer";
 import { eq } from "drizzle-orm";
@@ -30,7 +31,7 @@ export async function POST(): Promise<NextResponse> {
     );
   }
 
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
+  const base = getCanonicalSiteOrigin().replace(/\/$/, "");
   const return_url = `${base}/account`;
 
   try {

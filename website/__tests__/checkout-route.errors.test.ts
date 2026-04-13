@@ -68,9 +68,9 @@ describe("POST /api/checkout — JSON error contract", () => {
 
     expect(res.headers.get("content-type")).toMatch(/application\/json/);
     expect(res.status).toBe(500);
-    await expect(res.json()).resolves.toEqual({
-      error: "STRIPE_SECRET_KEY is not configured",
-    });
+    const body = await res.json();
+    expect(body).toEqual({ error: "CHECKOUT_FAILED" });
+    expect(JSON.stringify(body)).not.toContain("STRIPE_SECRET_KEY");
     expect(logFunnelEvent).not.toHaveBeenCalled();
   });
 
@@ -93,7 +93,8 @@ describe("POST /api/checkout — JSON error contract", () => {
     expect(res.headers.get("content-type")).toMatch(/application\/json/);
     expect(res.status).toBe(502);
     const body = (await res.json()) as { error?: string };
-    expect(body.error).toMatch(/redirect URL/i);
+    expect(body.error).toBe("CHECKOUT_FAILED");
+    expect(JSON.stringify(body)).not.toMatch(/redirect URL/i);
     expect(logFunnelEvent).not.toHaveBeenCalled();
   });
 });
