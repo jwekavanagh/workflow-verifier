@@ -1,6 +1,6 @@
 {
   "name": "agentskeptic",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Green agent traces and tool success flags often hide missing or wrong database rows. AgentSkeptic runs read-only SQL at verification time against persisted state vs structured tool activity—not chat narratives.",
   "license": "MIT",
   "type": "module",
