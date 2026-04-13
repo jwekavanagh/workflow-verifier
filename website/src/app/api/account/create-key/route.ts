@@ -5,8 +5,8 @@ import { db } from "@/db/client";
 import { apiKeys } from "@/db/schema";
 import { logFunnelEvent } from "@/lib/funnelEvent";
 import {
-  generateApiKeyPlaintext,
   hashApiKey,
+  randomHexWithWfSkLivePrefix,
   sha256HexApiKeyLookupFingerprint,
 } from "@/lib/apiKeyCrypto";
 
@@ -29,9 +29,9 @@ export async function POST(): Promise<NextResponse> {
     );
   }
 
-  const plain = generateApiKeyPlaintext();
-  const keyHash = hashApiKey(plain);
-  const keyLookupSha256 = sha256HexApiKeyLookupFingerprint(plain);
+  const issuedBearer = randomHexWithWfSkLivePrefix();
+  const keyHash = hashApiKey(issuedBearer);
+  const keyLookupSha256 = sha256HexApiKeyLookupFingerprint(issuedBearer);
 
   await db.insert(apiKeys).values({
     userId: session.user.id,
@@ -41,5 +41,5 @@ export async function POST(): Promise<NextResponse> {
 
   await logFunnelEvent({ event: "api_key_created", userId: session.user.id });
 
-  return NextResponse.json({ apiKey: plain });
+  return NextResponse.json({ apiKey: issuedBearer });
 }

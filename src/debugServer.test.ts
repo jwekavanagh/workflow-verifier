@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import * as loadEvents from "./loadEvents.js";
 import {
   DEBUG_SERVER_INTERNAL_STDERR_PREFIX,
   DEBUG_SERVER_OPAQUE_500_MESSAGE,
@@ -11,6 +10,7 @@ import {
   startDebugServerOnPort,
 } from "./debugServer.js";
 import { buildAgentRunRecordForBundle } from "./agentRunRecord.js";
+import { resetLoadEventsTestThrowInvocationCounter } from "./loadEvents.js";
 import { buildWorkflowVerdictSurface } from "./workflowTruthReport.js";
 import type { WorkflowResult } from "./types.js";
 
@@ -76,10 +76,10 @@ describe("debugServer HTTP", () => {
   });
 
   it("GET /api/runs/run_ok returns opaque 500 when loadEventsForWorkflow throws", async () => {
-    const spy = vi.spyOn(loadEvents, "loadEventsForWorkflow").mockImplementation(() => {
-      throw new Error("INJECTED_SECRET_MARKER");
-    });
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const prev = process.env.AGENTSKEPTIC_TEST_THROW_ON_LOAD_EVENTS;
+    resetLoadEventsTestThrowInvocationCounter();
+    process.env.AGENTSKEPTIC_TEST_THROW_ON_LOAD_EVENTS = "1";
     const srv = await startDebugServerOnPort(exampleCorpus, 0);
     try {
       const res = await fetch(`http://127.0.0.1:${srv.port}/api/runs/run_ok`);
@@ -93,7 +93,9 @@ describe("debugServer HTTP", () => {
       expect(errSpy.mock.calls[0]![2]).toBeInstanceOf(Error);
       expect((errSpy.mock.calls[0]![2] as Error).message).toBe("INJECTED_SECRET_MARKER");
     } finally {
-      spy.mockRestore();
+      resetLoadEventsTestThrowInvocationCounter();
+      if (prev === undefined) delete process.env.AGENTSKEPTIC_TEST_THROW_ON_LOAD_EVENTS;
+      else process.env.AGENTSKEPTIC_TEST_THROW_ON_LOAD_EVENTS = prev;
       errSpy.mockRestore();
       await srv.close();
     }

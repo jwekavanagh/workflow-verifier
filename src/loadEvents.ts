@@ -7,6 +7,13 @@ import { TruthLayerError } from "./truthLayerError.js";
 
 const validateEvent = loadSchemaValidator("event");
 
+let testThrowInvocationCounter = 0;
+
+/** Clears the per-process counter used with `AGENTSKEPTIC_TEST_THROW_ON_LOAD_EVENTS` (Vitest only). */
+export function resetLoadEventsTestThrowInvocationCounter(): void {
+  testThrowInvocationCounter = 0;
+}
+
 function isToolObserved(ev: RunEvent): ev is ToolObservedEvent {
   return ev.type === "tool_observed";
 }
@@ -15,6 +22,12 @@ export function loadEventsForWorkflow(
   eventsFilePath: string,
   workflowId: string,
 ): LoadEventsResult {
+  if (process.env.AGENTSKEPTIC_TEST_THROW_ON_LOAD_EVENTS === "1") {
+    testThrowInvocationCounter += 1;
+    if (testThrowInvocationCounter === 2) {
+      throw new Error("INJECTED_SECRET_MARKER");
+    }
+  }
   const runLevelReasons: Reason[] = [];
   let raw: string;
   try {

@@ -31,11 +31,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if rg -q 'includes\("https://' src/commercial/licensePreflight.test.ts test/redaction-rules.test.mjs; then echo "Invariant fail: https includes"; exit 1; fi
-          if rg -q 'includes\("example\.com' test/redaction-rules.test.mjs; then echo "Invariant fail: example.com includes"; exit 1; fi
-          lines=$(rg 'json\(res, 500' src/debugServer.ts | wc -l)
+          if grep -Fq 'includes("https://' src/commercial/licensePreflight.test.ts test/redaction-rules.test.mjs; then echo "Invariant fail: https includes"; exit 1; fi
+          if grep -Fq 'includes("example.com' test/redaction-rules.test.mjs; then echo "Invariant fail: example.com includes"; exit 1; fi
+          lines=$(grep -cF 'json(res, 500' src/debugServer.ts || echo 0)
           if [ "$lines" -ne 1 ]; then echo "Invariant fail: json(res,500 line count=$lines expected 1"; exit 1; fi
-          if rg -q '\bdetails\b' src/debugServer.ts; then echo "Invariant fail: details in debugServer"; exit 1; fi
+          if grep -Eq '\bdetails\b' src/debugServer.ts; then echo "Invariant fail: details in debugServer"; exit 1; fi
       - uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
