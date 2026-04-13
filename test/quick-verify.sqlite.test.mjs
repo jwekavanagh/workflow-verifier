@@ -403,7 +403,7 @@ describe("Quick Verify SQLite", () => {
         "--registry",
         join(root, "test", "fixtures", "quick-verify", "corrupt-relational-registry.json"),
         "--db",
-        join(root, "examples", "demo.db"),
+        dbPath,
       ],
       { encoding: "utf8", cwd: root, maxBuffer: 10_000_000 },
     );
