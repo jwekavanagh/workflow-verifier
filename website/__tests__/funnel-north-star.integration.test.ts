@@ -4,6 +4,7 @@ import { POST as postReserve } from "@/app/api/v1/usage/reserve/route";
 import { POST as postVerifyOutcome } from "@/app/api/v1/funnel/verify-outcome/route";
 import { db } from "@/db/client";
 import { funnelEvents, usageReservations, users } from "@/db/schema";
+import { getCanonicalSiteOrigin } from "@/lib/canonicalSiteOrigin";
 import { VERIFY_OUTCOME_BEACON_MAX_RESERVATION_AGE_MS } from "@/lib/funnelVerifyOutcomeConstants";
 import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
@@ -32,7 +33,6 @@ type AuthMock = {
 const authMock = auth as unknown as AuthMock;
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL?.trim());
-const testOrigin = "http://127.0.0.1:3000";
 
 function surfaceReq(body: object, origin: string | null): NextRequest {
   const headers = new Headers({ "content-type": "application/json" });
@@ -62,9 +62,8 @@ describe.skipIf(!hasDatabaseUrl)("funnel north star — surface impression", () 
   });
 
   it("returns 204 and inserts acquisition_landed when Origin matches canonical", async () => {
-    vi.stubEnv("NODE_ENV", "test");
-    delete process.env.NEXT_PUBLIC_APP_URL;
-    const req = surfaceReq({ surface: "acquisition" }, testOrigin);
+    const canonical = getCanonicalSiteOrigin();
+    const req = surfaceReq({ surface: "acquisition" }, canonical);
     const res = await postSurface(req);
     expect(res.status).toBe(204);
     const rows = await db.select().from(funnelEvents).where(eq(funnelEvents.event, "acquisition_landed"));
@@ -72,6 +71,7 @@ describe.skipIf(!hasDatabaseUrl)("funnel north star — surface impression", () 
   });
 
   it("returns 403 without matching Origin or Referer", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
     vi.stubEnv("NODE_ENV", "test");
     delete process.env.NEXT_PUBLIC_APP_URL;
     const req = surfaceReq({ surface: "integrate" }, "https://evil.example");

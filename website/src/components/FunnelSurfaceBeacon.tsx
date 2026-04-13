@@ -11,13 +11,17 @@ export function FunnelSurfaceBeacon({
 
   useEffect(() => {
     if (fired.current) return;
+    if (typeof window === "undefined") return;
+    const origin = window.location?.origin;
+    if (!origin || origin === "null") return;
     fired.current = true;
-    void fetch("/api/funnel/surface-impression", {
+    const url = new URL("/api/funnel/surface-impression", origin).href;
+    void fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
       body: JSON.stringify({ surface }),
-    });
+    }).catch(() => {});
   }, [surface]);
 
   return null;
