@@ -11,7 +11,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node ./scripts/db-migrate.mjs",
     "test:vitest": "node ../scripts/sync-integrator-docs-embedded.mjs && vitest run"
   },
   "dependencies": {

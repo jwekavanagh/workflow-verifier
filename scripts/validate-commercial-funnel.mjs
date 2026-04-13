@@ -6,7 +6,7 @@
  * Writes artifacts/commercial-validation-verdict.json
  */
 import { execSync, spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +16,29 @@ const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const artifactDir = path.join(root, "artifacts");
 const verdictPath = path.join(artifactDir, "commercial-validation-verdict.json");
+
+/** Merge `website/.env` into `process.env` when keys are unset (local dev); CI keeps explicit env. */
+function mergeWebsiteDotenv() {
+  const p = path.join(root, "website", ".env");
+  if (!existsSync(p)) return;
+  for (const line of readFileSync(p, "utf8").split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    const eq = t.indexOf("=");
+    if (eq <= 0) continue;
+    const key = t.slice(0, eq).trim();
+    let val = t.slice(eq + 1).trim();
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1);
+    }
+    if (process.env[key] === undefined || process.env[key] === "") {
+      process.env[key] = val;
+    }
+  }
+}
 
 function run(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, {
@@ -53,6 +76,8 @@ if (!run("npx", ["vitest", "run", "src/commercial/licensePreflight.test.ts"], { 
 }
 
 layers.regression = true;
+
+mergeWebsiteDotenv();
 
 if (!process.env.DATABASE_URL?.trim()) {
   console.error(
