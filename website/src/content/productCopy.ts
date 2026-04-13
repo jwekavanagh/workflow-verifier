@@ -349,6 +349,12 @@ export const productCopy = {
 
   signInA11y: {
     sendEmailError: "Could not send sign-in email.",
+    /** Shown when Resend rejects recipients while the sender is still `onboarding@resend.dev` (testing). */
+    sendEmailResendTestingRecipients:
+      "This site’s email is still in the provider’s testing mode, which only delivers magic links to the mailbox tied to that provider account. Ask the operator to verify a sending domain (and set EMAIL_FROM), or try a different email you already use with this site.",
+    /** Shown when `from` uses a domain that is not verified in Resend. */
+    sendEmailResendFromDomainUnverified:
+      "The sign-in email could not be sent because the sender domain is not verified with the mail provider. The operator should verify the domain in Resend and set EMAIL_FROM to an address on that domain.",
     magicLinkSent: "Check your email for the sign-in link.",
   },
 

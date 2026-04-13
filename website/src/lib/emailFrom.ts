@@ -1,6 +1,7 @@
 /**
  * Resend rejects unverified `from` domains. `example.com` is never valid as a sender.
- * Use `onboarding@resend.dev` only until a domain is verified; production should set EMAIL_FROM.
+ * `onboarding@resend.dev` is for development only: Resend allows just the account mailbox as recipient
+ * until you verify a domain and send from that domain (`EMAIL_FROM`). Production must verify DNS.
  */
 export const DEFAULT_MAGIC_LINK_FROM =
   "AgentSkeptic <onboarding@resend.dev>";

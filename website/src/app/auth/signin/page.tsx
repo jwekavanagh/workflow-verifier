@@ -19,7 +19,15 @@ function SignInForm() {
     setNotice(null);
     const r = await signIn("email", emailSignInOptions(email, rawCallback));
     if (r?.error) {
-      setNotice({ mode: "assertive", text: productCopy.signInA11y.sendEmailError });
+      let text = productCopy.signInA11y.sendEmailError;
+      if (r.error === "CredentialsSignin") {
+        if (r.code === "resend_testing_recipients") {
+          text = productCopy.signInA11y.sendEmailResendTestingRecipients;
+        } else if (r.code === "resend_from_domain_unverified") {
+          text = productCopy.signInA11y.sendEmailResendFromDomainUnverified;
+        }
+      }
+      setNotice({ mode: "assertive", text });
     } else {
       setNotice({ mode: "polite", text: productCopy.signInA11y.magicLinkSent });
     }

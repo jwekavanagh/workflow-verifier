@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CredentialsSignin } from "@auth/core/errors";
 
 const sendMock = vi.fn().mockResolvedValue({ data: {}, error: null });
 
@@ -32,5 +33,23 @@ describe("sendMagicLink", () => {
     expect(sendMock).toHaveBeenCalledTimes(1);
     const arg = sendMock.mock.calls[0]![0] as { html: string };
     expect(arg.html).toContain("/api/auth/callback/");
+  });
+
+  it("throws CredentialsSignin when Resend rejects non-testing recipients", async () => {
+    sendMock.mockResolvedValueOnce({
+      data: null,
+      error: {
+        message:
+          "You can only send testing emails to your own email address (you@domain.com). To send emails to other recipients, please verify a domain at resend.com/domains, and change the `from` address to an email using this domain.",
+      },
+    });
+    const { sendMagicLink } = await import("@/lib/sendMagicLink");
+    const url = "http://127.0.0.1:3000/api/auth/callback/email?token=abc";
+    const caught = await sendMagicLink("new-user@example.com", url).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(caught).toBeInstanceOf(CredentialsSignin);
+    expect((caught as CredentialsSignin).code).toBe("resend_testing_recipients");
   });
 });

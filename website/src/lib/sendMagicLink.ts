@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import { resolvedMagicLinkFrom } from "./emailFrom";
+import { throwIfResendMagicLinkMisconfigured } from "./mapResendMagicLinkFailure";
 
 export async function sendMagicLink(identifier: string, url: string): Promise<void> {
   if (process.env.E2E_COMMERCIAL_FUNNEL === "1") {
@@ -40,6 +41,7 @@ export async function sendMagicLink(identifier: string, url: string): Promise<vo
         ? (error as { message: string }).message
         : JSON.stringify(error);
     console.error("[sendMagicLink] Resend error:", error);
+    throwIfResendMagicLinkMisconfigured(message);
     throw new Error(message);
   }
 }
