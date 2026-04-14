@@ -163,6 +163,12 @@ describe("Account verification center (DOM)", () => {
 
   it("API key lifecycle: create, acknowledge, post-refresh no leak, negative", async () => {
     const issued = `wf_sk_live_${"a".repeat(64)}`;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+      writable: true,
+    });
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = typeof input === "string" ? input : input.toString();
       if (url.includes("/api/account/create-key") && init?.method === "POST") {
@@ -182,6 +188,11 @@ describe("Account verification center (DOM)", () => {
     fireEvent.click(screen.getByRole("button", { name: /generate api key/i }));
     const plain = await screen.findByTestId("api-key-plaintext");
     expect(API_KEY_ISSUED_PATTERN.test(plain.textContent ?? "")).toBe(true);
+    expect(screen.getByTestId("api-key-reveal-panel")).toBeInTheDocument();
+    expect(screen.getByText(productCopy.account.apiKeyRevealUrgentTitle)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(productCopy.account.apiKeyCopyButton, "i") }));
+    expect(writeText).toHaveBeenCalledWith(issued);
 
     fireEvent.click(screen.getByRole("button", { name: /i['’]ve saved my key/i }));
     expect(screen.queryByTestId("api-key-plaintext")).toBeNull();

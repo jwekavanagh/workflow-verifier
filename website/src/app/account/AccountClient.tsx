@@ -20,6 +20,49 @@ import {
 import type { LicensedVerifyOutcomeMetadata } from "@/lib/funnelCommercialMetadata";
 import { SignOutButton } from "../SignOutButton";
 
+function ApiKeyOneTimeReveal({ apiKey, onAcknowledge }: { apiKey: string; onAcknowledge: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const [copyErr, setCopyErr] = useState(false);
+
+  async function copyKey() {
+    setCopyErr(false);
+    try {
+      await navigator.clipboard.writeText(apiKey);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setCopyErr(true);
+    }
+  }
+
+  return (
+    <>
+      <LiveStatus mode="polite">
+        <p className="muted">{productCopy.account.a11yApiKeyReady}</p>
+      </LiveStatus>
+      <p style={{ marginTop: "0.85rem", marginBottom: "0.35rem" }}>
+        <strong>{productCopy.account.apiKeyRevealUrgentTitle}</strong>
+      </p>
+      <div className="account-api-key-reveal" data-testid="api-key-reveal-panel">
+        <code data-testid="api-key-plaintext">{apiKey}</code>
+        <button type="button" className="secondary" onClick={() => void copyKey()}>
+          {copied ? productCopy.account.apiKeyCopyButtonCopied : productCopy.account.apiKeyCopyButton}
+        </button>
+      </div>
+      {copyErr ? (
+        <p className="muted" style={{ marginTop: "0.4rem", fontSize: "0.9rem" }}>
+          {productCopy.account.apiKeyCopyFallback}
+        </p>
+      ) : null}
+      <p style={{ marginTop: "0.85rem" }}>
+        <button type="button" onClick={onAcknowledge}>
+          I&apos;ve saved my key
+        </button>
+      </p>
+    </>
+  );
+}
+
 function TrustFootnoteSecondLine({ text }: { text: string }) {
   const needle = "Security & Trust";
   const i = text.indexOf(needle);
@@ -229,6 +272,15 @@ export function AccountClient({
     activity.licensedOutcomesThisUtcMonth > 0;
   const showMetricLine =
     activity.ok === true && (hasActivityRows || (!showExactEmpty && monthCount > 0));
+
+  const noQuotaConsumptionThisMonth =
+    commercial.monthlyQuota.distinctReserveUtcDaysThisMonth === 0 &&
+    (commercial.monthlyQuota.keys.length === 0 ||
+      commercial.monthlyQuota.keys.every((k) => k.used === 0));
+  const quotaUrgencyLine =
+    commercial.monthlyQuota.worstUrgency === "ok" && noQuotaConsumptionThisMonth
+      ? productCopy.account.quotaUrgencyZeroUsage
+      : productCopy.account.quotaUrgencyCopy[commercial.monthlyQuota.worstUrgency];
 
   return (
     <div className="card" style={{ marginTop: "1rem" }}>
@@ -465,9 +517,7 @@ export function AccountClient({
           >
             {productCopy.account.monthlyQuotaDistinctDays(commercial.monthlyQuota.distinctReserveUtcDaysThisMonth)}
           </p>
-          <p data-testid="quota-urgency-line">
-            {productCopy.account.quotaUrgencyCopy[commercial.monthlyQuota.worstUrgency]}
-          </p>
+          <p data-testid="quota-urgency-line">{quotaUrgencyLine}</p>
         </div>
       </section>
 
@@ -495,21 +545,7 @@ export function AccountClient({
             Generate API key
           </button>
         )}
-        {key ? (
-          <>
-            <LiveStatus mode="polite">
-              <p className="muted">{productCopy.account.a11yApiKeyReady}</p>
-            </LiveStatus>
-            <p data-testid="api-key-plaintext" style={{ wordBreak: "break-all", marginTop: "0.75rem" }}>
-              {key}
-            </p>
-            <p style={{ marginTop: "0.75rem" }}>
-              <button type="button" onClick={acknowledgeSavedKey}>
-                I&apos;ve saved my key
-              </button>
-            </p>
-          </>
-        ) : null}
+        {key ? <ApiKeyOneTimeReveal apiKey={key} onAcknowledge={acknowledgeSavedKey} /> : null}
       </section>
 
       <section data-testid="account-trust-footnote" style={{ marginTop: "1.25rem" }}>

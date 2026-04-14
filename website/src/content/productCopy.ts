@@ -482,7 +482,13 @@ export const productCopy = {
       warning: "You have used at least 90% of your included verifications for this month.",
       at_cap: "You have reached your included verifications for this month. Upgrade or wait for the next billing month.",
     } as const,
+    /** Shown instead of `quotaUrgencyCopy.ok` when there is no usage yet this month. */
+    quotaUrgencyZeroUsage: "No verification usage recorded for this billing month yet.",
     a11yApiKeyReady: "API key generated. Copy it from the page and store it safely.",
+    apiKeyRevealUrgentTitle: "Copy this now — you will not see the full key again after you leave this page.",
+    apiKeyCopyButton: "Copy key",
+    apiKeyCopyButtonCopied: "Copied",
+    apiKeyCopyFallback: "Copy could not use the clipboard. Select the key above and copy manually (Ctrl+C / ⌘C).",
     checkoutActivationPending:
       "Finishing subscription setup… This usually takes a few seconds. You can refresh the page if it does not update.",
     checkoutActivationReady: "Your subscription is active. You can run paid verification with your API key.",
@@ -495,7 +501,7 @@ export const productCopy = {
     verificationMonthNoRowsDetail:
       "We see activity for this billing month, but detailed rows are not available here yet—try refreshing in a moment.",
     activityEmpty:
-      "Nothing has been recorded for this billing month yet. Create an API key below if you need one, then use the button to open Integrate.",
+      "Nothing recorded for this billing month yet. Create a key below if you need one—the Integrate button is your next step.",
     activityLoadError:
       "We could not load verification activity right now. Refresh the page in a moment; if it keeps happening, contact support.",
     trustFootnoteLines: [
