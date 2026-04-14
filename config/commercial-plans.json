@@ -7,8 +7,8 @@
       "monthlyUsdCents": 0,
       "displayPrice": "Free",
       "marketingHeadline": "Starter",
-      "audience": "Try verification locally before committing to CI.",
-      "valueUnlock": "Sign in for Account. Use the open-source repo build for contract verification without a subscription; paid CLI and keys start on Individual.",
+      "audience": "Trying verification on your machine before you wire it into CI.",
+      "valueUnlock": "Verify locally for free; upgrade when you want CI to block bad deploys.",
       "stripePriceEnvKey": null
     },
     "individual": {
@@ -16,8 +16,8 @@
       "monthlyUsdCents": 2500,
       "displayPrice": "$25/mo",
       "marketingHeadline": "Individual",
-      "audience": "Run verification in CI for personal or early-stage projects.",
-      "valueUnlock": "Published npm CLI, API keys, monthly quota, and CI enforcement on one subscription.",
+      "audience": "Personal projects or a single engineer running verification in CI.",
+      "valueUnlock": "Run verification in CI with API access and included usage each month.",
       "stripePriceEnvKey": "STRIPE_PRICE_INDIVIDUAL"
     },
     "team": {
@@ -25,8 +25,8 @@
       "monthlyUsdCents": 10000,
       "displayPrice": "$100/mo",
       "marketingHeadline": "Team",
-      "audience": "Ship safely: enforce database correctness in CI across your team.",
-      "valueUnlock": "Higher monthly quota for shared CI, multiple repos, or more services—same enforcement as Individual.",
+      "audience": "Everyone on the team runs the same CI checks against the real database.",
+      "valueUnlock": "Run verification across shared CI pipelines with room for normal team usage—without constantly hitting limits.",
       "stripePriceEnvKey": "STRIPE_PRICE_TEAM"
     },
     "business": {
@@ -34,8 +34,8 @@
       "monthlyUsdCents": 30000,
       "displayPrice": "$300/mo",
       "marketingHeadline": "Business",
-      "audience": "Scale verification across multiple services with predictable cost.",
-      "valueUnlock": "50k verifications per month and headroom for busy pipelines; same CLI and enforcement model.",
+      "audience": "Many services or heavy pipelines where you need predictable cost and headroom.",
+      "valueUnlock": "Keep the same enforcement while scaling usage across busy pipelines and more services.",
       "stripePriceEnvKey": "STRIPE_PRICE_BUSINESS"
     },
     "enterprise": {

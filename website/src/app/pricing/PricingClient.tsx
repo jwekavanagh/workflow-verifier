@@ -93,7 +93,7 @@ export function PricingClient({
           <p className="error-text">{err}</p>
         </LiveStatus>
       )}
-      <div className="pricing-grid" style={{ marginTop: "1.5rem" }}>
+      <div className="pricing-grid pricing-grid-after-hero">
         {plans.map((p) => (
           <div
             key={p.id}
@@ -122,9 +122,11 @@ export function PricingClient({
               className="pricing-card-quota muted"
               data-included-monthly={p.includedMonthly ?? "custom"}
             >
-              {p.includedMonthly === null
-                ? "Custom"
-                : `${p.includedMonthly.toLocaleString()} verifications / month`}
+              {p.id === "enterprise"
+                ? "Custom pricing and limits"
+                : p.includedMonthly === null
+                  ? "Custom"
+                  : `${p.includedMonthly.toLocaleString()} verifications / month`}
             </p>
             <p className="pricing-card-outcome muted">
               <strong>Best for:</strong> {p.audience}

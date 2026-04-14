@@ -120,7 +120,7 @@ main {
   line-height: 1.35;
 }
 .pricing-page .pricing-hero-block {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
 }
 .pricing-page .pricing-hero-subtitle {
   margin: 0 0 0.65rem;
@@ -129,22 +129,18 @@ main {
   line-height: 1.45;
   color: var(--fg);
 }
-.pricing-page .pricing-hero-bullets {
+.pricing-page .pricing-hero-one-liner {
   margin: 0;
-  padding-left: 1.25rem;
-  max-width: 40rem;
-  color: var(--muted);
-  line-height: 1.5;
-}
-.pricing-page .pricing-hero-bullets li {
-  margin: 0.25rem 0;
+  max-width: 44rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
 }
 .pricing-page .pricing-example {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1rem 1.15rem;
-  margin: 1.25rem 0;
+  margin: 1rem 0;
   max-width: 42rem;
 }
 .pricing-page .pricing-example-heading {
@@ -159,11 +155,12 @@ main {
 }
 .pricing-page .pricing-risk {
   max-width: 42rem;
-  margin: 0 0 1.25rem;
+  margin: 0 0 1rem;
   line-height: 1.45;
+  font-size: 0.95rem;
 }
 .pricing-page .pricing-compare {
-  margin: 1.5rem 0 1.25rem;
+  margin: 2rem 0 1.25rem;
 }
 .pricing-page .pricing-compare-heading {
   font-size: 1.15rem;
@@ -222,6 +219,9 @@ main {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   align-items: stretch;
+}
+.pricing-page .pricing-grid-after-hero {
+  margin-top: 0.35rem;
 }
 .pricing-page .pricing-card-starter {
   opacity: 0.92;

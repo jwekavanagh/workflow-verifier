@@ -6,6 +6,46 @@ import { PricingClient, type PlanRow } from "./PricingClient";
 
 export const dynamic = "force-dynamic";
 
+function PricingCompareTable() {
+  const compare = productCopy.pricingFeatureComparison;
+  return (
+    <section
+      className="pricing-compare"
+      aria-labelledby="pricing-compare-title"
+      data-testid="pricing-compare-section"
+    >
+      <h2 id="pricing-compare-title" className="pricing-compare-heading">
+        {compare.title}
+      </h2>
+      <div className="pricing-compare-scroll">
+        <table className="pricing-compare-table">
+          <thead>
+            <tr>
+              {compare.columnLabels.map((label) => (
+                <th key={label} scope="col">
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {compare.rows.map((row) => (
+              <tr key={row.feature}>
+                <th scope="row">{row.feature}</th>
+                <td>{row.starter}</td>
+                <td>{row.individual}</td>
+                <td>{row.team}</td>
+                <td>{row.business}</td>
+                <td>{row.enterprise}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export default function PricingPage() {
   const commercial = loadCommercialPlans();
   const raw = commercial.plans;
@@ -26,7 +66,6 @@ export default function PricingPage() {
   });
   const enterpriseMailto = enterpriseMailtoHref();
   const hero = productCopy.pricingHero;
-  const compare = productCopy.pricingFeatureComparison;
   const example = productCopy.pricingHeroExample;
 
   return (
@@ -37,11 +76,7 @@ export default function PricingPage() {
         <p className="pricing-hero-subtitle" data-testid="pricing-plan-choice-guide">
           {hero.subtitle}
         </p>
-        <ul className="pricing-hero-bullets">
-          {hero.bullets.map((b) => (
-            <li key={b}>{b}</li>
-          ))}
-        </ul>
+        <p className="pricing-hero-one-liner muted">{hero.tierSummaryOneLine}</p>
       </section>
 
       <section className="pricing-example" data-testid="pricing-example" aria-labelledby="pricing-example-title">
@@ -59,36 +94,9 @@ export default function PricingPage() {
         {productCopy.pricingRiskReassurance}
       </p>
 
-      <section className="pricing-compare" aria-labelledby="pricing-compare-title">
-        <h2 id="pricing-compare-title" className="pricing-compare-heading">
-          {compare.title}
-        </h2>
-        <div className="pricing-compare-scroll">
-          <table className="pricing-compare-table">
-            <thead>
-              <tr>
-                {compare.columnLabels.map((label) => (
-                  <th key={label} scope="col">
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {compare.rows.map((row) => (
-                <tr key={row.feature}>
-                  <th scope="row">{row.feature}</th>
-                  <td>{row.starter}</td>
-                  <td>{row.individual}</td>
-                  <td>{row.team}</td>
-                  <td>{row.business}</td>
-                  <td>{row.enterprise}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <PricingClient plans={plans} enterpriseMailto={enterpriseMailto} />
+
+      <PricingCompareTable />
 
       <ul aria-label="Commercial terms" className="muted pricing-commercial-terms">
         {productCopy.pricingCommercialTermsBullets.map((row) => (
@@ -114,8 +122,6 @@ export default function PricingPage() {
           </Link>
         </p>
       </section>
-
-      <PricingClient plans={plans} enterpriseMailto={enterpriseMailto} />
     </main>
   );
 }

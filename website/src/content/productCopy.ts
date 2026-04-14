@@ -128,16 +128,14 @@ export const pricingTrustBandBeforeGrid = {
   ],
 } as const satisfies PricingTrustBandBeforeGrid;
 
-/** Above-the-fold `/pricing` hero (title, stakes, subhead, tier summary). */
+/** Above-the-fold `/pricing` hero (title, stakes, subhead, one-line tier hint). */
 export const pricingHero = {
   title: "Pricing for database truth verification",
   positioning: "Stop shipping workflows that look successful but write incorrect data.",
   subtitle: "Start free. Pay when you need CI enforcement and production-scale verification.",
-  bullets: [
-    "Free: explore and test verification locally.",
-    "Paid: CI enforcement, API keys, and a monthly verification quota.",
-    "Scale: higher limits on Team and Business; enterprise controls on Enterprise.",
-  ],
+  /** Replaces a longer bullet list: one scannable line before the example and cards. */
+  tierSummaryOneLine:
+    "Try locally on Starter, add CI for yourself on Individual, standardize enforcement for the team on Team, and grow usage on Business.",
 } as const;
 
 export const pricingHeroExample = {
@@ -150,14 +148,14 @@ export const pricingHeroExample = {
 } as const;
 
 export const pricingRiskReassurance =
-  "No lock-in: cancel anytime. Use the free tier and open-source build for local verification for as long as you need.";
+  "Cancel anytime. Local verification stays free as long as you need it.";
 
 export const pricingFeatureComparison = {
-  title: "Compare plans",
-  columnLabels: ["Feature", "Starter", "Individual", "Team", "Business", "Enterprise"] as const,
+  title: "Compare plans in detail",
+  columnLabels: ["Capability", "Starter", "Individual", "Team", "Business", "Enterprise"] as const,
   rows: [
     {
-      feature: "Local / repo verification",
+      feature: "Verify locally (no paid subscription)",
       starter: "Yes",
       individual: "Yes",
       team: "Yes",
@@ -165,7 +163,7 @@ export const pricingFeatureComparison = {
       enterprise: "Yes",
     },
     {
-      feature: "CI enforcement (locks / enforce)",
+      feature: "Fail the build when the database does not match",
       starter: "No",
       individual: "Yes",
       team: "Yes",
@@ -173,7 +171,7 @@ export const pricingFeatureComparison = {
       enterprise: "Yes",
     },
     {
-      feature: "API keys (published CLI)",
+      feature: "Run verification from CI with API access",
       starter: "No",
       individual: "Yes",
       team: "Yes",
@@ -181,7 +179,7 @@ export const pricingFeatureComparison = {
       enterprise: "Yes",
     },
     {
-      feature: "Monthly verification quota (published CLI)",
+      feature: "Included verifications per month (paid CLI)",
       starter: "100",
       individual: "2,000",
       team: "10,000",
@@ -191,14 +189,15 @@ export const pricingFeatureComparison = {
   ],
 } as const;
 
-export const pricingRecommendedPill = "Most teams start here";
+/** Truthful guidance without implying existing customer mix. */
+export const pricingRecommendedPill = "For production CI";
 
 /** Primary CTA labels on `/pricing` cards (sign-in still required before checkout). */
 export const pricingPlanCtas = {
   starter: { href: "/integrate" as const, label: "Start free" },
   individual: { signInLabel: "Get API key", checkoutLabel: "Continue to checkout" },
   team: { signInLabel: "Start using CI enforcement", checkoutLabel: "Continue to checkout" },
-  business: { signInLabel: "Scale verification", checkoutLabel: "Continue to checkout" },
+  business: { signInLabel: "Scale across services", checkoutLabel: "Continue to checkout" },
   enterprise: { label: "Contact sales" },
 } as const;
 
@@ -496,8 +495,8 @@ export const productCopy = {
   /** Retained for SSOT strings; `/pricing` renders `pricingHero` instead. */
   pricingRecap: pricingHero.subtitle,
 
-  /** Retained for SSOT strings; `/pricing` renders `pricingHero.bullets` instead. */
-  pricingPlanChoiceGuide: pricingHero.bullets.join(" "),
+  /** Retained for SSOT strings; `/pricing` renders `pricingHero.tierSummaryOneLine` in plan-choice slot. */
+  pricingPlanChoiceGuide: pricingHero.tierSummaryOneLine,
 
   pricingHero,
   pricingHeroExample,
