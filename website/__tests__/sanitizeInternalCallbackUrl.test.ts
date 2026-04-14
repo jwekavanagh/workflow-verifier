@@ -10,6 +10,7 @@ describe("sanitizeInternalCallbackUrl", () => {
     ["", "/account"],
     ["/pricing", "/pricing"],
     ["/account", "/account"],
+    ["/claim", "/claim"],
     ["/", "/"],
     ["//evil.com", "/account"],
     ["https://evil.com/x", "/account"],

@@ -29,7 +29,7 @@ describe.skipIf(!hasDatabaseUrl)("GET /api/account/commercial-state", () => {
   beforeEach(async () => {
     authMock.mockReset();
     await db.execute(sql`
-      TRUNCATE product_activation_started_beacon, product_activation_outcome_beacon, verify_outcome_beacon, funnel_event, stripe_event, usage_reservation, usage_counter, api_key, session, account, "verificationToken", "user" RESTART IDENTITY CASCADE
+      TRUNCATE oss_claim_ticket, oss_claim_rate_limit_counter, product_activation_started_beacon, product_activation_outcome_beacon, verify_outcome_beacon, funnel_event, stripe_event, usage_reservation, usage_counter, api_key, session, account, "verificationToken", "user" RESTART IDENTITY CASCADE
     `);
   });
 

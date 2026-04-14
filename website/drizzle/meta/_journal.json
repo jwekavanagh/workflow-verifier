@@ -57,6 +57,13 @@
       "when": 1775695071000,
       "tag": "0007_product_activation_telemetry",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1775695072000,
+      "tag": "0008_oss_claim_bridge",
+      "breakpoints": true
     }
   ]
 }

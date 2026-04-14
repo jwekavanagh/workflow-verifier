@@ -1,6 +1,6 @@
 /**
  * Restricts Auth.js `callbackUrl` to same-site paths (no open redirect).
- * Allowed: exactly `/`, `/pricing`, `/account` with no query or hash.
+ * Allowed: exactly `/`, `/pricing`, `/account`, `/claim` with no query or hash.
  */
 export function sanitizeInternalCallbackUrl(value: string | null): string {
   if (value === null || value === "") {
@@ -22,7 +22,7 @@ export function sanitizeInternalCallbackUrl(value: string | null): string {
     return "/account";
   }
   const path = url.pathname;
-  if (path === "/" || path === "/pricing" || path === "/account") {
+  if (path === "/" || path === "/pricing" || path === "/account" || path === "/claim") {
     return path;
   }
   return "/account";

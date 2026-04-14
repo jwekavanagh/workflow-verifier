@@ -18,6 +18,11 @@ export const siteMetadata = {
     title: companyPageMetadata.title,
     description: companyPageMetadata.description,
   },
+  claim: {
+    title: "Claim verification run — AgentSkeptic",
+    description:
+      "Connect an open-source CLI verification run to your account after signing in with email (same browser session as the link from your terminal).",
+  },
   openGraph: {
     title: "AgentSkeptic — check database state against what your workflow claimed",
     description: discoveryAcquisition.pageMetadata.description,

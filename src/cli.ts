@@ -73,6 +73,7 @@ import { runBatchCiLockFromRestArgs, runQuickCiLockFromRestArgs } from "./ciLock
 import { formatDistributionFooter } from "./distributionFooter.js";
 import { postPublicVerificationReport } from "./shareReport/postPublicVerificationReport.js";
 import { runBootstrapSubcommand } from "./bootstrap/runBootstrapSubcommand.js";
+import { maybeEmitOssClaimTicketUrlToStderr } from "./telemetry/maybeEmitOssClaimTicketUrl.js";
 import { postProductActivationEvent } from "./telemetry/postProductActivationEvent.js";
 
 function usageQuick(): string {
@@ -621,6 +622,13 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
   }
   console.error(human);
   process.stderr.write(formatDistributionFooter());
+  await maybeEmitOssClaimTicketUrlToStderr({
+    run_id: activationRunId,
+    terminal_status: quickVerifyVerdictToTerminalStatus(report.verdict),
+    workload_class: quickWorkloadClass,
+    subcommand: "quick_verify",
+    build_profile: quickBuildProfile,
+  });
   await postVerifyOutcomeBeacon({
     runId: quickPreflight.runId,
     terminal_status: quickVerifyVerdictToTerminalStatus(report.verdict),
@@ -1225,6 +1233,13 @@ async function main(): Promise<void> {
       subcommand: "batch_verify",
       build_profile: batchBuildProfile,
       terminal_status: result.status,
+    });
+    await maybeEmitOssClaimTicketUrlToStderr({
+      run_id: batchActivationRunId,
+      terminal_status: result.status,
+      workload_class: batchWorkloadClass,
+      subcommand: "batch_verify",
+      build_profile: batchBuildProfile,
     });
     await postVerifyOutcomeBeacon({
       runId: batchPreflight.runId,

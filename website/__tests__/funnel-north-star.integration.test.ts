@@ -47,7 +47,7 @@ function surfaceReq(body: object, origin: string | null): NextRequest {
 describe.skipIf(!hasDatabaseUrl)("funnel north star — surface impression", () => {
   async function truncateAll(): Promise<void> {
     await db.execute(sql`
-    TRUNCATE product_activation_started_beacon, product_activation_outcome_beacon, verify_outcome_beacon, funnel_event, stripe_event, usage_reservation, usage_counter, api_key, session, account, "verificationToken", "user" RESTART IDENTITY CASCADE
+    TRUNCATE oss_claim_ticket, oss_claim_rate_limit_counter, product_activation_started_beacon, product_activation_outcome_beacon, verify_outcome_beacon, funnel_event, stripe_event, usage_reservation, usage_counter, api_key, session, account, "verificationToken", "user" RESTART IDENTITY CASCADE
   `);
   }
 
@@ -89,7 +89,7 @@ describe.skipIf(!hasDatabaseUrl)("funnel north star — surface impression", () 
 describe.skipIf(!hasDatabaseUrl)("funnel north star — verify-outcome", () => {
   async function truncateAll(): Promise<void> {
     await db.execute(sql`
-    TRUNCATE product_activation_started_beacon, product_activation_outcome_beacon, verify_outcome_beacon, funnel_event, stripe_event, usage_reservation, usage_counter, api_key, session, account, "verificationToken", "user" RESTART IDENTITY CASCADE
+    TRUNCATE oss_claim_ticket, oss_claim_rate_limit_counter, product_activation_started_beacon, product_activation_outcome_beacon, verify_outcome_beacon, funnel_event, stripe_event, usage_reservation, usage_counter, api_key, session, account, "verificationToken", "user" RESTART IDENTITY CASCADE
   `);
   }
 

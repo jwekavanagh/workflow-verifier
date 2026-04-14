@@ -12,6 +12,7 @@ export const FUNNEL_EVENT_NAMES = [
   "licensed_verify_outcome",
   "verify_started",
   "verify_outcome",
+  "oss_claim_redeemed",
 ] as const;
 
 export type FunnelEventName = (typeof FUNNEL_EVENT_NAMES)[number];

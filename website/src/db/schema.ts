@@ -174,6 +174,37 @@ export const productActivationOutcomeBeacons = pgTable("product_activation_outco
   pk: primaryKey({ columns: [t.runId] }),
 }));
 
+/** OSS claim bridge: one row per claim_secret hash; authoritative UX after redeem. */
+export const ossClaimTickets = pgTable("oss_claim_ticket", {
+  secretHash: text("secret_hash").notNull(),
+  runId: text("run_id").notNull(),
+  terminalStatus: text("terminal_status").notNull(),
+  workloadClass: text("workload_class").notNull(),
+  subcommand: text("subcommand").notNull(),
+  buildProfile: text("build_profile").notNull(),
+  issuedAt: text("issued_at").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
+  claimedAt: timestamp("claimed_at", { withTimezone: true, mode: "date" }),
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.secretHash] }),
+}));
+
+/** Hourly rate limits for OSS claim-ticket (per IP) and claim-redeem (per user). */
+export const ossClaimRateLimitCounters = pgTable(
+  "oss_claim_rate_limit_counter",
+  {
+    scope: text("scope").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true, mode: "date" }).notNull(),
+    scopeKey: text("scope_key").notNull(),
+    count: integer("count").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.scope, t.windowStart, t.scopeKey] }),
+  }),
+);
+
 /** Persisted public verification report (POST /api/public/verification-reports). */
 export const sharedVerificationReports = pgTable("shared_verification_report", {
   id: uuid("id").primaryKey().defaultRandom(),

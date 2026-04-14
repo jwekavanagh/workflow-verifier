@@ -558,6 +558,23 @@ export const productCopy = {
   pricingTeamFootnote,
   pricingPlanCtas,
 
+  ossClaimPage: {
+    title: "Claim this run",
+    introUnauthenticated:
+      "Sign in with your email to connect this verification run to your account when you opened the claim link from the same browser right after running the CLI.",
+    signInCta: "Continue with email",
+    redeeming: "Linking this run to your account…",
+    sameBrowserRecovery:
+      "This claim link must be completed in the same browser profile where you opened it after your CLI run (for example, do not open the magic link on another device). Clear the address bar hash, run the CLI again, open the new claim link here, then request the magic link without leaving this browser—or paste the link in the same browser where you will complete sign-in.",
+    claimFailed: "This claim link could not be completed. Request a new link by running the CLI again.",
+    rateLimitedRedeem: "Too many claim attempts for this account. Wait up to an hour and try again.",
+    alreadyClaimed: "This run was already linked to a different account.",
+    redeemedLead: "This run is linked to your account.",
+    accountCta: "Go to account",
+    runSummary: (r: { run_id: string; terminal_status: string }) =>
+      `Run ${r.run_id.slice(0, 8)}… — outcome: ${r.terminal_status}`,
+  },
+
   signInPurpose: {
     title: "Sign in",
     intro:

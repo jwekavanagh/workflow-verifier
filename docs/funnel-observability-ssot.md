@@ -4,6 +4,8 @@ This document is the **SSOT** for **North Star funnel metrics**: measurable prog
 
 **Not duplicated here:** Stripe billing and `POST /api/v1/usage/reserve` behavior remain in [`commercial-ssot.md`](commercial-ssot.md). Integrator first-run steps remain in [`first-run-integration.md`](first-run-integration.md).
 
+**OSS account claim (binding `run_id` → `user_id`):** Normative HTTP, CLI origin, rate limits, TTL, retention, and same-browser rules live only in [`oss-account-claim-ssot.md`](oss-account-claim-ssot.md). `run_id` is never a public bearer secret; do not add public lookup by `run_id`.
+
 ---
 
 ## Audiences
