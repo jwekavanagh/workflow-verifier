@@ -150,4 +150,4 @@ WHERE event = 'verify_outcome'
 
 From the repository root, **`npm run validate-commercial`** must pass (includes website Vitest with DB migrations applied). That is the binary gate for this SSOT’s implementation staying green.
 
-**Manual smoke (optional check):** run a local OSS `verify` or `quick` against a deployment with `DATABASE_URL` migrated, **`AGENTSKEPTIC_TELEMETRY` unset**, and confirm one `verify_started` and one `verify_outcome` row appear for a single `run_id` in `funnel_event` (and matching rows in `product_activation_*_beacon`). With **`AGENTSKEPTIC_TELEMETRY=0`**, confirm **no** new rows for that run.
+**Manual smoke:** run a local OSS `verify` or `quick` against a deployment with `DATABASE_URL` migrated, **`AGENTSKEPTIC_TELEMETRY` unset**, and confirm one `verify_started` and one `verify_outcome` row appear for a single `run_id` in `funnel_event` (and matching rows in `product_activation_*_beacon`). With **`AGENTSKEPTIC_TELEMETRY=0`**, confirm **no** new rows for that run.
