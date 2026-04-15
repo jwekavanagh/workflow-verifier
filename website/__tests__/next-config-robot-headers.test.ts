@@ -27,4 +27,9 @@ describe("next.config headers for /r/*", () => {
     expect(rRow).toBeDefined();
     expect(rRow!.headers).toEqual([{ key: "X-Robots-Tag", value: "noindex, nofollow" }]);
   });
+
+  it("disables poweredByHeader so responses omit X-Powered-By", async () => {
+    const mod = await import("../next.config");
+    expect((mod.default as { poweredByHeader?: boolean }).poweredByHeader).toBe(false);
+  });
 });

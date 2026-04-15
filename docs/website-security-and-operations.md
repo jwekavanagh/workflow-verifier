@@ -41,7 +41,10 @@ Normative contracts for the Next.js website (`website/`). Audience sections are 
 
 ### HTTP security headers
 
-- **Frozen constants:** [`website/src/lib/httpSecurityHeaders.ts`](../website/src/lib/httpSecurityHeaders.ts) — imported by [`website/next.config.ts`](../website/next.config.ts) and asserted in tests. Do not change CSP without updating tests and this document.
+- **Frozen constants:** [`website/src/lib/httpSecurityHeaders.ts`](../website/src/lib/httpSecurityHeaders.ts) — imported by [`website/next.config.ts`](../website/next.config.ts) and asserted in tests.
+- **Content-Security-Policy:** Not sent from `next.config.ts`. [`website/middleware.ts`](../website/middleware.ts) sets a per-request policy via `buildCommercialSiteContentSecurityPolicy(nonce)` (`script-src` uses `'nonce-…'` and `'strict-dynamic'`, not `unsafe-inline`). Next.js reads the nonce from the forwarded request `Content-Security-Policy` header; the root layout reads the same nonce from `COMMERCIAL_SITE_CSP_NONCE_HEADER` for inline JSON-LD. Change CSP construction only with matching tests and this note.
+- **`script-src`:** Omits `'unsafe-eval'` so the policy stays compatible with strict CSP tooling (for example OWASP ZAP). Production Next.js bundles for this app do not rely on it; if local `next dev` ever breaks on script CSP, diagnose before reintroducing any exception.
+- **`style-src`:** `'self'` only (no `'unsafe-inline'`). UI must not depend on React `style={{…}}` or other author-controlled inline style attributes; use stylesheets such as [`website/src/app/globals.css`](../website/src/app/globals.css) instead so ZAP-style CSP checks stay clean.
 
 ### Production commercial guards
 

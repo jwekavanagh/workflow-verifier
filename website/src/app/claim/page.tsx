@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ClaimPage() {
   return (
-    <main style={{ padding: "1.5rem", maxWidth: "48rem", margin: "0 auto" }}>
+    <main className="claim-page-main">
       <Suspense fallback={<p className="muted">Loading…</p>}>
         <OssClaimClient />
       </Suspense>

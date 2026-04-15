@@ -17,6 +17,8 @@ const traceRoot =
   vercelLike || process.env.NEXT_CONFIG_TRACE_ROOT === "1" ? path.join(__dirname, "..") : undefined;
 
 const nextConfig: NextConfig = {
+  // Avoid leaking stack info (ZAP: "Server Leaks Information Via X-Powered-By").
+  poweredByHeader: false,
   serverExternalPackages: ["nodemailer", "postgres", "agentskeptic"],
   ...(traceRoot ? { outputFileTracingRoot: traceRoot } : {}),
   /**

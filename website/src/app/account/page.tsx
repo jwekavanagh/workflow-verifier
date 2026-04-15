@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
+import { unauthorized } from "next/navigation";
 import { auth } from "@/auth";
 import { AccountClient } from "./AccountClient";
 import { AccountServerAboveFold } from "./AccountServerAboveFold";
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function AccountPage() {
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/auth/signin?callbackUrl=%2Faccount");
+    unauthorized();
   }
 
   const keys = await db
@@ -38,14 +38,14 @@ export default async function AccountPage() {
   return (
     <main>
       <h1>Account</h1>
-      <div className="card" style={{ marginTop: "1rem" }}>
+      <div className="card u-mt-1">
         <AccountServerAboveFold
           email={session.user.email ?? ""}
           maskedKeySummary={masked}
           showIntro={true}
         />
       </div>
-      <Suspense fallback={<div className="card" style={{ marginTop: "1rem" }}>Loading…</div>}>
+      <Suspense fallback={<div className="card u-mt-1">Loading…</div>}>
         <AccountClient
           hasKey={keys.length > 0}
           initialCommercial={initialCommercial}

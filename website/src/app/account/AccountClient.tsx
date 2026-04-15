@@ -40,7 +40,7 @@ function ApiKeyOneTimeReveal({ apiKey, onAcknowledge }: { apiKey: string; onAckn
       <LiveStatus mode="polite">
         <p className="muted">{productCopy.account.a11yApiKeyReady}</p>
       </LiveStatus>
-      <p style={{ marginTop: "0.85rem", marginBottom: "0.35rem" }}>
+      <p className="u-mt-085 u-mb-035">
         <strong>{productCopy.account.apiKeyRevealUrgentTitle}</strong>
       </p>
       <div className="account-api-key-reveal" data-testid="api-key-reveal-panel">
@@ -50,11 +50,11 @@ function ApiKeyOneTimeReveal({ apiKey, onAcknowledge }: { apiKey: string; onAckn
         </button>
       </div>
       {copyErr ? (
-        <p className="muted" style={{ marginTop: "0.4rem", fontSize: "0.9rem" }}>
+        <p className="muted u-mt-04 u-fs-09">
           {productCopy.account.apiKeyCopyFallback}
         </p>
       ) : null}
-      <p style={{ marginTop: "0.85rem" }}>
+      <p className="u-mt-085">
         <button type="button" onClick={onAcknowledge}>
           I&apos;ve saved my key
         </button>
@@ -68,13 +68,13 @@ function TrustFootnoteSecondLine({ text }: { text: string }) {
   const i = text.indexOf(needle);
   if (i < 0) {
     return (
-      <p className="muted" style={{ fontSize: "0.95rem", marginBottom: "0.35rem" }}>
+      <p className="muted trust-footnote-line">
         {text}
       </p>
     );
   }
   return (
-    <p className="muted" style={{ fontSize: "0.95rem", marginBottom: "0.35rem" }}>
+    <p className="muted trust-footnote-line">
       {text.slice(0, i)}
       <Link href="/security">{needle}</Link>
       {text.slice(i + needle.length)}
@@ -283,13 +283,13 @@ export function AccountClient({
       : productCopy.account.quotaUrgencyCopy[commercial.monthlyQuota.worstUrgency];
 
   return (
-    <div className="card" style={{ marginTop: "1rem" }}>
-      <p style={{ marginTop: 0, marginBottom: "1rem" }}>
+    <div className="card u-mt-1">
+      <p className="u-mt-0 u-mb-1">
         <SignOutButton variant="account" />
       </p>
 
       <section data-testid="account-verification-region">
-        <h2 style={{ marginTop: 0 }}>Verification</h2>
+        <h2 className="u-mt-0">Verification</h2>
         {activity.ok === false ? (
           <>
             <p>
@@ -334,22 +334,22 @@ export function AccountClient({
           </p>
         )}
         {showMetricLine ? (
-          <p className="muted" style={{ marginTop: "0.35rem" }}>
+          <p className="muted u-mt-035">
             {productCopy.account.verificationMetricLine(monthCount)}
           </p>
         ) : null}
         {activity.ok === true ? (
-          <p className="muted" data-testid="account-activity-scope" style={{ marginTop: "0.5rem" }}>
+          <p className="muted u-mt-05" data-testid="account-activity-scope">
             {ACCOUNT_ACTIVITY_SCOPE_LINE}
           </p>
         ) : null}
         {activity.ok === true && !showExactEmpty && hasActivityRows ? (
-          <ul style={{ marginTop: "0.5rem", paddingLeft: "1.25rem" }}>
+          <ul className="account-activity-list">
             {activity.rows.map((row) => (
-              <li key={row.createdAtIso} style={{ marginBottom: "0.35rem" }}>
+              <li key={row.createdAtIso} className="account-activity-li">
                 <span>{statusLabelFromRow(row)}</span>
                 <span className="muted"> · {row.createdAtIso}</span>
-                <div className="muted" style={{ fontSize: "0.95rem" }}>
+                <div className="muted account-activity-meta">
                   {accountActivityMetaLine(
                     row.workloadClass as LicensedVerifyOutcomeMetadata["workload_class"],
                     row.subcommand as LicensedVerifyOutcomeMetadata["subcommand"],
@@ -359,7 +359,7 @@ export function AccountClient({
             ))}
           </ul>
         ) : null}
-        <p style={{ marginTop: "1rem" }}>
+        <p className="u-mt-1">
           <Link href="/integrate" className="btn" data-testid="account-primary-cta">
             {hasActivityRows || monthCount > 0
               ? productCopy.account.primaryVerificationCtaAgain
@@ -373,17 +373,17 @@ export function AccountClient({
       <section
         data-testid="account-starter-upgrade"
         hidden={commercial.plan !== "starter"}
-        style={{ marginTop: "1.25rem" }}
+        className="u-mt-125"
       >
-        <h2 style={{ marginTop: 0 }}>Upgrade from Starter</h2>
+        <h2 className="u-mt-0">Upgrade from Starter</h2>
         <p className="muted">{productCopy.account.starterUpgradeBody}</p>
-        <p style={{ marginTop: "0.5rem" }}>
+        <p className="u-mt-05">
           <Link href="/pricing">View plans and upgrade</Link>
         </p>
       </section>
 
-      <section data-testid="account-subscription-region" style={{ marginTop: "1.25rem" }}>
-        <h2 style={{ marginTop: 0 }}>Subscription</h2>
+      <section data-testid="account-subscription-region" className="u-mt-125">
+        <h2 className="u-mt-0">Subscription</h2>
         {assertiveAccountMessage && (
           <LiveStatus mode="assertive">
             <p
@@ -410,7 +410,7 @@ export function AccountClient({
           </p>
         ) : null}
         {commercial.hasStripeCustomer && (
-          <p style={{ marginTop: "0.5rem" }}>
+          <p className="u-mt-05">
             <button
               type="button"
               data-testid="manage-billing-button"
@@ -422,17 +422,8 @@ export function AccountClient({
           </p>
         )}
         {commercial.billingPriceSyncHint && (
-          <div
-            className="muted"
-            style={{
-              marginTop: "0.75rem",
-              padding: "0.75rem 1rem",
-              border: "1px solid var(--muted)",
-              borderRadius: "6px",
-            }}
-            data-testid="billing-price-sync-hint"
-          >
-            <p style={{ margin: 0 }}>
+          <div className="muted account-muted-callout" data-testid="billing-price-sync-hint">
+            <p className="u-m-0">
               <strong>Billing setup is still finishing.</strong> Your payment looks active, but we have not fully
               connected it to your plan yet. If this message stays after refreshing in a few minutes,{" "}
               {commercial.billingPriceSyncHint.supportEmail ? (
@@ -450,29 +441,20 @@ export function AccountClient({
           </div>
         )}
         {showInactiveBillingCta && (
-          <div
-            className="muted"
-            style={{
-              marginTop: "0.75rem",
-              padding: "0.75rem 1rem",
-              border: "1px solid var(--muted)",
-              borderRadius: "6px",
-            }}
-            data-testid="inactive-subscription-notice"
-          >
-            <p style={{ margin: 0 }}>
+          <div className="muted account-muted-callout" data-testid="inactive-subscription-notice">
+            <p className="u-m-0">
               Your subscription is not active, so paid verification and enforcement are paused.
               {commercial.hasStripeCustomer
                 ? " Use Manage billing above to update payment or your subscription, or choose a plan again from Pricing."
                 : " Subscribe from Pricing to restore access."}
             </p>
-            <p style={{ margin: "0.5rem 0 0" }}>
+            <p className="u-mt-05-first">
               <Link href="/pricing">View pricing and subscribe</Link>
             </p>
           </div>
         )}
         {checkout === "success" && expectedPlanRaw && (
-          <div style={{ marginTop: "0.75rem" }}>
+          <div className="u-mt-075">
             {activationUi === "pending" && (
               <LiveStatus mode="polite">
                 <p className="muted" data-testid="checkout-activation-pending">
@@ -482,7 +464,7 @@ export function AccountClient({
             )}
             {activationUi === "ready" && (
               <LiveStatus mode="polite">
-                <p style={{ color: "var(--muted)" }} data-testid="checkout-activation-ready">
+                <p className="muted" data-testid="checkout-activation-ready">
                   {productCopy.account.checkoutActivationReady}
                 </p>
               </LiveStatus>
@@ -490,13 +472,13 @@ export function AccountClient({
           </div>
         )}
         {commercial.plan !== "starter" ? (
-          <p style={{ marginTop: "0.75rem" }}>{commercial.entitlementSummary}</p>
+          <p className="u-mt-075">{commercial.entitlementSummary}</p>
         ) : null}
       </section>
 
-      <section data-testid="account-usage-region" style={{ marginTop: "1.25rem" }}>
+      <section data-testid="account-usage-region" className="u-mt-125">
         <div data-testid="account-monthly-quota">
-          <h2 style={{ marginTop: 0 }}>{productCopy.account.monthlyQuotaHeading}</h2>
+          <h2 className="u-mt-0">{productCopy.account.monthlyQuotaHeading}</h2>
           <p className="muted">{productCopy.account.monthlyQuotaYearMonth(commercial.monthlyQuota.yearMonth)}</p>
           {commercial.monthlyQuota.keys.length === 0 ? (
             <p className="muted">{productCopy.account.monthlyQuotaNoKeyLine}</p>
@@ -521,20 +503,20 @@ export function AccountClient({
         </div>
       </section>
 
-      <section data-testid="account-api-key-region" style={{ marginTop: "1.25rem" }}>
-        <h2 style={{ marginTop: 0 }}>API key</h2>
-        <p className="muted" style={{ marginTop: "0.25rem" }}>
+      <section data-testid="account-api-key-region" className="u-mt-125">
+        <h2 className="u-mt-0">API key</h2>
+        <p className="muted u-mt-025">
           <strong>{productCopy.account.apiKeyFlowHeading}</strong>
         </p>
-        <ol className="muted" style={{ marginTop: "0.35rem", paddingLeft: "1.25rem", fontSize: "0.95rem" }}>
+        <ol className="muted account-api-key-flow-ol">
           {productCopy.account.apiKeyFlowSteps.map((step) => (
-            <li key={step} style={{ marginBottom: "0.25rem" }}>
+            <li key={step} className="account-api-key-flow-li">
               {step}
             </li>
           ))}
         </ol>
         {(hasActiveKey || key) && (
-          <p style={{ marginTop: "0.5rem" }}>
+          <p className="u-mt-05">
             <button type="button" onClick={() => void revokeKey()}>
               Revoke API key
             </button>
@@ -548,8 +530,8 @@ export function AccountClient({
         {key ? <ApiKeyOneTimeReveal apiKey={key} onAcknowledge={acknowledgeSavedKey} /> : null}
       </section>
 
-      <section data-testid="account-trust-footnote" style={{ marginTop: "1.25rem" }}>
-        <p className="muted" style={{ fontSize: "0.95rem", marginBottom: "0.35rem" }}>
+      <section data-testid="account-trust-footnote" className="u-mt-125">
+        <p className="muted trust-footnote-line">
           {productCopy.account.trustFootnoteLines[0]}
         </p>
         <TrustFootnoteSecondLine text={productCopy.account.trustFootnoteLines[1]} />

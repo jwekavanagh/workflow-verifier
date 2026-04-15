@@ -829,3 +829,103 @@ main {
   flex-wrap: wrap;
   gap: 0.5rem 1.25rem;
 }
+
+/*
+ * CSP: avoid React `style={{…}}` (inline style attributes) so `style-src` can stay strict
+ * without `'unsafe-inline'`. Prefer these small utilities over inline styles.
+ */
+.claim-page-main {
+  padding: 1.5rem;
+  max-width: 48rem;
+  margin: 0 auto;
+}
+.card-narrow-32 {
+  max-width: 32rem;
+}
+.card-narrow-24 {
+  max-width: 24rem;
+}
+a.button-link {
+  display: inline-block;
+  margin-top: 1rem;
+}
+.signin-email-field {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #38444d;
+  background: #0f1419;
+  color: var(--fg);
+}
+.u-mt-0 {
+  margin-top: 0;
+}
+.u-mt-025 {
+  margin-top: 0.25rem;
+}
+.u-mt-035 {
+  margin-top: 0.35rem;
+}
+.u-mt-04 {
+  margin-top: 0.4rem;
+}
+.u-mt-05 {
+  margin-top: 0.5rem;
+}
+.u-mt-05-first {
+  margin: 0.5rem 0 0;
+}
+.u-mt-075 {
+  margin-top: 0.75rem;
+}
+.u-mt-085 {
+  margin-top: 0.85rem;
+}
+.u-mt-1 {
+  margin-top: 1rem;
+}
+.u-mt-125 {
+  margin-top: 1.25rem;
+}
+.u-mb-035 {
+  margin-bottom: 0.35rem;
+}
+.u-mb-1 {
+  margin-bottom: 1rem;
+}
+.u-m-0 {
+  margin: 0;
+}
+.u-fs-09 {
+  font-size: 0.9rem;
+}
+.trust-footnote-line {
+  font-size: 0.95rem;
+  margin-bottom: 0.35rem;
+}
+.account-activity-list {
+  margin-top: 0.5rem;
+  padding-left: 1.25rem;
+}
+.account-activity-li {
+  margin-bottom: 0.35rem;
+}
+.account-activity-meta {
+  font-size: 0.95rem;
+}
+.account-muted-callout {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--muted);
+  border-radius: 6px;
+}
+.account-api-key-flow-ol {
+  margin-top: 0.35rem;
+  padding-left: 1.25rem;
+  font-size: 0.95rem;
+}
+.account-api-key-flow-li {
+  margin-bottom: 0.25rem;
+}

@@ -51,7 +51,7 @@ function SignInForm() {
           <li key={b}>{b}</li>
         ))}
       </ul>
-      <form onSubmit={onSubmit} className="card" style={{ maxWidth: "24rem", marginTop: "1rem" }}>
+      <form onSubmit={onSubmit} className="card card-narrow-24 u-mt-1">
         <label htmlFor="email">Email</label>
         <input
           id="email"
@@ -60,24 +60,15 @@ function SignInForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          style={{
-            display: "block",
-            width: "100%",
-            marginTop: "0.35rem",
-            padding: "0.5rem",
-            borderRadius: 8,
-            border: "1px solid #38444d",
-            background: "#0f1419",
-            color: "var(--fg)",
-          }}
+          className="signin-email-field"
         />
-        <button type="submit" disabled={isSubmitting} style={{ marginTop: "1rem" }}>
+        <button type="submit" disabled={isSubmitting} className="u-mt-1">
           Send magic link
         </button>
       </form>
       {notice && (
         <LiveStatus mode={notice.mode}>
-          <p style={{ marginTop: "1rem" }}>{notice.text}</p>
+          <p className="u-mt-1">{notice.text}</p>
         </LiveStatus>
       )}
     </>

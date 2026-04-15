@@ -1,9 +1,11 @@
 import { siteMetadata } from "@/content/siteMetadata";
+import { COMMERCIAL_SITE_CSP_NONCE_HEADER } from "@/lib/httpSecurityHeaders";
 import discoveryAcquisition from "@/lib/discoveryAcquisition";
 import { publicProductAnchors } from "@/lib/publicProductAnchors";
 import { Analytics } from "@vercel/analytics/react";
 import { DM_Sans } from "next/font/google";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
 import { SkipToMainContent } from "@/components/SkipToMainContent";
@@ -54,16 +56,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get(COMMERCIAL_SITE_CSP_NONCE_HEADER) ?? "";
   return (
     <html lang="en" className={headingFont.variable}>
       <body>
         <script
           type="application/ld+json"
+          nonce={nonce}
           dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
         />
         <SkipToMainContent />

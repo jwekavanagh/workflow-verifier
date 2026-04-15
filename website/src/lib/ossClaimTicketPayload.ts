@@ -21,8 +21,14 @@ const ossClaimTicketCoreSchema = z.object({
   build_profile: buildProfileSchema,
 });
 
-/** v1: no `schema_version` key (shipped CLI shape). */
-export const ossClaimTicketRequestSchemaV1 = ossClaimTicketCoreSchema;
+/**
+ * v1: shipped CLI shape (no `schema_version`).
+ * Reject a present `schema_version` key so invalid v2 bodies cannot match v1 after v2 fails
+ * (plain `z.object` strips unknown keys, which would otherwise swallow `schema_version: 2`).
+ */
+export const ossClaimTicketRequestSchemaV1 = ossClaimTicketCoreSchema.extend({
+  schema_version: z.never().optional(),
+});
 
 export const ossClaimTicketRequestSchemaV2 = ossClaimTicketCoreSchema.extend({
   schema_version: z.literal(2),
@@ -30,8 +36,8 @@ export const ossClaimTicketRequestSchemaV2 = ossClaimTicketCoreSchema.extend({
 });
 
 export const ossClaimTicketRequestSchema = z.union([
-  ossClaimTicketRequestSchemaV1,
   ossClaimTicketRequestSchemaV2,
+  ossClaimTicketRequestSchemaV1,
 ]);
 
 export type OssClaimTicketRequest = z.infer<typeof ossClaimTicketRequestSchema>;

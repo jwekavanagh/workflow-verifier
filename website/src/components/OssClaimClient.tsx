@@ -104,14 +104,10 @@ export function OssClaimClient() {
 
   if (status === "unauthenticated") {
     return (
-      <div className="card" style={{ maxWidth: "32rem" }}>
+      <div className="card card-narrow-32">
         <h1>{productCopy.ossClaimPage.title}</h1>
         <p className="muted">{productCopy.ossClaimPage.introUnauthenticated}</p>
-        <Link
-          className="button-link"
-          href="/auth/signin?callbackUrl=%2Fclaim"
-          style={{ display: "inline-block", marginTop: "1rem" }}
-        >
+        <Link className="button-link" href="/auth/signin?callbackUrl=%2Fclaim">
           {productCopy.ossClaimPage.signInCta}
         </Link>
       </div>
@@ -124,7 +120,7 @@ export function OssClaimClient() {
 
   if (phase === "same_browser") {
     return (
-      <div className="card" style={{ maxWidth: "32rem" }}>
+      <div className="card card-narrow-32">
         <h1>{productCopy.ossClaimPage.title}</h1>
         <p>{productCopy.ossClaimPage.sameBrowserRecovery}</p>
       </div>
@@ -133,11 +129,11 @@ export function OssClaimClient() {
 
   if (phase === "redeemed" && summary) {
     return (
-      <div className="card" style={{ maxWidth: "32rem" }}>
+      <div className="card card-narrow-32">
         <h1>{productCopy.ossClaimPage.title}</h1>
         <p>{productCopy.ossClaimPage.redeemedLead}</p>
         <p className="muted">{productCopy.ossClaimPage.runSummary(summary)}</p>
-        <Link className="button-link" href="/account" style={{ display: "inline-block", marginTop: "1rem" }}>
+        <Link className="button-link" href="/account">
           {productCopy.ossClaimPage.accountCta}
         </Link>
       </div>
@@ -146,10 +142,10 @@ export function OssClaimClient() {
 
   if (phase === "error" && errorMessage) {
     return (
-      <div className="card" style={{ maxWidth: "32rem" }}>
+      <div className="card card-narrow-32">
         <h1>{productCopy.ossClaimPage.title}</h1>
         <p>{errorMessage}</p>
-        <Link className="button-link" href="/account" style={{ display: "inline-block", marginTop: "1rem" }}>
+        <Link className="button-link" href="/account">
           {productCopy.ossClaimPage.accountCta}
         </Link>
       </div>
@@ -157,7 +153,7 @@ export function OssClaimClient() {
   }
 
   return (
-    <div className="card" style={{ maxWidth: "32rem" }}>
+    <div className="card card-narrow-32">
       <h1>{productCopy.ossClaimPage.title}</h1>
       <p className="muted">{productCopy.ossClaimPage.introUnauthenticated}</p>
     </div>
