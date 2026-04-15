@@ -14,11 +14,14 @@ import { logFunnelEvent } from "@/lib/funnelEvent";
 
 describe("logFunnelEvent", () => {
   beforeEach(() => {
+    /** Align with unit-test mock of `db`; commercial CI sets `1` and routes tiered events to telemetry. */
+    vi.stubEnv("AGENTSKEPTIC_TELEMETRY_WRITES_TELEMETRY_DB", "0");
     insert.mockClear();
     values.mockReset();
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 

@@ -4,9 +4,11 @@ import { POST as postReserve } from "@/app/api/v1/usage/reserve/route";
 import { POST as postVerifyOutcome } from "@/app/api/v1/funnel/verify-outcome/route";
 import { db } from "@/db/client";
 import { funnelEvents, usageReservations, users } from "@/db/schema";
+import { selectFunnelEventRowsForTest } from "./helpers/funnelEventRows";
+import { truncateCommercialFixtureDbs } from "./helpers/truncateCommercialFixture";
 import { getCanonicalSiteOrigin } from "@/lib/canonicalSiteOrigin";
 import { VERIFY_OUTCOME_BEACON_MAX_RESERVATION_AGE_MS } from "@/lib/funnelVerifyOutcomeConstants";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -45,14 +47,8 @@ function surfaceReq(body: object, origin: string | null): NextRequest {
 }
 
 describe.skipIf(!hasDatabaseUrl)("funnel north star — surface impression", () => {
-  async function truncateAll(): Promise<void> {
-    await db.execute(sql`
-    TRUNCATE oss_claim_ticket, oss_claim_rate_limit_counter, verify_outcome_beacon, funnel_event, stripe_event, usage_reservation, usage_counter, api_key, session, account, "verificationToken", "user" RESTART IDENTITY CASCADE
-  `);
-  }
-
   beforeEach(async () => {
-    await truncateAll();
+    await truncateCommercialFixtureDbs();
     authMock.mockReset();
     vi.mocked(getStripe).mockReset();
   });
@@ -69,7 +65,7 @@ describe.skipIf(!hasDatabaseUrl)("funnel north star — surface impression", () 
     const j = (await res.json()) as { schema_version: number; funnel_anon_id: string };
     expect(j.schema_version).toBe(1);
     expect(typeof j.funnel_anon_id).toBe("string");
-    const rows = await db.select().from(funnelEvents).where(eq(funnelEvents.event, "acquisition_landed"));
+    const rows = await selectFunnelEventRowsForTest("acquisition_landed");
     expect(rows).toHaveLength(1);
     expect((rows[0]!.metadata as { funnel_anon_id?: string }).funnel_anon_id).toBe(j.funnel_anon_id);
   });
@@ -87,14 +83,8 @@ describe.skipIf(!hasDatabaseUrl)("funnel north star — surface impression", () 
 });
 
 describe.skipIf(!hasDatabaseUrl)("funnel north star — verify-outcome", () => {
-  async function truncateAll(): Promise<void> {
-    await db.execute(sql`
-    TRUNCATE oss_claim_ticket, oss_claim_rate_limit_counter, verify_outcome_beacon, funnel_event, stripe_event, usage_reservation, usage_counter, api_key, session, account, "verificationToken", "user" RESTART IDENTITY CASCADE
-  `);
-  }
-
   beforeEach(async () => {
-    await truncateAll();
+    await truncateCommercialFixtureDbs();
     authMock.mockReset();
     vi.mocked(getStripe).mockReset();
   });

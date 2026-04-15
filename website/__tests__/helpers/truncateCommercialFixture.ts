@@ -3,7 +3,7 @@ import { dbTelemetry } from "@/db/telemetryClient";
 import { sql } from "drizzle-orm";
 
 const CORE_TRUNCATE_SQL = `
-  TRUNCATE oss_claim_ticket, oss_claim_rate_limit_counter, verify_outcome_beacon, funnel_event, stripe_event, usage_reservation, usage_counter, api_key, session, account, "verificationToken", "user" RESTART IDENTITY CASCADE
+  TRUNCATE magic_link_send_counter, oss_claim_ticket, oss_claim_rate_limit_counter, verify_outcome_beacon, funnel_event, stripe_event, usage_reservation, usage_counter, api_key, session, account, "verificationToken", "user" RESTART IDENTITY CASCADE
 `;
 
 const TELEMETRY_TRUNCATE_SQL = `

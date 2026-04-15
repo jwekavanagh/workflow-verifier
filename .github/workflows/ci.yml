@@ -67,9 +67,11 @@ jobs:
       POSTGRES_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
       POSTGRES_VERIFICATION_URL: postgresql://verifier_ro:verifier@localhost:5432/postgres
       AGENTSKEPTIC_TELEMETRY: "0"
+      # Root `test:ci` does not use website DATABASE_URL / TELEMETRY_DATABASE_URL; keep split off so Vitest defaults match “core-only” unless a test stubs otherwise.
+      AGENTSKEPTIC_TELEMETRY_WRITES_TELEMETRY_DB: "0"
     steps:
       - uses: actions/checkout@v5
-      - name: Assert workflow DATABASE_URL host policy
+      - name: Assert workflow Postgres URLs use localhost only (static scan)
         run: node scripts/assert-ci-workflows-database-url-hosts.mjs
       - uses: actions/setup-node@v5
         with:
@@ -96,6 +98,8 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    # Fixture Postgres on the job `services.postgres` container — not production. Separate DB names
+    # exercise core vs telemetry routing the same way as split-store production, without remote hosts.
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wfv_website
       TELEMETRY_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wfv_telemetry
@@ -110,6 +114,10 @@ jobs:
       AGENTSKEPTIC_TELEMETRY: "0"
     steps:
       - uses: actions/checkout@v5
+      - name: Assert workflow Postgres URLs use localhost only (static scan)
+        run: node scripts/assert-ci-workflows-database-url-hosts.mjs
+      - name: Assert job env Postgres URLs are localhost (runtime; requires core + telemetry)
+        run: node scripts/assert-ci-postgres-env-safety.mjs --require-core-and-telemetry
       - uses: actions/setup-node@v5
         with:
           node-version: "22"

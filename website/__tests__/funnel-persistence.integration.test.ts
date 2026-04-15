@@ -3,6 +3,8 @@ import { POST as postCheckout } from "@/app/api/checkout/route";
 import { POST as postDemo } from "@/app/api/demo/verify/route";
 import { db } from "@/db/client";
 import { funnelEvents, users } from "@/db/schema";
+import { selectFunnelEventRowsForTest } from "./helpers/funnelEventRows";
+import { truncateCommercialFixtureDbs } from "./helpers/truncateCommercialFixture";
 import { applyStripeWebhookDbSide } from "@/lib/applyStripeWebhookDbSide";
 import { recordSignInFunnel } from "@/lib/recordSignInFunnel";
 import { sql, eq } from "drizzle-orm";
@@ -35,14 +37,8 @@ const authMock = auth as unknown as AuthMock;
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL?.trim());
 
 describe.skipIf(!hasDatabaseUrl)("funnel persistence integration", () => {
-  async function truncateAll(): Promise<void> {
-    await db.execute(sql`
-    TRUNCATE magic_link_send_counter, oss_claim_ticket, oss_claim_rate_limit_counter, verify_outcome_beacon, funnel_event, stripe_event, usage_reservation, usage_counter, api_key, session, account, "verificationToken", "user" RESTART IDENTITY CASCADE
-  `);
-  }
-
   beforeEach(async () => {
-    await truncateAll();
+    await truncateCommercialFixtureDbs();
     authMock.mockReset();
     vi.mocked(getStripe).mockReset();
   });
@@ -67,7 +63,7 @@ describe("demo_verify_ok", () => {
     });
     const res = await postDemo(req);
     expect(res.status).toBe(200);
-    const rows = await db.select().from(funnelEvents).where(eq(funnelEvents.event, "demo_verify_ok"));
+    const rows = await selectFunnelEventRowsForTest("demo_verify_ok");
     expect(rows.length).toBeGreaterThanOrEqual(1);
     expect(rows[0]?.userId).toBeNull();
   });
@@ -82,7 +78,7 @@ describe("negative demo", () => {
     });
     const res = await postDemo(req);
     expect(res.status).toBe(400);
-    const rows = await db.select().from(funnelEvents).where(eq(funnelEvents.event, "demo_verify_ok"));
+    const rows = await selectFunnelEventRowsForTest("demo_verify_ok");
     expect(rows.length).toBe(0);
   });
 });

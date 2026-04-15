@@ -58,9 +58,10 @@ Direct `npx drizzle-kit …` against team infrastructure is **unsupported** and 
 
 ## CI workflow host audit
 
-- **Script:** [`scripts/assert-ci-workflows-database-url-hosts.mjs`](../scripts/assert-ci-workflows-database-url-hosts.mjs)
-- **Placement:** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) → `jobs.test` → step **immediately after** `actions/checkout@v5`, **immediately before** `actions/setup-node@v5`.
-- **Rule:** every literal `DATABASE_URL:` assignment (non–`${{ }}` expression) must resolve to hostname `localhost` or `127.0.0.1`.
+- **Static scan:** [`scripts/assert-ci-workflows-database-url-hosts.mjs`](../scripts/assert-ci-workflows-database-url-hosts.mjs) — fails if any workflow literal `DATABASE_URL:` or `TELEMETRY_DATABASE_URL:` (non–`${{ }}`) uses a host other than `localhost` / `127.0.0.1`.
+- **Placement:** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) → `jobs.test` and `jobs.commercial` → immediately after `actions/checkout@v5` (before `setup-node` on `test`).
+- **Runtime guard (GitHub Actions only):** [`scripts/assert-ci-postgres-env-safety.mjs`](../scripts/assert-ci-postgres-env-safety.mjs) with `--require-core-and-telemetry` on `jobs.commercial` so the job must set both URLs and they must still resolve to localhost-only hosts (belt-and-suspenders vs secrets or env injection).
+- **Split-behavior flags:** `jobs.test` sets `AGENTSKEPTIC_TELEMETRY_WRITES_TELEMETRY_DB=0` (root `test:ci` does not rely on website core/telemetry fixture split). `jobs.commercial` sets `AGENTSKEPTIC_TELEMETRY_WRITES_TELEMETRY_DB=1` against isolated DB names `wfv_website` / `wfv_telemetry` on the job Postgres service.
 
 ## Cross-links
 
