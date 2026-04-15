@@ -8,6 +8,7 @@ import {
 } from "../publicDistribution.generated.js";
 import { getOrCreateInstallId } from "./cliInstallId.js";
 import { fetchWithTimeout } from "./fetchWithTimeout.js";
+import { resolveTelemetrySource } from "./resolveTelemetrySource.js";
 import {
   PRODUCT_ACTIVATION_CLI_PRODUCT_HEADER,
   PRODUCT_ACTIVATION_CLI_PRODUCT_VALUE,
@@ -62,6 +63,7 @@ export async function postProductActivationEvent(input: PostProductActivationEve
     funnelAnonId && funnelAnonId.length > 0 ? { funnel_anon_id: funnelAnonId } : {};
 
   const install_id = getOrCreateInstallId();
+  const telemetry_source = resolveTelemetrySource();
 
   const base = resolveTelemetryBaseUrl();
   const url = `${base}/api/funnel/product-activation`;
@@ -69,24 +71,26 @@ export async function postProductActivationEvent(input: PostProductActivationEve
     input.phase === "verify_started"
       ? {
           event: "verify_started" as const,
-          schema_version: 1 as const,
+          schema_version: 2 as const,
           run_id: input.run_id,
           issued_at: input.issued_at,
           workload_class: input.workload_class,
           subcommand: input.subcommand,
           build_profile: input.build_profile,
+          telemetry_source,
           install_id,
           ...funnelAnonPayload,
         }
       : {
           event: "verify_outcome" as const,
-          schema_version: 1 as const,
+          schema_version: 2 as const,
           run_id: input.run_id,
           issued_at: input.issued_at,
           workload_class: input.workload_class,
           subcommand: input.subcommand,
           build_profile: input.build_profile,
           terminal_status: input.terminal_status,
+          telemetry_source,
           install_id,
           ...funnelAnonPayload,
         };

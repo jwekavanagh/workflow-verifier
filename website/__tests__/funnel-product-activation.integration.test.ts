@@ -66,6 +66,9 @@ describe.skipIf(!hasDatabaseUrl)("funnel product-activation", () => {
     expect(res1.status).toBe(204);
     const rows1 = await db.select().from(funnelEvents).where(eq(funnelEvents.event, "verify_started"));
     expect(rows1).toHaveLength(1);
+    expect((rows1[0]!.metadata as { telemetry_source?: string }).telemetry_source).toBe(
+      "legacy_unattributed",
+    );
     const beacons1 = await db.select().from(productActivationStartedBeacons);
     expect(beacons1).toHaveLength(1);
 
@@ -207,6 +210,38 @@ describe.skipIf(!hasDatabaseUrl)("funnel product-activation", () => {
       .where(eq(funnelEvents.event, "verify_outcome"));
     expect(started[0]!.installId).toBe(iid);
     expect(outcomes[0]!.installId).toBe(iid);
+  });
+
+  it("returns 204 for v2 verify_started and persists telemetry_source", async () => {
+    const body = {
+      event: "verify_started" as const,
+      schema_version: 2 as const,
+      run_id: "run-v2-started",
+      issued_at: issuedNow,
+      workload_class: "non_bundled" as const,
+      subcommand: "batch_verify" as const,
+      build_profile: "oss" as const,
+      telemetry_source: "local_dev" as const,
+    };
+    expect((await postProductActivation(activationReq(body))).status).toBe(204);
+    const rows = await db.select().from(funnelEvents).where(eq(funnelEvents.event, "verify_started"));
+    expect((rows[0]!.metadata as { telemetry_source?: string }).telemetry_source).toBe("local_dev");
+  });
+
+  it("returns 400 for invalid v2 telemetry_source", async () => {
+    const res = await postProductActivation(
+      activationReq({
+        event: "verify_started",
+        schema_version: 2,
+        run_id: "run-bad-ts",
+        issued_at: issuedNow,
+        workload_class: "non_bundled",
+        subcommand: "batch_verify",
+        build_profile: "oss",
+        telemetry_source: "legacy_unattributed",
+      }),
+    );
+    expect(res.status).toBe(400);
   });
 
   it("returns 413 when Content-Length exceeds cap", async () => {

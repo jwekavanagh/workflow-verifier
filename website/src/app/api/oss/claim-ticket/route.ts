@@ -130,6 +130,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           }
 
           const createdAt = new Date();
+          const telemetrySource =
+            "schema_version" in body && body.schema_version === 2
+              ? body.telemetry_source
+              : "legacy_unattributed";
+
           await tx.insert(ossClaimTickets).values({
             secretHash,
             runId: body.run_id,
@@ -138,6 +143,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             subcommand: body.subcommand,
             buildProfile: body.build_profile,
             issuedAt: body.issued_at,
+            telemetrySource,
             createdAt,
             expiresAt: expiresAtFromCreated(createdAt),
           });

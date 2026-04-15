@@ -8,7 +8,7 @@ import { isFunnelAnonUuidV4 } from "@/lib/funnelAttribution";
  */
 export const TimeToFirstVerifyOutcome_Seconds_SQL = `SELECT (
   EXTRACT(EPOCH FROM (
-    (SELECT MIN(created_at) FROM funnel_event fe2 WHERE fe2.event = 'verify_outcome' AND fe2.metadata->>'funnel_anon_id' = $1)
+    (SELECT MIN(created_at) FROM funnel_event fe2 WHERE fe2.event = 'verify_outcome' AND fe2.metadata->>'funnel_anon_id' = $1 AND (fe2.metadata->>'telemetry_source' IS DISTINCT FROM 'local_dev'))
     -
     (SELECT MIN(created_at) FROM funnel_event fe1 WHERE fe1.event = 'acquisition_landed' AND fe1.metadata->>'funnel_anon_id' = $1)
   ))

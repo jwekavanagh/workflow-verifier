@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { telemetrySourceWireSchema } from "@/lib/funnelProductActivation.contract";
 
 const issuedAtSchema = z.string().min(1).max(64);
 
@@ -10,7 +11,7 @@ const terminalStatusSchema = z.enum(["complete", "inconsistent", "incomplete"]);
 /** 32 random bytes as lowercase hex (64 chars); URL-safe, no `#`. */
 export const ossClaimSecretSchema = z.string().regex(/^[0-9a-f]{64}$/);
 
-export const ossClaimTicketRequestSchema = z.object({
+const ossClaimTicketCoreSchema = z.object({
   claim_secret: ossClaimSecretSchema,
   run_id: z.string().min(1).max(256),
   issued_at: issuedAtSchema,
@@ -19,6 +20,19 @@ export const ossClaimTicketRequestSchema = z.object({
   subcommand: subcommandSchema,
   build_profile: buildProfileSchema,
 });
+
+/** v1: no `schema_version` key (shipped CLI shape). */
+export const ossClaimTicketRequestSchemaV1 = ossClaimTicketCoreSchema;
+
+export const ossClaimTicketRequestSchemaV2 = ossClaimTicketCoreSchema.extend({
+  schema_version: z.literal(2),
+  telemetry_source: telemetrySourceWireSchema,
+});
+
+export const ossClaimTicketRequestSchema = z.union([
+  ossClaimTicketRequestSchemaV1,
+  ossClaimTicketRequestSchemaV2,
+]);
 
 export type OssClaimTicketRequest = z.infer<typeof ossClaimTicketRequestSchema>;
 

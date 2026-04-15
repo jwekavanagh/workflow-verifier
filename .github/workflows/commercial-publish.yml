@@ -13,6 +13,8 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      AGENTSKEPTIC_TELEMETRY: "0"
     permissions:
       contents: read
       id-token: write

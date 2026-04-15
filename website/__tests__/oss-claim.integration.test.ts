@@ -83,9 +83,43 @@ describe.skipIf(!hasDatabaseUrl)("OSS claim ticket + redeem", () => {
     expect((await postClaimTicket(claimTicketReq(body))).status).toBe(204);
     const rows = await db.select().from(ossClaimTickets);
     expect(rows).toHaveLength(1);
+    expect(rows[0]!.telemetrySource).toBe("legacy_unattributed");
     expect((await postClaimTicket(claimTicketReq(body))).status).toBe(204);
     const rows2 = await db.select().from(ossClaimTickets);
     expect(rows2).toHaveLength(1);
+  });
+
+  it("returns 204 for v2 body and persists telemetry_source", async () => {
+    const secret = newClaimSecret();
+    const body = {
+      schema_version: 2 as const,
+      telemetry_source: "unknown" as const,
+      claim_secret: secret,
+      run_id: "run-claim-v2",
+      issued_at: issuedNow(),
+      terminal_status: "complete" as const,
+      workload_class: "non_bundled" as const,
+      subcommand: "batch_verify" as const,
+      build_profile: "oss" as const,
+    };
+    expect((await postClaimTicket(claimTicketReq(body))).status).toBe(204);
+    const rows = await db.select().from(ossClaimTickets);
+    expect(rows[0]!.telemetrySource).toBe("unknown");
+  });
+
+  it("returns 400 for invalid v2 telemetry_source", async () => {
+    const body = {
+      schema_version: 2,
+      telemetry_source: "legacy_unattributed",
+      claim_secret: newClaimSecret(),
+      run_id: "run-bad-ts",
+      issued_at: issuedNow(),
+      terminal_status: "complete",
+      workload_class: "non_bundled",
+      subcommand: "batch_verify",
+      build_profile: "oss",
+    };
+    expect((await postClaimTicket(claimTicketReq(body))).status).toBe(400);
   });
 
   it("returns 403 without CLI headers", async () => {

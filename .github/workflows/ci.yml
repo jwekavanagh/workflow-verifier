@@ -66,6 +66,7 @@ jobs:
     env:
       POSTGRES_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
       POSTGRES_VERIFICATION_URL: postgresql://verifier_ro:verifier@localhost:5432/postgres
+      AGENTSKEPTIC_TELEMETRY: "0"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -102,6 +103,7 @@ jobs:
       STRIPE_PRICE_INDIVIDUAL: price_ci_individual
       STRIPE_PRICE_TEAM: price_ci_team
       STRIPE_PRICE_BUSINESS: price_ci_business
+      AGENTSKEPTIC_TELEMETRY: "0"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -137,6 +139,8 @@ jobs:
     # Without DISTRIBUTION_GITHUB_TOKEN the default GITHUB_TOKEN cannot reach distributionConsumerRepository (see scripts/distribution-consumer-pipeline.mjs).
     if: github.repository == 'jwekavanagh/agentskeptic' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    env:
+      AGENTSKEPTIC_TELEMETRY: "0"
     steps:
       - id: distro-token
         name: Check distribution token

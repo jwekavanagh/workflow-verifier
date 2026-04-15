@@ -12,6 +12,7 @@ export async function maybeEmitOssClaimTicketUrlToStderr(input: {
 }): Promise<void> {
   if (LICENSE_PREFLIGHT_ENABLED) return;
   if (process.env.AGENTSKEPTIC_OSS_CLAIM_STDERR?.trim() === "0") return;
+  if (process.env.AGENTSKEPTIC_TELEMETRY?.trim() === "0") return;
 
   const claim_secret = randomBytes(32).toString("hex");
   const issued_at = new Date().toISOString();

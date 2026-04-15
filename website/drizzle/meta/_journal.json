@@ -71,6 +71,13 @@
       "when": 1776208033617,
       "tag": "0009_melted_ultimatum",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1776300000000,
+      "tag": "0010_oss_claim_ticket_telemetry_source",
+      "breakpoints": true
     }
   ]
 }

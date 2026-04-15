@@ -9,5 +9,6 @@ CROSS JOIN w
 WHERE fe.event = 'verify_started'
   AND fe.install_id IS NOT NULL
   AND fe.install_id <> ''
+  AND (fe.metadata->>'telemetry_source' IS DISTINCT FROM 'local_dev')
   AND fe.created_at >= w.now_utc - interval '7 days'
 `.trim();

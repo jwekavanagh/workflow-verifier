@@ -184,6 +184,8 @@ export const ossClaimTickets = pgTable("oss_claim_ticket", {
   subcommand: text("subcommand").notNull(),
   buildProfile: text("build_profile").notNull(),
   issuedAt: text("issued_at").notNull(),
+  /** `local_dev` | `unknown` (v2 wire) | `legacy_unattributed` (v1 server). */
+  telemetrySource: text("telemetry_source"),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
   expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
   claimedAt: timestamp("claimed_at", { withTimezone: true, mode: "date" }),

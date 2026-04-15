@@ -6,6 +6,7 @@ import {
   PRODUCT_ACTIVATION_CLI_VERSION_HEADER,
 } from "./productActivationHeaders.js";
 import { resolveOssClaimApiOrigin } from "./ossClaimOrigin.js";
+import { resolveTelemetrySource } from "./resolveTelemetrySource.js";
 
 const OSS_CLAIM_TICKET_FETCH_TIMEOUT_MS = 400;
 
@@ -23,8 +24,11 @@ export type PostOssClaimTicketInput = {
  * Best-effort POST /api/oss/claim-ticket to canonical origin. Returns whether server accepted (204).
  */
 export async function postOssClaimTicket(input: PostOssClaimTicketInput): Promise<boolean> {
+  if (process.env.AGENTSKEPTIC_TELEMETRY?.trim() === "0") return false;
+
   const base = resolveOssClaimApiOrigin();
   const url = `${base}/api/oss/claim-ticket`;
+  const telemetry_source = resolveTelemetrySource();
   try {
     const res = await fetchWithTimeout(
       url,
@@ -36,6 +40,8 @@ export async function postOssClaimTicket(input: PostOssClaimTicketInput): Promis
           [PRODUCT_ACTIVATION_CLI_VERSION_HEADER]: AGENTSKEPTIC_CLI_SEMVER,
         },
         body: JSON.stringify({
+          schema_version: 2 as const,
+          telemetry_source,
           claim_secret: input.claim_secret,
           run_id: input.run_id,
           issued_at: input.issued_at,

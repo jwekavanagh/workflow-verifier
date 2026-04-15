@@ -343,3 +343,7 @@ Runs build, Vitest, SQLite Node tests, first-run demo, `assurance run`, the comm
 ## License
 
 Released under the **MIT License** — **[LICENSE](LICENSE)**.
+
+## CLI telemetry and privacy
+
+Anonymous OSS telemetry uses **`AGENTSKEPTIC_TELEMETRY=0`** to disable product-activation `fetch`, OSS claim-ticket `fetch`, and the stderr claim URL helper (silent; no network). **`AGENTSKEPTIC_TELEMETRY_SOURCE=local_dev`** labels emitted traffic as local development when telemetry is on; otherwise the CLI sends **`unknown`** (this is not a guarantee of “external-only” traffic—see SSOT). For operator validation keyed to a single control **`run_id`**, set a fresh **`AGENTSKEPTIC_RUN_ID`** UUID per run before **`quick`**, then query Postgres on **`metadata->>'run_id'`** as documented in **[`docs/funnel-observability-ssot.md`](docs/funnel-observability-ssot.md)** (operator validation subsection).

@@ -5,6 +5,7 @@ describe("postProductActivationEvent", () => {
   beforeEach(() => {
     delete process.env.AGENTSKEPTIC_TELEMETRY;
     delete process.env.AGENTSKEPTIC_TELEMETRY_ORIGIN;
+    delete process.env.AGENTSKEPTIC_TELEMETRY_SOURCE;
   });
 
   afterEach(() => {
@@ -44,5 +45,25 @@ describe("postProductActivationEvent", () => {
     const headers = (init as RequestInit).headers as Record<string, string>;
     expect(headers["X-AgentSkeptic-Product"]).toBe("cli");
     expect(headers["X-AgentSkeptic-Cli-Version"]).toMatch(/^\d+\.\d+\.\d+/);
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.schema_version).toBe(2);
+    expect(body.telemetry_source).toBe("unknown");
+  });
+
+  it("POSTs telemetry_source local_dev when AGENTSKEPTIC_TELEMETRY_SOURCE=local_dev", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 204 });
+    vi.stubGlobal("fetch", fetchMock);
+    process.env.AGENTSKEPTIC_TELEMETRY_SOURCE = "local_dev";
+    await postProductActivationEvent({
+      phase: "verify_started",
+      run_id: "r-local",
+      issued_at: new Date().toISOString(),
+      workload_class: "non_bundled",
+      subcommand: "batch_verify",
+      build_profile: "oss",
+    });
+    const [, init] = fetchMock.mock.calls[0]!;
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.telemetry_source).toBe("local_dev");
   });
 });

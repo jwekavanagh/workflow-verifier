@@ -22,6 +22,7 @@ outc AS (
   WHERE event = 'verify_outcome'
     AND metadata->>'funnel_anon_id' IS NOT NULL
     AND metadata->>'funnel_anon_id' <> ''
+    AND (metadata->>'telemetry_source' IS DISTINCT FROM 'local_dev')
     AND created_at >= w.now_utc - interval '7 days'
 )
 SELECT
