@@ -98,6 +98,17 @@ The signed-in **`/account`** page lists recent **licensed verify outcomes** per 
 
 These funnel surfaces are **telemetry only**. They do **not** affect whether verification is correct, whether `reserve` succeeds, or CLI exit codes. Failures on the beacon path are ignored by the CLI (best-effort). **`verify_started` / `verify_outcome` rows may be absent** (offline runs, opt-out, timeouts); product behavior must never depend on them.
 
+## CLI lock telemetry sequencing {#cli-lock-telemetry-sequencing}
+
+Normative implementation: [`src/cli/lockOrchestration.ts`](../src/cli/lockOrchestration.ts) (batch + quick; verify CLI and `enforce`).
+
+- **VS (`verify_started`):** emitted once per lock run **after** successful license **R** when the commercial build runs reserve, and **before** `await executeBatchLockFromParsed` / `await executeQuickLockFromParsed`.
+- **VO (`verify_outcome`)** and **anonymous OSS claim stderr** (`maybeEmitOssClaimTicketUrlToStderr`): emitted **only** when the lock executor returns **`workflow_terminal`**, **`lock_mismatch`**, or **`operational` with a real verification object** (`verifiedResult` / `verifiedOutcome`). The executor **never** fabricates a `WorkflowResult` or quick report for telemetry.
+- **`POST /api/v1/funnel/verify-outcome`:** best-effort **only** when a **`run_id`** was obtained from reserve **and** the same VO eligibility as above applies (commercial build).
+- **Partial activation (allowed):** **`verify_started`** without **`verify_outcome`** when the executor returns **`operational`** **without** `verifiedResult` / `verifiedOutcome` (failure after VS but before a terminal verification object exists). On that path the CLI must **not** emit **`verify_outcome`**, must **not** call the licensed verify-outcome beacon, and must **not** run the OSS claim-ticket stderr helper.
+
+Commercial vs OSS lock flags are normative in [`commercial-enforce-gate-normative.md`](commercial-enforce-gate-normative.md); that document links here for ordering.
+
 ### Operator
 
 #### Operator reading metrics (do not double-count)

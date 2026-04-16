@@ -40,6 +40,7 @@ Canonical example files (do not duplicate their contents in this doc):
 | **`examples/partner-quickstart/partner.events.ndjson`** | One NDJSON line per observed tool call; **`workflowId`** is **`wf_partner`**. |
 | **`examples/partner-quickstart/partner.tools.json`** | Registry for **`crm.upsert_contact`**. |
 | **`examples/partner-quickstart/partner.seed.sql`** | `CREATE TABLE contacts` + row for **`partner_1`**. |
+| **`examples/partner-quickstart/partner.ci-lock-v1.json`** | Golden **`ci-lock-v1`** for **`wf_partner`**; `npm run partner-quickstart` writes a temp **`--output-lock`** file and **byte-compares** to this read-only fixture (see `scripts/partner-quickstart-verify.mjs`). |
 
 **Fast path:** from the repository root, use the linked commands document above — start with **`npm run partner-quickstart`** (SQLite) or set **`PARTNER_POSTGRES_URL`** for Postgres.
 

@@ -6,8 +6,11 @@
  * Uses async spawn (not spawnSync) while the mock HTTP server is listening so the event loop
  * keeps turning — spawnSync here can deadlock tsc on Windows.
  */
+import { appendFileSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import path from "path";
 
@@ -20,10 +23,24 @@ if (requirePostgres && !process.env.POSTGRES_VERIFICATION_URL?.trim()) {
   process.exit(1);
 }
 
+const reserveIntentLogPath = path.join(tmpdir(), `agentskeptic-harness-reserve-intents-${randomUUID()}.log`);
+writeFileSync(reserveIntentLogPath, "", "utf8");
+
 const server = createServer((req, res) => {
   if (req.method === "POST" && req.url === "/api/v1/usage/reserve") {
-    req.on("data", () => {});
+    let raw = "";
+    req.on("data", (c) => {
+      raw += c;
+    });
     req.on("end", () => {
+      try {
+        const body = JSON.parse(raw || "{}");
+        if (typeof body.intent === "string") {
+          appendFileSync(reserveIntentLogPath, `${body.intent}\n`, "utf8");
+        }
+      } catch {
+        /* ignore */
+      }
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ allowed: true, plan: "business", limit: 50000, used: 0 }));
     });
@@ -43,6 +60,7 @@ const harnessEnv = {
   ...process.env,
   COMMERCIAL_LICENSE_API_BASE_URL: baseUrl,
   AGENTSKEPTIC_API_KEY: "wfv_test_harness_key",
+  HARNESS_RESERVE_INTENT_LOG: reserveIntentLogPath,
 };
 
 /**
@@ -86,6 +104,7 @@ try {
   } else {
     const steps = [
       () => nodeTest("test/enforce-cli.test.mjs"),
+      () => nodeTest("test/commercial-license-reserve-intent.test.mjs"),
       () => nodeTest("test/assurance-cli-enforce.test.mjs"),
       () => nodeTest("test/assurance-cli.test.mjs"),
       () => nodeScript("examples/minimal-ci-enforcement/run.mjs"),

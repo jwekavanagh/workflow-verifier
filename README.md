@@ -271,7 +271,7 @@ Runs build, Vitest, SQLite Node tests, first-run demo, `assurance run`, the comm
 
 ## Commercial CLI (npm) vs OSS (this repo)
 
-Canonical write-up: **[`docs/commercial-ssot.md`](docs/commercial-ssot.md)** (npm package, Stripe, keys, telemetry, validation, entitlements; operator metrics in **[`docs/funnel-observability-ssot.md`](docs/funnel-observability-ssot.md)**—disable with **`AGENTSKEPTIC_TELEMETRY=0`**). OSS builds in this repo run contract **`verify`** without a license server; **`enforce`**, CI locks, and lock flags on **`quick`/batch** require a commercial build per **[`docs/commercial-enforce-gate-normative.md`](docs/commercial-enforce-gate-normative.md)**. Example workflow: **[`examples/github-actions/agentskeptic-commercial.yml`](examples/github-actions/agentskeptic-commercial.yml)**.
+Canonical write-up: **[`docs/commercial-ssot.md`](docs/commercial-ssot.md)** (npm package, Stripe, keys, telemetry, validation, entitlements; operator metrics in **[`docs/funnel-observability-ssot.md`](docs/funnel-observability-ssot.md)**—disable with **`AGENTSKEPTIC_TELEMETRY=0`**). OSS builds in this repo run contract **`verify`** / **`quick`** without a license server and may emit **`--output-lock`** fixtures; **`--expect-lock`**, **`agentskeptic enforce`**, and paid compare require a commercial build per **[`docs/commercial-enforce-gate-normative.md`](docs/commercial-enforce-gate-normative.md)**. Example workflow: **[`examples/github-actions/agentskeptic-commercial.yml`](examples/github-actions/agentskeptic-commercial.yml)**.
 
 ## Status, contributing, security
 

@@ -1421,6 +1421,8 @@ Automation should use **`agentskeptic enforce batch`** or **`agentskeptic enforc
 
 <!-- etl:enforce-stream-contract:start -->
 
+**`agentskeptic enforce`** is **compare-only**: it accepts **`--expect-lock`** only. Generate **`ci-lock-v1`** files with batch or **`quick`** **`verify`** using **`--output-lock`**, then gate CI with **`enforce batch|quick --expect-lock …`**.
+
 **`enforce batch`** matches bare batch I/O (`runStandardVerifyWorkflowCliFlow`):
 
 | Exit | stdout | stderr |
@@ -1439,7 +1441,7 @@ Automation should use **`agentskeptic enforce batch`** or **`agentskeptic enforc
 
 **Lock file bytes (`--output-lock`):** **`stableStringify(lockObject) + "\n"`**, UTF-8; object must validate as **`ci-lock-v1`**.
 
-Substrings for contract tests: **enforce batch**, **enforce quick**, **JSON.stringify(result)**, **stableStringify(report)**, **VERIFICATION_OUTPUT_LOCK_MISMATCH**, **`--no-truth-report`**.
+Substrings for contract tests: **compare-only**, **batch verify**, **enforce batch**, **enforce quick**, **JSON.stringify(result)**, **stableStringify(report)**, **VERIFICATION_OUTPUT_LOCK_MISMATCH**, **`--no-truth-report`**.
 
 <!-- etl:enforce-stream-contract:end -->
 

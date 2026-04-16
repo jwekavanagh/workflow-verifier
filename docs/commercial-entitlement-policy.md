@@ -14,7 +14,7 @@ The **published npm** path is gated in **`POST /api/v1/usage/reserve`** so contr
 
 ## Why `enforce` and CI locks share the same paid gate
 
-**Enforcement** and **CI lock** paths use **`intent=enforce`** on reserve with the same active-subscription requirement as licensed **`verify`** (SSOT).
+**Licensed `verify` / `quick` with `--output-lock`** uses **`intent=verify`** on reserve (metered lock generation). **`--expect-lock`**, **`agentskeptic enforce`**, and other enforcement-shaped paths use **`intent=enforce`** with the same active-subscription requirement as licensed **`verify`** (SSOT; see [`commercial-enforce-gate-normative.md`](commercial-enforce-gate-normative.md)).
 
 ## Why `starter` cannot `verify` or `enforce` on commercial npm
 

@@ -4,10 +4,8 @@ import {
   formatOperationalMessage,
 } from "./failureCatalog.js";
 import { TruthLayerError } from "./truthLayerError.js";
-import { runLicensePreflightIfNeeded } from "./commercial/licensePreflight.js";
 import { LICENSE_PREFLIGHT_ENABLED } from "./generated/commercialBuildFlags.js";
-import { argValue } from "./cliArgv.js";
-import { runBatchCiLockFromRestArgs, runQuickCiLockFromRestArgs } from "./ciLockWorkflow.js";
+import { orchestrateEnforceBatchLockRun, orchestrateEnforceQuickLockRun } from "./cli/lockOrchestration.js";
 
 /** User-facing message for OSS builds when `enforce` is invoked; exported for tests. */
 export const ENFORCE_OSS_GATE_MESSAGE =
@@ -19,13 +17,13 @@ function writeCliError(code: string, message: string): void {
 
 function usageEnforce(): string {
   return `Usage:
-  agentskeptic enforce batch (--expect-lock <path> | --output-lock <path>) <same flags as batch verify>
-  agentskeptic enforce quick (--expect-lock <path> | --output-lock <path>) <same flags as quick>
+  agentskeptic enforce batch --expect-lock <path> <same flags as batch verify>
+  agentskeptic enforce quick --expect-lock <path> <same flags as quick>
 
-Exactly one of --expect-lock or --output-lock is required.
+Compare-only: --expect-lock is required. Generate locks with batch or quick verify using --output-lock.
 
-Exit codes (batch): same as batch verify for 0–2; 3 operational; 4 lock mismatch (--expect-lock only).
-Exit codes (quick): same as quick for 0–2; 3 operational; 4 lock mismatch (--expect-lock only).
+Exit codes (batch): same as batch verify for 0–2; 3 operational; 4 lock mismatch.
+Exit codes (quick): same as quick for 0–2; 3 operational; 4 lock mismatch.
 
 See docs/ci-enforcement.md and docs/agentskeptic.md.
 
@@ -33,20 +31,8 @@ See docs/ci-enforcement.md and docs/agentskeptic.md.
 }
 
 async function runEnforceBatch(restArgs: string[]): Promise<void> {
-  const expectLock = argValue(restArgs, "--expect-lock");
-  const outputLock = argValue(restArgs, "--output-lock");
-  const hasExpect = expectLock !== undefined;
-  const hasOutput = outputLock !== undefined;
-  if (hasExpect === hasOutput) {
-    writeCliError(
-      CLI_OPERATIONAL_CODES.ENFORCE_USAGE,
-      "enforce batch requires exactly one of --expect-lock <path> or --output-lock <path>.",
-    );
-    process.exit(3);
-  }
   try {
-    await runLicensePreflightIfNeeded("enforce");
-    await runBatchCiLockFromRestArgs(restArgs);
+    await orchestrateEnforceBatchLockRun(restArgs);
   } catch (e) {
     if (e instanceof TruthLayerError) {
       writeCliError(e.code, e.message);
@@ -59,20 +45,8 @@ async function runEnforceBatch(restArgs: string[]): Promise<void> {
 }
 
 async function runEnforceQuick(restArgs: string[]): Promise<void> {
-  const expectLock = argValue(restArgs, "--expect-lock");
-  const outputLock = argValue(restArgs, "--output-lock");
-  const hasExpect = expectLock !== undefined;
-  const hasOutput = outputLock !== undefined;
-  if (hasExpect === hasOutput) {
-    writeCliError(
-      CLI_OPERATIONAL_CODES.ENFORCE_USAGE,
-      "enforce quick requires exactly one of --expect-lock <path> or --output-lock <path>.",
-    );
-    process.exit(3);
-  }
   try {
-    await runLicensePreflightIfNeeded("enforce");
-    await runQuickCiLockFromRestArgs(restArgs);
+    await orchestrateEnforceQuickLockRun(restArgs);
   } catch (e) {
     if (e instanceof TruthLayerError) {
       writeCliError(e.code, e.message);

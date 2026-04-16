@@ -16,7 +16,7 @@ import { buildExecutionTraceView, formatExecutionTraceText } from "./executionTr
 import { loadEventsForWorkflow } from "./loadEvents.js";
 import { verifyWorkflow } from "./pipeline.js";
 import { argValue, argValues, parseBatchVerifyCliArgs, parseQuickCliArgs } from "./cliArgv.js";
-import { ENFORCE_OSS_GATE_MESSAGE, runEnforce } from "./enforceCli.js";
+import { runEnforce } from "./enforceCli.js";
 import {
   CLI_EXITED_AFTER_ERROR,
   emitVerifyWorkflowCliJsonAndExitByStatus,
@@ -69,7 +69,7 @@ import {
   classifyQuickVerifyWorkload,
 } from "./commercial/verifyWorkloadClassify.js";
 import { LICENSE_PREFLIGHT_ENABLED } from "./generated/commercialBuildFlags.js";
-import { runBatchCiLockFromRestArgs, runQuickCiLockFromRestArgs } from "./ciLockWorkflow.js";
+import { orchestrateVerifyBatchLockRun, orchestrateVerifyQuickLockRun } from "./cli/lockOrchestration.js";
 import { formatDistributionFooter } from "./distributionFooter.js";
 import { postPublicVerificationReport } from "./shareReport/postPublicVerificationReport.js";
 import { runBootstrapSubcommand } from "./bootstrap/runBootstrapSubcommand.js";
@@ -85,6 +85,8 @@ function usageQuick(): string {
 
   Use - for stdin. Writes registry JSON array atomically, then optional events file, then stdout (see docs/quick-verify-normative.md).
   With --share-report-origin, human stderr is deferred until after a successful POST (same contract as batch verify; see docs/shareable-verification-reports.md).
+
+  Optional CI lock: exactly one of --output-lock <path> or --expect-lock <path> (same OSS/commercial split as batch; see docs/ci-enforcement.md).
 
 Exit codes:
   0  verdict pass
@@ -106,8 +108,8 @@ function usageVerify(): string {
   agentskeptic --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
   agentskeptic --workflow-id <id> --events <path> --registry <path> --postgres-url <url>
 
-  Optional CI lock (commercial build; same as enforce batch): append exactly one of
-  --output-lock <path> or --expect-lock <path> (requires active subscription; see docs/ci-enforcement.md).
+  Optional CI lock: append exactly one of --output-lock <path> or --expect-lock <path>
+  (OSS: --output-lock only; commercial: both; see docs/ci-enforcement.md and docs/commercial-enforce-gate-normative.md).
 
 Optional consistency (default strong):
   --consistency strong|eventual
@@ -468,25 +470,7 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
     process.exit(3);
   }
   if (hasExpectQ !== hasOutputQ) {
-    if (!LICENSE_PREFLIGHT_ENABLED) {
-      writeCliError(
-        CLI_OPERATIONAL_CODES.ENFORCE_REQUIRES_COMMERCIAL_BUILD,
-        `${ENFORCE_OSS_GATE_MESSAGE} --output-lock/--expect-lock on quick requires the commercial build.`,
-      );
-      process.exit(3);
-    }
-    try {
-      await runLicensePreflightIfNeeded("enforce");
-    } catch (e) {
-      if (e instanceof TruthLayerError) {
-        writeCliError(e.code, e.message);
-        process.exit(3);
-      }
-      const msg = e instanceof Error ? e.message : String(e);
-      writeCliError(CLI_OPERATIONAL_CODES.INTERNAL_ERROR, formatOperationalMessage(msg));
-      process.exit(3);
-    }
-    await runQuickCiLockFromRestArgs(args);
+    await orchestrateVerifyQuickLockRun(args);
     return;
   }
   let pq;
@@ -1122,23 +1106,7 @@ async function main(): Promise<void> {
     process.exit(3);
   }
   if (hasExpectB !== hasOutputB) {
-    if (!LICENSE_PREFLIGHT_ENABLED) {
-      writeCliError(
-        CLI_OPERATIONAL_CODES.ENFORCE_REQUIRES_COMMERCIAL_BUILD,
-        `${ENFORCE_OSS_GATE_MESSAGE} --output-lock/--expect-lock on batch verify requires the commercial build.`,
-      );
-      process.exit(3);
-    }
-    try {
-      await runLicensePreflightIfNeeded("enforce");
-    } catch (e) {
-      if (e instanceof TruthLayerError) {
-        writeCliError(e.code, e.message);
-        process.exit(3);
-      }
-      throw e;
-    }
-    await runBatchCiLockFromRestArgs(args);
+    await orchestrateVerifyBatchLockRun(args);
     return;
   }
 

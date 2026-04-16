@@ -6,7 +6,7 @@ This document is the **integrator SSOT** for pinning verification outcomes in CI
 
 ## Prerequisites (commercial CLI)
 
-**Licensed** contract **`verify`**, **`quick`**, **CI lock flags**, and **`enforce`** all require an **Individual**, **Team**, **Business**, or **Enterprise** plan with an **active** subscription (Stripe **trialing** counts) and a valid API key on **`POST /api/v1/usage/reserve`**; see [`commercial-entitlement-matrix.md`](commercial-entitlement-matrix.md) and [`commercial-entitlement-policy.md`](commercial-entitlement-policy.md).
+On the **commercial** build, **licensed** contract **`verify`**, **`quick`**, **`--expect-lock`**, and **`enforce`** require an **Individual**, **Team**, **Business**, or **Enterprise** plan with an **active** subscription (Stripe **trialing** counts) and a valid API key on **`POST /api/v1/usage/reserve`**; **`--output-lock`** uses **`intent=verify`** (see [`commercial-entitlement-policy.md`](commercial-entitlement-policy.md)). The **OSS** build supports **`--output-lock`** on batch / quick **without** a key; it does **not** support **`--expect-lock`** or **`enforce`** — see [`commercial-enforce-gate-normative.md`](commercial-enforce-gate-normative.md).
 
 ## What the lock pins (semantics)
 
@@ -19,7 +19,7 @@ It does **not** replace full **`WorkflowResult`** / **`QuickVerifyReport`** on s
 
 ## Automation recipe
 
-**Canonical (same flags as plain verify / quick):** append exactly one of **`--output-lock`** or **`--expect-lock`** to your batch or **`quick`** command. **`agentskeptic enforce batch|quick …`** remains a **compatibility alias** with identical lock semantics.
+**Generate locks:** append **`--output-lock <path>`** to batch verify or **`quick`** (OSS or commercial). **Compare in CI (commercial):** use the same command with **`--expect-lock <path>`**, or run **`agentskeptic enforce batch|quick --expect-lock <path> …`** (**compare-only** — **`--output-lock` is not accepted** on `enforce`; generate locks with verify / quick first).
 
 1. **Bootstrap (once per scenario):** run, for example,  
    `agentskeptic --workflow-id … --events … --registry … --db … --output-lock path/to/scenario.ci-lock-v1.json`  

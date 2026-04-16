@@ -22,6 +22,8 @@ describe("docs enforce stream contract marker", () => {
     assert.ok(j >= 0, "missing close marker");
     const inner = md.slice(i + OPEN.length, j);
     for (const s of [
+      "compare-only",
+      "batch verify",
       "enforce batch",
       "enforce quick",
       "JSON.stringify(result)",

@@ -18,7 +18,7 @@ From the **repository root**:
 npm run partner-quickstart
 ```
 
-This seeds a temporary SQLite database, runs verification, and exits non-zero on failure.
+This seeds a temporary SQLite database, runs verification, asserts stdout JSON, then checks **OSS `--output-lock`** bytes against the committed golden `examples/partner-quickstart/partner.ci-lock-v1.json`, and exits non-zero on failure.
 
 ## Postgres (single env var)
 

@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "child_process";
 import { cliErrorEnvelope, CLI_OPERATIONAL_CODES } from "../dist/failureCatalog.js";
 import { ENFORCE_OSS_GATE_MESSAGE } from "../dist/enforceCli.js";
+import { EXPECT_LOCK_REQUIRES_COMMERCIAL_BUILD_MESSAGE } from "../dist/cli/lockOrchestration.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -18,9 +19,9 @@ const expectedStderr = cliErrorEnvelope(
   ENFORCE_OSS_GATE_MESSAGE,
 );
 
-const expectedBatchLockStderr = cliErrorEnvelope(
+const expectedExpectLockOssStderr = cliErrorEnvelope(
   CLI_OPERATIONAL_CODES.ENFORCE_REQUIRES_COMMERCIAL_BUILD,
-  `${ENFORCE_OSS_GATE_MESSAGE} --output-lock/--expect-lock on batch verify requires the commercial build.`,
+  EXPECT_LOCK_REQUIRES_COMMERCIAL_BUILD_MESSAGE,
 );
 
 function runCli(args) {
@@ -77,7 +78,7 @@ describe("enforce OSS forbidden", () => {
     assert.ok(r.stdout.includes("Usage:"));
   });
 
-  it("batch verify with --output-lock exits 3 with commercial-build envelope (OSS)", () => {
+  it("batch verify with --expect-lock exits 3 with commercial-build envelope (OSS)", () => {
     const r = runCli([
       "--workflow-id",
       "wf_complete",
@@ -88,11 +89,11 @@ describe("enforce OSS forbidden", () => {
       "--db",
       join(root, "examples", "demo.db"),
       "--no-truth-report",
-      "--output-lock",
-      join(root, "examples", "tmp-oss-lock.ci-lock-v1.json"),
+      "--expect-lock",
+      join(root, "test", "fixtures", "ci-enforcement", "wf_complete.ci-lock-v1.json"),
     ]);
     assert.equal(r.status, 3);
     assert.equal(r.stdout, "");
-    assert.equal(r.stderr.trim(), expectedBatchLockStderr);
+    assert.equal(r.stderr.trim(), expectedExpectLockOssStderr);
   });
 });

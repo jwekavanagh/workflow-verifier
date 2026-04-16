@@ -11,6 +11,10 @@ import { spawnSync } from "child_process";
 import { DatabaseSync } from "node:sqlite";
 import { loadSchemaValidator } from "../dist/schemaLoad.js";
 import { workflowResultToCiLockV1, stableStringify } from "../dist/ciLock.js";
+import {
+  LOCK_SUCCESS_MONETIZED_BOUNDARY_LINE_A,
+  LOCK_SUCCESS_MONETIZED_BOUNDARY_LINE_B,
+} from "../dist/cli/lockOrchestration.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -36,6 +40,33 @@ describe("enforce CLI", () => {
 
   after(() => {
     rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("enforce batch rejects --output-lock compare-only (exit 3)", () => {
+    const r = spawnSync(
+      process.execPath,
+      [
+        "--no-warnings",
+        cliJs,
+        "enforce",
+        "batch",
+        "--workflow-id",
+        "wf_complete",
+        "--events",
+        eventsPath,
+        "--registry",
+        registryPath,
+        "--db",
+        dbPath,
+        "--no-truth-report",
+        "--output-lock",
+        join(dir, "reject.json"),
+      ],
+      { encoding: "utf8", cwd: root },
+    );
+    assert.equal(r.status, 3);
+    const err = JSON.parse(r.stderr.trim());
+    assert.equal(err.code, "ENFORCE_USAGE");
   });
 
   it("enforce batch rejects missing lock flags (exit 3)", () => {
@@ -89,6 +120,8 @@ describe("enforce CLI", () => {
       { encoding: "utf8", cwd: root },
     );
     assert.equal(r.status, 3);
+    const err = JSON.parse(r.stderr.trim());
+    assert.equal(err.code, "ENFORCE_USAGE");
   });
 
   it("enforce batch expect-lock wf_complete exits 0", () => {
@@ -114,7 +147,8 @@ describe("enforce CLI", () => {
       { encoding: "utf8", cwd: root },
     );
     assert.equal(r.status, 0, r.stderr);
-    assert.equal(r.stderr, "");
+    assert.ok(r.stderr.includes(LOCK_SUCCESS_MONETIZED_BOUNDARY_LINE_A));
+    assert.ok(r.stderr.includes(LOCK_SUCCESS_MONETIZED_BOUNDARY_LINE_B));
     const parsed = JSON.parse(r.stdout.trim());
     assert.equal(parsed.status, "complete");
   });
@@ -154,15 +188,13 @@ describe("enforce CLI", () => {
     assert.equal(out.workflowId, "wf_complete");
   });
 
-  it("enforce batch output-lock then expect-lock round-trip", () => {
+  it("batch verify output-lock then enforce batch expect-lock round-trip", () => {
     const outLock = join(dir, "round.json");
     const r1 = spawnSync(
       process.execPath,
       [
         "--no-warnings",
         cliJs,
-        "enforce",
-        "batch",
         "--workflow-id",
         "wf_complete",
         "--events",
@@ -203,6 +235,7 @@ describe("enforce CLI", () => {
       { encoding: "utf8", cwd: root },
     );
     assert.equal(r2.status, 0, r2.stderr);
+    assert.ok(r2.stderr.includes(LOCK_SUCCESS_MONETIZED_BOUNDARY_LINE_A));
   });
 
   it("enforce quick expect-lock exits 0", () => {
@@ -226,6 +259,7 @@ describe("enforce CLI", () => {
       { encoding: "utf8", cwd: root },
     );
     assert.equal(r.status, 0, r.stderr);
+    assert.ok(r.stderr.includes(LOCK_SUCCESS_MONETIZED_BOUNDARY_LINE_A));
   });
 
   it("enforce quick lock mismatch exits 4; stderr last line envelope", () => {

@@ -5,8 +5,11 @@ Single source of truth for **who may run `agentskeptic enforce`** and how it rel
 ## OSS build (`WF_BUILD_PROFILE=oss`, default `npm run build`)
 
 - **`agentskeptic enforce`** is **not supported**. Any invocation **except** help (`--help` or `-h` anywhere in the args after `enforce`) **exits 3** with operational code **`ENFORCE_REQUIRES_COMMERCIAL_BUILD`** and the message constant **`ENFORCE_OSS_GATE_MESSAGE`** in `src/enforceCli.ts` (emitted via `cliErrorEnvelope`).
-- **Batch or `quick` with `--output-lock` or `--expect-lock`** is **not supported** on the OSS build: **exits 3** with **`ENFORCE_REQUIRES_COMMERCIAL_BUILD`** (see `src/cli.ts`).
-- **`ENFORCE_USAGE`** is **never** emitted on the OSS build for `enforce`; the commercial-build gate is the only non-help failure mode for bare `enforce` invocations.
+- **OSS batch / `quick` with `--output-lock`:** supported (writes a **`ci-lock-v1`** fixture after verification; no license reserve). **OSS with `--expect-lock`:** **exits 3** with **`ENFORCE_REQUIRES_COMMERCIAL_BUILD`** and message **`EXPECT_LOCK_REQUIRES_COMMERCIAL_BUILD_MESSAGE`** in [`src/cli/lockOrchestration.ts`](../src/cli/lockOrchestration.ts) (same code as enforce OSS gate; distinct user-facing copy).
+- **Commercial `enforce`:** compare-only — **`--output-lock` is rejected** (`ENFORCE_USAGE`); use batch or quick verify with **`--output-lock`** to generate locks, then `enforce` with **`--expect-lock`** (see `src/enforceCli.ts` + `src/cli/lockOrchestration.ts`).
+- **`ENFORCE_USAGE`** is **not** emitted on the OSS build for bare `enforce` (commercial gate only). **`ENFORCE_USAGE`** may appear on the **commercial** build for malformed `enforce` arguments (including **`--output-lock`** on enforce).
+
+**Funnel ordering for lock runs** (VS / VO / beacon / partial activation): [`funnel-observability-ssot.md#cli-lock-telemetry-sequencing`](funnel-observability-ssot.md#cli-lock-telemetry-sequencing).
 
 ## Help
 
@@ -18,12 +21,12 @@ After the OSS gate (skipped when `LICENSE_PREFLIGHT_ENABLED` is true), **`runEnf
 
 1. `mode = args[0]`.
 2. If `mode` is neither `batch` nor `quick` → **`ENFORCE_USAGE`**, exit 3 — **no** license preflight.
-3. If `mode === "batch"` → **`runEnforceBatch`**, which **first** calls **`runLicensePreflightIfNeeded("enforce")`**, then **`runBatchCiLockFromRestArgs`** in `src/ciLockWorkflow.ts` (shared with batch verify + lock flags).
-4. If `mode === "quick"` → **`runEnforceQuick`**, which **first** calls **`runLicensePreflightIfNeeded("enforce")`**, then **`runQuickCiLockFromRestArgs`** in `src/ciLockWorkflow.ts` (shared with `quick` + lock flags).
+3. If `mode === "batch"` → **`runEnforceBatch`**, which calls **`orchestrateEnforceBatchLockRun`** in [`src/cli/lockOrchestration.ts`](../src/cli/lockOrchestration.ts) (reserve **`intent=enforce`**, then **`executeBatchLockFromParsed`** in `src/ciLockWorkflow.ts`).
+4. If `mode === "quick"` → **`runEnforceQuick`**, which calls **`orchestrateEnforceQuickLockRun`** in [`src/cli/lockOrchestration.ts`](../src/cli/lockOrchestration.ts) (same pattern for quick).
 
 ## License reserve (production)
 
-- The commercial CLI contacts **`POST /api/v1/usage/reserve`** with `intent=enforce` before running enforcement work. A real deployment must implement the contract exercised by **`website/__tests__/reserve-route.entitlement.integration.test.ts`** and run under **`npm run validate-commercial`** (see validation index below).
+- The commercial CLI contacts **`POST /api/v1/usage/reserve`** before running lock-gated work: **`intent=verify`** for batch / quick verify with **`--output-lock`** (metered generation), and **`intent=enforce`** for **`agentskeptic enforce`** and for batch / quick verify with **`--expect-lock`**. A real deployment must implement the contract exercised by **`website/__tests__/reserve-route.entitlement.integration.test.ts`** and run under **`npm run validate-commercial`** (see validation index below). Machine-checked: **`test/commercial-license-reserve-intent.test.mjs`** (via **`scripts/commercial-enforce-test-harness.mjs`**).
 
 ## MIT / forks
 
@@ -39,6 +42,9 @@ Paths below are verified by **`test/docs-commercial-enforce-gate-normative.test.
 - `scripts/validate-commercial-funnel.mjs`
 - `scripts/commercial-enforce-test-harness.mjs`
 - `test/enforce-oss-forbidden.test.mjs`
+- `src/cli/lockOrchestration.ts`
+- `test/commercial-license-reserve-intent.test.mjs`
+- `src/cli/lockOrchestration.test.ts`
 - `test/assurance-cli.test.mjs`
 
 <!-- commercial-enforce-gate-validation-index:end -->
