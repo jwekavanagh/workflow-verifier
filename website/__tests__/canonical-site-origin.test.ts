@@ -34,4 +34,35 @@ describe("canonicalSiteOrigin", () => {
     delete process.env.NEXT_PUBLIC_APP_URL;
     expect(getCanonicalSiteOrigin()).toBe("http://127.0.0.1:3000");
   });
+
+  it("uses PORT for local loopback when URL unset in test", () => {
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("PORT", "4000");
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    expect(getCanonicalSiteOrigin()).toBe("http://127.0.0.1:4000");
+  });
+
+  it("uses local loopback for NODE_ENV production off Vercel when URL unset", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("VERCEL", "0");
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.PORT;
+    expect(getCanonicalSiteOrigin()).toBe("http://127.0.0.1:3000");
+  });
+
+  it("uses local loopback when NODE_ENV is unset and URL unset (not production-like)", () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("VERCEL", "0");
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.PORT;
+    const prev = process.env.NODE_ENV;
+    delete (process.env as { NODE_ENV?: string }).NODE_ENV;
+    try {
+      expect(getCanonicalSiteOrigin()).toBe("http://127.0.0.1:3000");
+    } finally {
+      if (prev !== undefined) process.env.NODE_ENV = prev;
+    }
+  });
 });

@@ -8,9 +8,16 @@ export function isProductionLike(): boolean {
 const MISSING_URL_IN_PROD =
   "NEXT_PUBLIC_APP_URL is required when VERCEL_ENV=production";
 
+/** Default loopback origin when `NEXT_PUBLIC_APP_URL` is unset (local `next dev` / `next start`). */
+function localListenLoopbackOrigin(): string {
+  const p = process.env.PORT?.trim();
+  const port = p && /^\d+$/.test(p) ? p : "3000";
+  return `http://127.0.0.1:${port}`;
+}
+
 /**
  * Canonical browser origin for server-built absolute URLs (no Request / forwarded headers).
- * Precedence: (1) NEXT_PUBLIC_APP_URL origin, (2) dev/test → http://127.0.0.1:3000, (3) anchor origin.
+ * Precedence: (1) NEXT_PUBLIC_APP_URL origin, (2) local loopback using PORT, (3) anchor origin.
  * @throws When `VERCEL_ENV=production` and NEXT_PUBLIC_APP_URL is empty.
  */
 export function getCanonicalSiteOrigin(): string {
@@ -28,8 +35,14 @@ export function getCanonicalSiteOrigin(): string {
   }
 
   const nodeEnv = process.env.NODE_ENV;
-  if (nodeEnv === "development" || nodeEnv === "test") {
-    return "http://127.0.0.1:3000";
+  // Next `next dev` sets `development`; some tooling leaves NODE_ENV unset — still treat as local.
+  if (!nodeEnv || nodeEnv === "development" || nodeEnv === "test") {
+    return localListenLoopbackOrigin();
+  }
+
+  // Local `next start` (production build) off Vercel without a public URL.
+  if (nodeEnv === "production" && process.env.VERCEL !== "1") {
+    return localListenLoopbackOrigin();
   }
 
   return publicProductAnchors.productionCanonicalOrigin.replace(/\/$/, "");
