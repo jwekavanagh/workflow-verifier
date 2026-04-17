@@ -1,3 +1,4 @@
+import { INTEGRATE_ACTIVATION_SHELL_BODY } from "@/generated/integrateActivationShellStatic";
 import { truncateCommercialFixtureDbs } from "./helpers/truncateCommercialFixture";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
@@ -23,7 +24,9 @@ describe.skipIf(!isValidator && !hasBothDbs)("integrate activation telemetry off
     vi.restoreAllMocks();
   });
 
-  it("postProductActivationEvent does not fetch when AGENTSKEPTIC_TELEMETRY=0; partner script exits 0", async () => {
+  it("postProductActivationEvent does not fetch when AGENTSKEPTIC_TELEMETRY=0; partner script exits 0; shell includes Step 3", async () => {
+    expect(INTEGRATE_ACTIVATION_SHELL_BODY).toContain("bootstrap");
+    expect(INTEGRATE_ACTIVATION_SHELL_BODY).toContain("wf_bootstrap_fixture");
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 

@@ -7,4 +7,8 @@ npm install
 npm run build
 npm start
 npm run first-run-verify
+OUT="$(mktemp -d)"
+trap 'rm -rf "$OUT"' EXIT
+node dist/cli.js bootstrap --input test/fixtures/bootstrap-pack/input.json --db examples/demo.db --out "$OUT"
+node dist/cli.js --workflow-id wf_bootstrap_fixture --events "$OUT/events.ndjson" --registry "$OUT/tools.json" --db examples/demo.db
 `;

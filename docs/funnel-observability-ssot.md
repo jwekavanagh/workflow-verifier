@@ -12,6 +12,18 @@ This document is the **SSOT** for **North Star funnel metrics**: measurable prog
 
 ---
 
+## Activation reachability (operator)
+
+These **minimum** outcomes for **`POST /api/funnel/product-activation`** are enforced in CI by [`website/__tests__/product-activation-reachability.integration.test.ts`](../website/__tests__/product-activation-reachability.integration.test.ts) (invoked from `npm run validate:activation-spine`). Full HTTP semantics remain in [the table below](#post-apifunnelproduct-activation-http-semantics).
+
+- Missing or invalid required CLI marker headers (`X-AgentSkeptic-Product`, `X-AgentSkeptic-Cli-Version` per contract) → **`403`** (no `funnel_event` insert from this handler).
+- Valid JSON body but **`issued_at`** outside the ±300s skew budget vs server time → **`400`** (no insert).
+- Minimal valid **`schema_version`: 2** `verify_started` body with valid headers and in-window **`issued_at`** → **`204`** and a persisted telemetry-tier `funnel_event` row for **`verify_started`**.
+
+**Split deployments:** If the deployment users hit for **`COMMERCIAL_LICENSE_API_BASE_URL`** does **not** serve **`POST /api/funnel/product-activation`**, activation rows will not land until **`AGENTSKEPTIC_TELEMETRY_ORIGIN`** targets an origin that does—see **CLI origin override** and **When to set `AGENTSKEPTIC_TELEMETRY_ORIGIN`** in this document.
+
+---
+
 ## Audiences
 
 ### Engineer

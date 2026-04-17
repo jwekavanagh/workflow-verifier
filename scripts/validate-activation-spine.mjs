@@ -70,3 +70,21 @@ run("npm", [
   "--",
   "__tests__/integrate-activation-telemetry-off.integration.test.ts",
 ]);
+run(process.execPath, ["--test", "test/integrate-spine-step3-chain.happy.test.mjs"]);
+run(process.execPath, ["--test", "test/integrate-spine-step3-chain.negative.test.mjs"]);
+run("npm", [
+  "run",
+  "test:vitest",
+  "-w",
+  "agentskeptic-web",
+  "--",
+  "__tests__/product-activation-reachability.integration.test.ts",
+]);
+run("npm", [
+  "run",
+  "test:vitest",
+  "-w",
+  "agentskeptic-web",
+  "--",
+  "__tests__/integrate-next-steps-surface.source.test.ts",
+]);

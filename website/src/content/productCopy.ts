@@ -247,7 +247,7 @@ export const integrateActivation = {
   copyActivationBlockLabel: "Copy activation commands",
   runHeading: "Run this",
   runCaption:
-    "Enter your hypothesis, then copy the block below into a terminal. Wait through install, build, the bundled demo, and first-run verify. A cold clone can take several minutes and may surface typical Node or network friction.",
+    "Enter your hypothesis, then copy the block below into a terminal. Wait through install, build, the bundled demo, first-run verify, and the bootstrap→verify gradient (Step 3). A cold clone can take several minutes and may surface typical Node or network friction.",
   successHeading: "What success looks like",
   successIntro:
     "When it works, you will see proof from both the human report and the machine-readable result.",
@@ -258,22 +258,16 @@ export const integrateActivation = {
   ],
   provedHeading: "What you just proved",
   proved:
-    "You ran the bundled demo (npm start), then first-run verify (npm run first-run-verify): read-only SQL against a temp database file, registry-backed expectations, terminal JSON on stdout, and the human report on stderr—not Quick Verify inference alone.",
+    "You ran the bundled demo (npm start), first-run verify (npm run first-run-verify), then the pinned bootstrap→contract verify block: read-only SQL, registry-backed expectations from generated artifacts, terminal JSON on stdout, and the human report on stderr—not Quick Verify inference alone for that final verify.",
   nextHeading: "Next: your system",
   nextLead:
-    "To repeat this on your data you need three concrete artifacts: a database connection (URL you trust for read-only checks), a structured events file (for example NDJSON of tool activity from your agents), and a registry file (for example tools.json) that maps each tool name to read-only SQL expectations. The first-run doc walks through wiring them into the same CLI.",
+    "Cross-surface funnel metrics (integrate → CLI outcomes): https://github.com/jwekavanagh/agentskeptic/blob/main/docs/growth-metrics-ssot.md — activation POST semantics: https://github.com/jwekavanagh/agentskeptic/blob/main/docs/funnel-observability-ssot.md#activation-reachability-operator — Quick vs contract trust boundaries: https://github.com/jwekavanagh/agentskeptic/blob/main/docs/verification-product-ssot.md — site copy does not restate those contracts. To repeat on your data you still need a DB you trust for read-only checks, NDJSON of tool activity, and a registry (or bootstrap from your tool_calls). The first-run doc walks through Step 4 and production wiring.",
   nextSteps: [
     {
       title: "Continue: first-run integration (SSOT)",
-      body: "Step 3: use agentskeptic bootstrap when you have OpenAI-style tool_calls JSON and a DB URL—see the linked doc.",
+      body: "Steps 3–4: bootstrap gradient on the pinned fixture, then bootstrap with your own tool_calls and DB—see the linked doc.",
       href: "https://github.com/jwekavanagh/agentskeptic/blob/main/docs/first-run-integration.md",
       linkLabel: "Open first-run-integration.md",
-    },
-    {
-      title: "Optional: registry draft (model-assisted)",
-      body: "Same-origin POST for a copy-only draft registry; not contract verification. Full contract in the linked SSOT.",
-      href: "https://github.com/jwekavanagh/agentskeptic/blob/main/docs/registry-draft-ssot.md",
-      linkLabel: "Open registry-draft-ssot.md",
     },
   ],
 } as const;
