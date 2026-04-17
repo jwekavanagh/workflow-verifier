@@ -46,7 +46,7 @@ describe("runLicensePreflightIfNeeded", () => {
   it("returns when server allows", async () => {
     process.env.AGENTSKEPTIC_API_KEY = "wf_sk_live_test";
     vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ allowed: true, plan: "starter", limit: 100, used: 1 }), {
+      new Response(JSON.stringify({ allowed: true, plan: "starter", limit: 0, used: 1 }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
@@ -179,7 +179,7 @@ describe("runLicensePreflightIfNeeded", () => {
     delete process.env.AGENTSKEPTIC_API_KEY;
     process.env.WORKFLOW_VERIFIER_API_KEY = "wf_sk_live_test";
     vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ allowed: true, plan: "starter", limit: 100, used: 1 }), {
+      new Response(JSON.stringify({ allowed: true, plan: "starter", limit: 0, used: 1 }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
@@ -196,7 +196,7 @@ describe("runLicensePreflightIfNeeded", () => {
     delete process.env.AGENTSKEPTIC_RUN_ID;
     delete process.env.WORKFLOW_VERIFIER_RUN_ID;
     vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ allowed: true, plan: "starter", limit: 100, used: 1 }), {
+      new Response(JSON.stringify({ allowed: true, plan: "starter", limit: 0, used: 1 }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),

@@ -8,6 +8,8 @@ This document is the **integrator SSOT** for pinning verification outcomes in CI
 
 On the **commercial** build, **licensed** contract **`verify`**, **`quick`**, **`--expect-lock`**, and **`enforce`** require an **Individual**, **Team**, **Business**, or **Enterprise** plan with an **active** subscription (Stripe **trialing** counts) and a valid API key on **`POST /api/v1/usage/reserve`**; **`--output-lock`** uses **`intent=verify`** (see [`commercial-entitlement-policy.md`](commercial-entitlement-policy.md)). The **OSS** build supports **`--output-lock`** on batch / quick **without** a key; it does **not** support **`--expect-lock`** or **`enforce`** — see [`commercial-enforce-gate-normative.md`](commercial-enforce-gate-normative.md).
 
+Full free-vs-paid matrix (same facts in one place): [`commercial-ssot.md`](commercial-ssot.md) — *Free vs paid boundary (normative v1)*.
+
 ## What the lock pins (semantics)
 
 The **`ci-lock-v1`** object is a deterministic projection of the verification result:

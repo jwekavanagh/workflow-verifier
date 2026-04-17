@@ -153,6 +153,10 @@ export const pricingHeroExample = {
 export const pricingRiskReassurance =
   "Cancel anytime. Local verification stays free.";
 
+/** `/pricing` Starter card: `includedMonthly` is 0 (evaluation; no paid CLI allowance). */
+export const pricingCardStarterPaidQuotaCaption =
+  "No paid CLI quota—subscribe on Individual, Team, or Business for included monthly verifications.";
+
 export const pricingFeatureComparison = {
   title: "Compare plans in detail",
   columnLabels: ["Capability", "Starter", "Individual", "Team", "Business", "Enterprise"] as const,
@@ -183,11 +187,20 @@ export const pricingFeatureComparison = {
     },
     {
       feature: "Included verifications per month (paid CLI)",
-      starter: "100",
+      starter: "None (subscribe for quota)",
       individual: "2,000",
       team: "10,000",
       business: "50,000",
       enterprise: "Custom",
+    },
+    {
+      feature:
+        "OSS CLI: generate `--output-lock` fixtures without a subscription (lock generation only; compare / enforce need commercial)",
+      starter: "Yes",
+      individual: "Yes",
+      team: "Yes",
+      business: "Yes",
+      enterprise: "Yes",
     },
   ],
 } as const;
@@ -544,6 +557,9 @@ export const productCopy = {
     monthlyQuotaYearMonth: (ym: string) => `Billing month: ${ym} (UTC).`,
     monthlyQuotaKeyLine: (used: number, limitLabel: string) =>
       `${used} used · limit: ${limitLabel}`,
+    /** Starter plan: `includedMonthly` is 0; show reserve count without implying a paid allowance. */
+    monthlyQuotaStarterKeyLine: (used: number) =>
+      `${used} reservation event(s) this UTC month on this key · Starter has no included paid verification quota—subscribe from Pricing for licensed npm and monthly allowance.`,
     monthlyQuotaUnlimited: "Unlimited",
     monthlyQuotaDistinctDays: (n: number) => `Verification days this month: ${n}.`,
     /** Shown as `title` on the verification-days line (UTC / quota nuance). */
@@ -555,6 +571,12 @@ export const productCopy = {
       warning: "You have used at least 90% of your included verifications for this month.",
       at_cap: "You have reached your included verifications for this month. Upgrade or wait for the next billing month.",
     } as const,
+    /** Starter: prior paid usage on key after downgrade—do not imply an active paid allowance. */
+    quotaUrgencyStarterPriorUsage:
+      "This key may show usage from a prior paid plan. Starter has no included paid verification quota—subscribe from Pricing to run licensed npm verification again.",
+    /** Starter: activity signal without prior key usage (edge); still no paid allowance. */
+    quotaUrgencyStarterNoIncludedQuota:
+      "Starter does not include paid licensed verification quota. Subscribe from Pricing when you need API-keyed runs and a monthly allowance.",
     /** Shown instead of `quotaUrgencyCopy.ok` when there is no usage yet this month. */
     quotaUrgencyZeroUsage: "No verification usage recorded for this billing month yet.",
     a11yApiKeyReady: "API key generated. Copy it from the page and store it safely.",
@@ -614,7 +636,7 @@ export const productCopy = {
   commercialSurface: {
     title: "What paid plans unlock",
     lead:
-      "Open-source covers local verification without a site API key. Paid plans add licensed npm, monthly quota, and API keys for CI and production—Stripe checkout on Pricing. Machine-readable contracts stay on this site.",
+      "Open-source includes local verify and `--output-lock` without a site key. Paid adds licensed npm, API keys, reserve, quota, and CI compare/enforce—Stripe on Pricing. See docs/commercial-ssot.md (free vs paid boundary).",
   },
 
   /** Homepage section CTAs that only scroll to `#try-it` (distinct from hero demo CTA). */
@@ -629,6 +651,7 @@ export const productCopy = {
   pricingHero,
   pricingHeroExample,
   pricingRiskReassurance,
+  pricingCardStarterPaidQuotaCaption,
   pricingFeatureComparison,
   pricingRecommendedPill,
   pricingTeamFootnote,

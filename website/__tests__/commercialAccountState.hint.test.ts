@@ -1,5 +1,6 @@
 import {
   buildCommercialAccountStatePayload,
+  computeWorstUrgency,
   emptyMonthlyQuotaForTests,
 } from "@/lib/commercialAccountState";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -63,5 +64,28 @@ describe("buildCommercialAccountStatePayload billingPriceSyncHint", () => {
     });
     expect(p.priceMapping).toBe("unmapped");
     expect(p.billingPriceSyncHint).toEqual({ supportEmail: "ops@example.com" });
+  });
+});
+
+describe("computeWorstUrgency", () => {
+  it("treats limit 0 as evaluation tier (no at_cap when used is 0)", () => {
+    expect(computeWorstUrgency([{ apiKeyId: "k1", label: "API key", used: 0, limit: 0 }])).toBe("ok");
+  });
+
+  it("treats limit 0 as evaluation tier when used is positive (e.g. after downgrade)", () => {
+    expect(computeWorstUrgency([{ apiKeyId: "k1", label: "API key", used: 5, limit: 0 }])).toBe("ok");
+  });
+
+  it("still applies at_cap for positive limits", () => {
+    expect(computeWorstUrgency([{ apiKeyId: "k1", label: "API key", used: 10, limit: 10 }])).toBe("at_cap");
+  });
+
+  it("skips null limits (enterprise) and uses positive key limits", () => {
+    expect(
+      computeWorstUrgency([
+        { apiKeyId: "k1", label: "API key", used: 0, limit: null },
+        { apiKeyId: "k2", label: "API key", used: 2000, limit: 2000 },
+      ]),
+    ).toBe("at_cap");
   });
 });

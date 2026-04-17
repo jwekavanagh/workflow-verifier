@@ -115,6 +115,10 @@ export function computeWorstUrgency(keys: MonthlyQuotaKeyRow[]): QuotaUrgency {
       continue;
     }
     const L = k.limit;
+    // Starter / evaluation: limit 0 means no paid CLI quota row to consume — not "at cap" for every used >= 0.
+    if (L === 0) {
+      continue;
+    }
     let s: QuotaUrgency = "ok";
     if (k.used >= L) {
       s = "at_cap";

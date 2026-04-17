@@ -8,11 +8,11 @@ This document is the **narrative SSOT** for the thin commercial layer (website, 
 
 ## Approved product scope (v1)
 
-**Original stakeholder narrative (reference):** Starter free (100/mo); Individual $25/mo (2k included); Team $100/mo (10k included, per-run overage); Business $300/mo (50k + volume); Enterprise custom.
+**Original stakeholder narrative (reference):** Starter free (evaluation tier; no paid CLI quota in v1 config); Individual $25/mo (2k included); Team $100/mo (10k included, per-run overage); Business $300/mo (50k + volume); Enterprise custom.
 
 **v1 implementation:**
 
-- **Hard monthly caps** per plan from [`config/commercial-plans.json`](../config/commercial-plans.json). **Licensed** npm **`verify`**, **`quick`**, **`enforce`**, and **CI lock flags** on batch/quick require an **active Stripe subscription** on Individual, Team, Business, or Enterprise (including **trialing**), enforced in `POST /api/v1/usage/reserve`. **Starter** cannot pass licensed preflight until the user subscribes.
+- **Hard monthly caps** per plan from [`config/commercial-plans.json`](../config/commercial-plans.json). **Licensed** npm **`verify`**, **`quick`**, **`enforce`**, and **CI lock flags** on batch/quick require an **active Stripe subscription** on Individual, Team, Business, or Enterprise (including **trialing**), enforced in `POST /api/v1/usage/reserve`. **Starter** cannot pass licensed preflight until the user subscribes. Starter’s numeric `includedMonthly` is **0**: it is **not** a usable licensed allowance (entitlement denies licensed `verify` / `enforce` before quota); paid tiers use positive caps.
 - **Per-run overage billing** ($0.01/run, volume discounts) is **deferred to v1.1+** (documented backlog; do not advertise on the live site until implemented).
 
 **Enterprise** is **sales-assisted only** (mailto + operator SQL). It is **outside** the self-serve non-negotiable outcome and **outside** the binary `solved` verdict for the commercial funnel.
@@ -23,11 +23,25 @@ This document is the **narrative SSOT** for the thin commercial layer (website, 
 
 | Plan       | Included verifications / month (v1 cap) | Monthly fee (v1) |
 |------------|----------------------------------------|------------------|
-| Starter    | 100                                    | Free             |
+| Starter    | 0                                      | Free             |
 | Individual | 2000                                   | $25/mo           |
 | Team       | 10000                                  | $100/mo          |
 | Business   | 50000                                  | $300/mo          |
 | Enterprise | Custom                                 | Custom           |
+
+### Free vs paid boundary (normative v1)
+
+Single matrix for what the **default OSS artifact** vs **published commercial npm** vs **website Starter account** allow. “Paid” here means an **active** self-serve subscription on Individual, Team, or Business (or operator-granted Enterprise) **and** a successful **`POST /api/v1/usage/reserve`** where applicable—not merely having an API key on Starter.
+
+| Capability | OSS build (`WF_BUILD_PROFILE=oss`) | Commercial npm + subscription + reserve | Starter account (no paid subscription) |
+|------------|--------------------------------------|------------------------------------------|----------------------------------------|
+| Contract **`verify`** / **`quick`** without API key | Yes | No (requires key + reserve + entitlement) | N/A (use OSS or subscribe) |
+| **`--output-lock`** on batch / quick | Yes (generates lock fixture; no reserve) | Yes (reserve `intent=verify`) | N/A |
+| **`--expect-lock`** on batch / quick | No (exit `ENFORCE_REQUIRES_COMMERCIAL_BUILD`) | Yes (reserve `intent=enforce` per lock orchestration) | N/A |
+| **`agentskeptic enforce`** | No | Yes (reserve `intent=enforce`) | N/A |
+| Licensed monthly quota consumption | No | Yes, per API key and plan cap | No (entitlement denies before quota; `includedMonthly` is 0) |
+
+**Why this shape:** OSS stays useful for adoption and local experimentation (including generating lock artifacts). **Subscription-backed reliance** for the published npm path—licensed verify, compare against an existing lock in CI, and **`enforce`**—is gated by the license server and Stripe-backed entitlement. Normative CLI split: **[`docs/commercial-enforce-gate-normative.md`](commercial-enforce-gate-normative.md)**; CI recipes: **[`docs/ci-enforcement.md`](ci-enforcement.md)**.
 
 ## Packaging and CLI build profiles
 

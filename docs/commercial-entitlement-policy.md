@@ -4,11 +4,13 @@ This document is the **hand-authored** source for **why** the product gates cert
 
 **Implementation SSOT (reserve bodies, codes, Stripe lifecycle, account `commercial-state`, deletion policy):** **[`docs/commercial-ssot.md`](commercial-ssot.md)** — section *Subscription state, Stripe webhooks, and account API*.
 
+**Free vs paid capability matrix (OSS, commercial npm, Starter account):** **[`docs/commercial-ssot.md`](commercial-ssot.md)** — subsection *Free vs paid boundary (normative v1)*. Do not duplicate that matrix here.
+
 The **OSS** default build does not expose **`enforce`** (exit **`ENFORCE_REQUIRES_COMMERCIAL_BUILD`**); entitlement rows below apply to **commercial** CLI builds. See **[`docs/commercial-enforce-gate-normative.md`](commercial-enforce-gate-normative.md)**.
 
 ## Why licensed `verify` requires an active subscription
 
-The **published npm** path is gated in **`POST /api/v1/usage/reserve`** so contract **`verify`** (and related licensed flows) require an **active** Stripe-backed subscription on a paid-capable plan (including **trialing**). **Starter** cannot pass **`verify`** until they subscribe (`VERIFICATION_REQUIRES_SUBSCRIPTION`). **Monthly quota** still applies once entitlement allows the run. See the SSOT section above for the exact HTTP contract and CLI preflight behavior (including **`SUBSCRIPTION_INACTIVE`** and **`upgrade_url`** on denials).
+The **published npm** path is gated in **`POST /api/v1/usage/reserve`** so contract **`verify`** (and related licensed flows) require an **active** Stripe-backed subscription on a paid-capable plan (including **trialing**). **Starter** cannot pass **`verify`** until they subscribe (`VERIFICATION_REQUIRES_SUBSCRIPTION`). **Monthly quota** applies only after entitlement allows the run (Starter has **`includedMonthly: 0`** in config and is denied at entitlement, so there is no usable paid allowance on Starter). See the SSOT section above for the exact HTTP contract and CLI preflight behavior (including **`SUBSCRIPTION_INACTIVE`** and **`upgrade_url`** on denials).
 
 **OSS builds** from source (`WF_BUILD_PROFILE=oss`) do not call the license server and are not subscription-gated—see README and [`commercial-enforce-gate-normative.md`](commercial-enforce-gate-normative.md).
 

@@ -3,12 +3,12 @@
   "recommendedPlanId": "team",
   "plans": {
     "starter": {
-      "includedMonthly": 100,
+      "includedMonthly": 0,
       "monthlyUsdCents": 0,
       "displayPrice": "Free",
       "marketingHeadline": "Starter",
-      "audience": "Trying verification locally",
-      "valueUnlock": "Verify locally for free; upgrade when CI should block bad deploys.",
+      "audience": "Evaluation and account setup before you subscribe",
+      "valueUnlock": "Open-source and local runs stay free; subscribe for licensed npm, API keys, and monthly paid verification quota.",
       "stripePriceEnvKey": null
     },
     "individual": {

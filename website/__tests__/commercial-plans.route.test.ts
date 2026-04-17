@@ -18,6 +18,7 @@ describe("GET /api/v1/commercial/plans", () => {
     };
     expect(j.schemaVersion).toBe(1);
     expect(j.plans.starter?.marketingHeadline).toBe("Starter");
+    expect(j.plans.starter?.includedMonthly).toBe(0);
     expect(j.plans.individual?.displayPrice).toBe("$25/mo");
     expect(j.plans.team?.displayPrice).toBe("$100/mo");
     const raw = JSON.stringify(j);
