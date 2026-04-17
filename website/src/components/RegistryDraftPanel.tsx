@@ -45,6 +45,12 @@ export function RegistryDraftPanel() {
       <details className="registry-draft-technical">
         <summary>{d.technicalSummary}</summary>
         <ul>
+          {d.technicalFlowBullets.map((b) => (
+            <li key={b}>{b}</li>
+          ))}
+        </ul>
+        <p className="registry-draft-constraints-cap">{d.technicalConstraintsHeading}</p>
+        <ul>
           {d.technicalBullets.map((b) => (
             <li key={b}>{b}</li>
           ))}

@@ -633,8 +633,46 @@ main {
   cursor: pointer;
   font-weight: 600;
 }
-.integrate-inline-next-link {
-  white-space: nowrap;
+.integrate-next-steps {
+  list-style: none;
+  padding-left: 0;
+  margin: 1rem 0 0;
+}
+.integrate-next-step {
+  margin: 0 0 1.25rem;
+  padding-left: 1rem;
+  border-left: 3px solid var(--border);
+}
+.integrate-next-destination {
+  display: inline-block;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+.integrate-next-step-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.integrate-next-step-body {
+  margin: 0.25rem 0 0;
+  font-size: 0.95rem;
+}
+.integrate-funnel-anon-hint {
+  margin: 0.5rem 0 0.75rem;
+  font-size: 0.95rem;
+}
+.integrate-funnel-anon-hint summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.integrate-funnel-anon-hint p {
+  margin: 0.5rem 0 0;
+}
+.registry-draft-constraints-cap {
+  font-weight: 600;
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.95rem;
 }
 .registry-draft-technical {
   margin: 0.75rem 0 1rem;

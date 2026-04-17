@@ -23,7 +23,15 @@ export function FunnelAnonIdExport() {
   }, []);
 
   if (!line) {
-    return <p className="muted">Optional analytics: after this page loads, your correlation id appears here for shell export.</p>;
+    return (
+      <details className="muted integrate-funnel-anon-hint">
+        <summary>Optional: correlate CLI telemetry with this browser</summary>
+        <p>
+          After this page finishes loading, a correlation id may appear below for you to export into your shell. This is
+          only for optional funnel analytics—not required to run verification.
+        </p>
+      </details>
+    );
   }
 
   return (
