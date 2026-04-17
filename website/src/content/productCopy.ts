@@ -56,7 +56,7 @@ export type ExamplesHubLedes = { primary: string; secondaryMuted: string };
 export type HomeHeroCtaLabels = { demo: string };
 
 /** Single label for every primary homepage demo CTA (hero, repeats, Try it button). */
-export const HOME_DEMO_PRIMARY_CTA_LABEL = "Run a real verification (~30s)" as const;
+export const HOME_DEMO_PRIMARY_CTA_LABEL = "Run demo then contract verify" as const;
 
 export const companyPageMetadata = {
   title: "Company and support — AgentSkeptic",
@@ -222,9 +222,8 @@ export const integrateActivation = {
   requirementsHeading: "You need",
   requirements: ["Node.js 22.13 or newer", "Git", "npm"],
   runHeading: "Run this",
-  runCaption: "Copy the whole block, paste it in a terminal, and wait until it finishes.",
-  command:
-    "git clone --depth 1 https://github.com/jwekavanagh/agentskeptic.git && cd agentskeptic && npm install && npm run build && npm run first-run-verify",
+  runCaption:
+    "Copy the block below, paste into a terminal, then wait for the demo and first-run verify (several minutes on a cold clone).",
   successHeading: "What success looks like",
   successIntro:
     "When it works, you will see proof from both the human report and the machine-readable result.",
@@ -232,35 +231,23 @@ export const integrateActivation = {
     "Stderr includes the human verification report, with wording that the run matched the database.",
     'Stdout is one JSON object with "status":"complete" and at least one step marked verified.',
   ],
-  successDetailsHeading: "Exact output checks (optional)",
+  successDetailsHeading: "Exact output checks",
   successDetailsBullets: [
     "The last line on stdout should read: first-run-verify: ok (sqlite)",
     "If stderr mentions an experimental SQLite feature in Node, you can ignore that line for pass/fail.",
   ],
   provedHeading: "What you just proved",
   proved:
-    "You finished the built-in demo run: the verifier inferred expectations from the demo's recorded tool calls, then checked them with read-only SQL on a fresh local SQLite file. The same path works with your own structured events and Postgres or SQLite.",
+    "You ran the bundled demo (npm start) then contract verification (npm run first-run-verify): read-only SQL against a temp database file, registry-backed expectations, terminal JSON on stdout, and the human report on stderr—not Quick Verify inference alone.",
   nextHeading: "Next: your system",
   nextLead:
     "After the demo, point the same CLI at your own database and the same kind of structured events (for example NDJSON your agents emit). The path you used here is the one you will repeat locally: structured events plus a registry file that maps each tool to read-only checks.",
   nextSteps: [
     {
-      title: "Capture structured tool events",
-      body: "Start from NDJSON or an exporter that produces the same fields the CLI expects—not raw trace narration alone.",
-      href: "/guides",
-      linkLabel: "Open guides",
-    },
-    {
-      title: "Define a registry file",
-      body: "Each tool id maps to row checks or related patterns; public examples show complete versus missing-row outcomes.",
-      href: "/examples",
-      linkLabel: "Open examples",
-    },
-    {
-      title: "Generate a draft registry from OpenAI-style calls",
-      body: "Optional helper on this page: if you already have JSON shaped like Chat Completions tool_calls, request a starting registry file—still yours to review before any verify run.",
-      href: "#registry-draft-helper",
-      linkLabel: "Open registry draft helper",
+      title: "Continue: first-run integration (SSOT)",
+      body: "Step 3: use agentskeptic bootstrap when you have OpenAI-style tool_calls JSON and a DB URL—see the linked doc.",
+      href: "https://github.com/jwekavanagh/agentskeptic/blob/main/docs/first-run-integration.md",
+      linkLabel: "Open first-run-integration.md",
     },
   ],
 } as const;

@@ -1,5 +1,5 @@
-import { FunnelAnonIdExport } from "@/components/FunnelAnonIdExport";
 import { FunnelSurfaceBeacon } from "@/components/FunnelSurfaceBeacon";
+import { IntegrateActivationBlock } from "@/components/IntegrateActivationBlock";
 import { RegistryDraftPanel } from "@/components/RegistryDraftPanel";
 import { integrateActivation } from "@/content/productCopy";
 import { siteMetadata } from "@/content/siteMetadata";
@@ -37,11 +37,8 @@ export default function IntegratePage() {
 
       <h2>{a.runHeading}</h2>
       <p className="muted">{a.runCaption}</p>
-      <FunnelAnonIdExport />
       <div data-testid="integrator-activation-commands">
-        <pre>
-          <code>{a.command}</code>
-        </pre>
+        <IntegrateActivationBlock />
       </div>
 
       <h2>{a.successHeading}</h2>
@@ -69,9 +66,20 @@ export default function IntegratePage() {
         {a.nextSteps.map((step) => (
           <li key={step.title} className="integrate-next-step">
             <div className="integrate-next-step-title">{step.title}</div>
-            <Link className="integrate-next-destination" href={step.href}>
-              {step.linkLabel}
-            </Link>
+            {step.href.startsWith("http") ? (
+              <a
+                className="integrate-next-destination"
+                href={step.href}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {step.linkLabel}
+              </a>
+            ) : (
+              <Link className="integrate-next-destination" href={step.href}>
+                {step.linkLabel}
+              </Link>
+            )}
             <p className="muted integrate-next-step-body">{step.body}</p>
           </li>
         ))}

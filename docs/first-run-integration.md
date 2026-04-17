@@ -2,13 +2,13 @@
 
 **Prerequisite:** Read [**Buy vs build: why not only SQL checks**](../README.md#buy-vs-build-why-not-only-sql-checks) in the root [**README.md**](../README.md) so the recurring failure mode, why ad-hoc SQL checks fail as a long-term substitute, and the **Quick → Contract** path are clear before you integrate.
 
-This is the **authoritative first-run path** for running AgentSkeptic against **your own** database and workflow shape: demo → partner quickstart → success criteria → pitfalls. Anything outside that sequence (bootstrap, LangGraph sample, production billing) is grouped **after** the spine—this file stays integrator prose, not an index of every entrypoint.
+This is the **authoritative first-run path** for running AgentSkeptic against **your own** database and workflow shape: **demo → `npm run first-run-verify` → bootstrap (when applicable)** → success criteria → pitfalls. Anything outside that sequence (LangGraph sample, production billing) is grouped **after** the spine—this file stays integrator prose, not an index of every entrypoint.
 
 **Optional (not part of the spine):** the website may expose a same-origin **registry draft** helper on `/integrate` when the operator enables it—semantics, schema pins, and harness proof live in [registry-draft-ssot.md](registry-draft-ssot.md); it is **not** contract verification.
 
 **Why one doc:** One narrative reduces drift between the website, README, and ad-hoc integrator notes.
 
-Send this to someone who should **try it in one sitting**. **All shell commands** for the bundled integration quickstart live in **[partner-quickstart-commands.md](partner-quickstart-commands.md)** (generated; do not duplicate here). This file is **prose, semantics, and guarantees** only.
+Send this to someone who should **try it in one sitting**. The **same** ordered shell commands as **`https://agentskeptic.com/integrate`** (clone, install, build, demo, contract verify) live in the repo template consumed by that page. **All** extended shell commands (Postgres env var, manual `node dist/cli.js …`, LangGraph) live in **[partner-quickstart-commands.md](partner-quickstart-commands.md)** (generated; do not duplicate those blocks here). This file is **prose, semantics, and guarantees** for the spine.
 
 ## What this does
 
@@ -33,20 +33,36 @@ npm start
 
 This builds, seeds **`examples/demo.db`**, runs two workflows from the bundled files, and prints reports plus JSON. You should see **`wf_complete`** end **`complete` / `verified`** and **`wf_missing`** end **`inconsistent` / `missing`** with **`ROW_ABSENT`**.
 
-## Step 2: Try on your system (minimal)
+## Step 2: Run npm run first-run-verify (contract verify; same as /integrate)
 
-Canonical example files (do not duplicate their contents in this doc):
+From the **repository root**, run contract verification on the bundled quickstart workflow (read-only SQL, golden lock check):
+
+```bash
+npm run first-run-verify
+```
+
+*(For convenience: `npm run partner-quickstart` is the **same** npm script in this repository’s root `package.json`.)*
+
+Canonical example files the script uses (do not duplicate their contents in this doc):
 
 | File | Role |
 |------|------|
 | **`examples/partner-quickstart/partner.events.ndjson`** | One NDJSON line per observed tool call; **`workflowId`** is **`wf_partner`**. |
 | **`examples/partner-quickstart/partner.tools.json`** | Registry for **`crm.upsert_contact`**. |
 | **`examples/partner-quickstart/partner.seed.sql`** | `CREATE TABLE contacts` + row for **`partner_1`**. |
-| **`examples/partner-quickstart/partner.ci-lock-v1.json`** | Golden **`ci-lock-v1`** for **`wf_partner`**; `npm run partner-quickstart` writes a temp **`--output-lock`** file and **byte-compares** to this read-only fixture (see `scripts/partner-quickstart-verify.mjs`). |
-
-**Fast path:** from the repository root, use the linked commands document above — start with **`npm run partner-quickstart`** (SQLite) or set **`PARTNER_POSTGRES_URL`** for Postgres.
+| **`examples/partner-quickstart/partner.ci-lock-v1.json`** | Golden **`ci-lock-v1`** for **`wf_partner`**; `npm run first-run-verify` writes a temp **`--output-lock`** file and **byte-compares** to this read-only fixture (see `scripts/partner-quickstart-verify.mjs`). |
 
 To force a mismatch after a successful run, delete that row or change `name`/`status` in the DB and run verification again—you should get **`inconsistent`** with **`ROW_ABSENT`** or a field mismatch in the report.
+
+## Step 3: Bootstrap when you have tool_calls and a DB URL
+
+If you already have **OpenAI-style `tool_calls`** JSON and a read-only **SQLite** or **Postgres** URL, you can generate **`events.ndjson`**, **`tools.json`**, **`quick-report.json`**, and **`README.bootstrap.md`** in one step—normative contract, flags, and trust rules are only in [`bootstrap-pack-normative.md`](bootstrap-pack-normative.md). Example:
+
+```bash
+agentskeptic bootstrap --input path/to/bootstrap-input.json --db path/to/your.db --out path/to/new-pack-dir
+```
+
+Use the generated artifacts as your starting contract for production NDJSON emission, or skip this entirely if you already emit NDJSON another way.
 
 ## What success looks like
 
@@ -85,15 +101,7 @@ The human report on stderr will state that the workflow **matched the database**
 
 ## Optional (after the main path)
 
-These are **not** steps 3–4 of the integrator walkthrough—only reach for them after the demo and partner flow above.
-
-**Bootstrap pack** — If you already have **OpenAI-style `tool_calls`** JSON and a read-only **SQLite** or **Postgres** URL, you can generate **`events.ndjson`**, **`tools.json`**, **`quick-report.json`**, and **`README.bootstrap.md`** in one step—normative contract, flags, and trust rules are only in [`bootstrap-pack-normative.md`](bootstrap-pack-normative.md). Example:
-
-```bash
-agentskeptic bootstrap --input path/to/bootstrap-input.json --db path/to/your.db --out path/to/new-pack-dir
-```
-
-Use the generated artifacts as your starting contract for production NDJSON emission, or skip this entirely.
+These are **not** part of the numbered spine above—only reach for them after **Step 2**.
 
 **LangGraph-shaped sample** — Minimal graph run + verify: [`examples/langgraph-reference/README.md`](../examples/langgraph-reference/README.md). What that README may claim vs SSOT is fixed in [`langgraph-reference-boundaries-ssot.md`](langgraph-reference-boundaries-ssot.md#langgraph-reference-documentation-boundaries).
 

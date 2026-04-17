@@ -4,27 +4,25 @@ import { describe, expect, it } from "vitest";
 import { integrateActivation, integrateRegistryDraft } from "@/content/productCopy";
 
 describe("/integrate activation wiring", () => {
-  it("page wires integrateActivation plus metadata and exposes a single command block", () => {
+  it("page wires integrateActivation plus IntegrateActivationBlock (no inline command key)", () => {
     const pageSrc = readFileSync(
       path.join(__dirname, "..", "src", "app", "integrate", "page.tsx"),
       "utf8",
     );
     expect(pageSrc).toContain("integrateActivation");
+    expect(pageSrc).toContain("IntegrateActivationBlock");
     expect(pageSrc).not.toContain("FirstRunActivationGuide");
     expect(pageSrc).not.toContain("embeddedFirstRunIntegrationMd");
     expect(pageSrc).not.toContain("langgraphReferenceReadmeUrl");
     expect(pageSrc).not.toContain("integratorDocsEmbedded");
-    const preOpens = pageSrc.match(/<pre/g);
-    expect(preOpens?.length).toBe(1);
-    expect(integrateActivation.command).toContain("npm run first-run-verify");
-    expect(pageSrc.toLowerCase()).not.toContain("partner");
+    expect(pageSrc).not.toContain("a.command");
+    expect(pageSrc.match(/<pre/g)?.length ?? 0).toBe(0);
     expect(pageSrc.toLowerCase()).not.toContain("repository root");
     expect(pageSrc).not.toContain("PARTNER_");
   });
 
-  it("integrateActivation copy has no banned integrator terms", () => {
+  it("integrateActivation copy has no banned integrator tokens (partner_ / repository root)", () => {
     const blob = JSON.stringify(integrateActivation).toLowerCase();
-    expect(blob).not.toContain("partner");
     expect(blob).not.toContain("repository root");
     expect(blob).not.toContain("partner_");
   });

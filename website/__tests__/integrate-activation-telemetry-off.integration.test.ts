@@ -1,0 +1,56 @@
+import { truncateCommercialFixtureDbs } from "./helpers/truncateCommercialFixture";
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const isValidator = process.env.ACTIVATION_SPINE_VALIDATOR === "1";
+const hasCoreDb = Boolean(process.env.DATABASE_URL?.trim());
+const hasTelemetryDb = Boolean(process.env.TELEMETRY_DATABASE_URL?.trim());
+const hasBothDbs = hasCoreDb && hasTelemetryDb;
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const repoRoot = path.resolve(__dirname, "..", "..");
+
+describe.skipIf(!isValidator && !hasBothDbs)("integrate activation telemetry off", () => {
+  beforeEach(async () => {
+    vi.stubEnv("AGENTSKEPTIC_TELEMETRY_WRITES_TELEMETRY_DB", "1");
+    await truncateCommercialFixtureDbs();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("postProductActivationEvent does not fetch when AGENTSKEPTIC_TELEMETRY=0; partner script exits 0", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.stubEnv("AGENTSKEPTIC_TELEMETRY", "0");
+    const modUrl = pathToFileURL(
+      path.join(repoRoot, "dist", "telemetry", "postProductActivationEvent.js"),
+    ).href;
+    const { postProductActivationEvent } = await import(modUrl);
+    await postProductActivationEvent({
+      phase: "verify_started",
+      run_id: "run-telemetry-off-spy-1",
+      issued_at: new Date().toISOString(),
+      workload_class: "non_bundled",
+      subcommand: "batch_verify",
+      build_profile: "oss",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const r = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "partner-quickstart-verify.mjs")], {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        AGENTSKEPTIC_TELEMETRY: "0",
+        ACTIVATION_SPINE_VALIDATOR: process.env.ACTIVATION_SPINE_VALIDATOR ?? "",
+      },
+      encoding: "utf8",
+    });
+    expect(r.status).toBe(0);
+  });
+});

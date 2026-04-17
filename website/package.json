@@ -6,7 +6,7 @@
     "node": "22.x"
   },
   "scripts": {
-    "prebuild": "npm --prefix .. run sync:public-product-anchors && node ../scripts/sync-integrator-docs-embedded.mjs",
+    "prebuild": "node ../scripts/generate-integrate-activation-shell.mjs && npm --prefix .. run sync:public-product-anchors && node ../scripts/sync-integrator-docs-embedded.mjs",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
