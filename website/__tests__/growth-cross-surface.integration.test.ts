@@ -8,16 +8,12 @@ import { getAcquisitionToIntegrateRolling7d } from "@/lib/growthMetricsAcquisiti
 import { getCrossSurfaceConversionRolling7d } from "@/lib/growthMetricsCrossSurfaceConversionRolling7d";
 import { getIntegrateToVerifyOutcomeRolling7d } from "@/lib/growthMetricsIntegrateToVerifyOutcomeRolling7d";
 import { getTimeToFirstVerifyOutcomeSeconds } from "@/lib/growthMetricsTimeToFirstVerifyOutcome";
-import {
-  PRODUCT_ACTIVATION_CLI_PRODUCT_HEADER,
-  PRODUCT_ACTIVATION_CLI_VERSION_HEADER,
-} from "@/lib/funnelProductActivationConstants";
 import { eq } from "drizzle-orm";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { productActivationPostRequest, surfaceImpressionPostRequest } from "./helpers/funnelApiRequests";
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL?.trim());
 const hasTelemetryUrl = Boolean(process.env.TELEMETRY_DATABASE_URL?.trim());
@@ -25,27 +21,6 @@ const hasTelemetryUrl = Boolean(process.env.TELEMETRY_DATABASE_URL?.trim());
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const rootPkgPath = join(__dirname, "..", "..", "package.json");
 const cliSemver = JSON.parse(readFileSync(rootPkgPath, "utf8")).version as string;
-
-function surfaceReq(body: object, origin: string | null): NextRequest {
-  const headers = new Headers({ "content-type": "application/json" });
-  if (origin) headers.set("origin", origin);
-  return new NextRequest("http://127.0.0.1:3000/api/funnel/surface-impression", {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-}
-
-function activationReq(body: object): NextRequest {
-  const h = new Headers({ "content-type": "application/json" });
-  h.set(PRODUCT_ACTIVATION_CLI_PRODUCT_HEADER, "cli");
-  h.set(PRODUCT_ACTIVATION_CLI_VERSION_HEADER, cliSemver);
-  return new NextRequest("http://127.0.0.1:3000/api/funnel/product-activation", {
-    method: "POST",
-    headers: h,
-    body: JSON.stringify(body),
-  });
-}
 
 describe.skipIf(!hasDatabaseUrl || !hasTelemetryUrl)("growth cross-surface metrics", () => {
   beforeEach(async () => {
@@ -61,7 +36,7 @@ describe.skipIf(!hasDatabaseUrl || !hasTelemetryUrl)("growth cross-surface metri
     const canonical = getCanonicalSiteOrigin();
     const fid = "b5c0ee2f-4f1a-4c1a-8a1a-111111111111";
     const sRes = await postSurface(
-      surfaceReq(
+      surfaceImpressionPostRequest(
         {
           surface: "acquisition",
           funnel_anon_id: fid,
@@ -83,7 +58,9 @@ describe.skipIf(!hasDatabaseUrl || !hasTelemetryUrl)("growth cross-surface metri
       terminal_status: "complete" as const,
       funnel_anon_id: fid,
     };
-    const pRes = await postProductActivation(activationReq(outBody));
+    const pRes = await postProductActivation(
+      productActivationPostRequest(outBody, { cliVersionSemver: cliSemver }),
+    );
     expect(pRes.status).toBe(204);
 
     const acq = await dbTelemetry

@@ -11,6 +11,7 @@ import { VERIFY_OUTCOME_BEACON_MAX_RESERVATION_AGE_MS } from "@/lib/funnelVerify
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { surfaceImpressionPostRequest } from "./helpers/funnelApiRequests";
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(),
@@ -37,16 +38,6 @@ const authMock = auth as unknown as AuthMock;
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL?.trim());
 const hasTelemetryDb = Boolean(process.env.TELEMETRY_DATABASE_URL?.trim());
 
-function surfaceReq(body: object, origin: string | null): NextRequest {
-  const headers = new Headers({ "content-type": "application/json" });
-  if (origin) headers.set("origin", origin);
-  return new NextRequest("http://127.0.0.1:3000/api/funnel/surface-impression", {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-}
-
 describe.skipIf(!hasDatabaseUrl || !hasTelemetryDb)("funnel north star — surface impression", () => {
   beforeEach(async () => {
     vi.stubEnv("AGENTSKEPTIC_TELEMETRY_WRITES_TELEMETRY_DB", "1");
@@ -61,7 +52,7 @@ describe.skipIf(!hasDatabaseUrl || !hasTelemetryDb)("funnel north star — surfa
 
   it("returns 200 JSON and inserts acquisition_landed when Origin matches canonical", async () => {
     const canonical = getCanonicalSiteOrigin();
-    const req = surfaceReq({ surface: "acquisition" }, canonical);
+    const req = surfaceImpressionPostRequest({ surface: "acquisition" }, canonical);
     const res = await postSurface(req);
     expect(res.status).toBe(200);
     const j = (await res.json()) as { schema_version: number; funnel_anon_id: string };
@@ -76,7 +67,7 @@ describe.skipIf(!hasDatabaseUrl || !hasTelemetryDb)("funnel north star — surfa
     vi.stubEnv("VERCEL_ENV", "preview");
     vi.stubEnv("NODE_ENV", "test");
     delete process.env.NEXT_PUBLIC_APP_URL;
-    const req = surfaceReq({ surface: "integrate" }, "https://evil.example");
+    const req = surfaceImpressionPostRequest({ surface: "integrate" }, "https://evil.example");
     const res = await postSurface(req);
     expect(res.status).toBe(403);
     const rows = await db.select().from(funnelEvents).where(eq(funnelEvents.event, "integrate_landed"));

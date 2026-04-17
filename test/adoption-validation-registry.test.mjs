@@ -23,15 +23,14 @@ scripts/first-run.mjs	delete
 scripts/record-adoption-verdict.mjs	add
 scripts/regen-truth-goldens.mjs	modify
 scripts/verify-adoption-verdict.mjs	add
-src/loadEvents.eventFileAggregateCounts.test.ts	add
 src/loadEvents.ts	modify
-src/noStepsMessage.test.ts	add
 src/noStepsMessage.ts	add
 src/pipeline.ts	modify
 src/registryValidation.test.ts	modify
 src/registryValidation.ts	modify
 src/types.ts	modify
 src/workflowTruthReport.semantics.test.ts	modify
+src/wrongWorkflowIdAdoptionFixture.test.ts	add
 test/adoption-docs-boundary.test.mjs	add
 test/adoption-validation-registry.test.mjs	add
 test/adoption-validation.test.mjs	add

@@ -8,18 +8,14 @@ import { telemetryFunnelEvents } from "@/db/telemetrySchema";
 import { truncateCommercialFixtureDbs } from "./helpers/truncateCommercialFixture";
 import { INTEGRATE_ACTIVATION_SHELL_BODY } from "@/generated/integrateActivationShellStatic";
 import { getCanonicalSiteOrigin } from "@/lib/canonicalSiteOrigin";
-import {
-  PRODUCT_ACTIVATION_CLI_PRODUCT_HEADER,
-  PRODUCT_ACTIVATION_CLI_VERSION_HEADER,
-} from "@/lib/funnelProductActivationConstants";
 import { getIntegrateToVerifyOutcomeRolling7d } from "@/lib/growthMetricsIntegrateToVerifyOutcomeRolling7d";
 import { eq } from "drizzle-orm";
 import { readFileSync } from "node:fs";
 import path, { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { productActivationPostRequest, surfaceImpressionPostRequest } from "./helpers/funnelApiRequests";
 
 const isValidator = process.env.ACTIVATION_SPINE_VALIDATOR === "1";
 const hasCoreDb = Boolean(process.env.DATABASE_URL?.trim());
@@ -29,27 +25,6 @@ const hasBothDbs = hasCoreDb && hasTelemetryDb;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootPkgPath = join(__dirname, "..", "..", "package.json");
 const cliSemver = JSON.parse(readFileSync(rootPkgPath, "utf8")).version as string;
-
-function surfaceReq(body: object, origin: string | null): NextRequest {
-  const headers = new Headers({ "content-type": "application/json" });
-  if (origin) headers.set("origin", origin);
-  return new NextRequest("http://127.0.0.1:3000/api/funnel/surface-impression", {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-}
-
-function activationReq(body: object): NextRequest {
-  const h = new Headers({ "content-type": "application/json" });
-  h.set(PRODUCT_ACTIVATION_CLI_PRODUCT_HEADER, "cli");
-  h.set(PRODUCT_ACTIVATION_CLI_VERSION_HEADER, cliSemver);
-  return new NextRequest("http://127.0.0.1:3000/api/funnel/product-activation", {
-    method: "POST",
-    headers: h,
-    body: JSON.stringify(body),
-  });
-}
 
 describe.skipIf(!isValidator && !hasBothDbs)("integrate activation guided spine", () => {
   beforeEach(async () => {
@@ -80,7 +55,7 @@ describe.skipIf(!isValidator && !hasBothDbs)("integrate activation guided spine"
 
       const canonical = getCanonicalSiteOrigin();
       const sRes = await postSurface(
-        surfaceReq(
+        surfaceImpressionPostRequest(
           {
             surface: "integrate",
             funnel_anon_id: F,
@@ -117,8 +92,14 @@ describe.skipIf(!isValidator && !hasBothDbs)("integrate activation guided spine"
         install_id: installId,
       };
 
-      expect((await postProductActivation(activationReq(startedBody))).status).toBe(204);
-      expect((await postProductActivation(activationReq(outcomeBody))).status).toBe(204);
+      expect(
+        (await postProductActivation(productActivationPostRequest(startedBody, { cliVersionSemver: cliSemver })))
+          .status,
+      ).toBe(204);
+      expect(
+        (await postProductActivation(productActivationPostRequest(outcomeBody, { cliVersionSemver: cliSemver })))
+          .status,
+      ).toBe(204);
 
       const landed = await dbTelemetry
         .select()

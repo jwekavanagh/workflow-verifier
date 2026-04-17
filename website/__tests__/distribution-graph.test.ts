@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, mkdtempSync, rmSync, existsSync } from "node
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
-import { describe, expect, beforeAll, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { JSDOM } from "jsdom";
 import { extract as extractTar } from "tar";
 import { parse } from "yaml";
@@ -18,6 +18,7 @@ import {
   getSiteHtml,
   registerMarketingSiteTeardown,
 } from "./helpers/siteTestServer";
+import { assertServedOpenApiCommercialDistribution } from "./helpers/openApiCommercialDistribution";
 
 const require = createRequire(import.meta.url);
 const { normalize } = require("../../scripts/public-product-anchors.cjs") as {
@@ -109,7 +110,10 @@ describe(
       rmSync(extractDir, { recursive: true, force: true });
 
       await ensureMarketingSiteRunning();
+    });
 
+    it("pack matches discovery; served pages match anchors", async () => {
+      const a = loadAnchors();
       const discoveryPath = join(repoRoot, "config", "discovery-acquisition.json");
       const disc = JSON.parse(readFileSync(discoveryPath, "utf8")) as {
         slug: string;
@@ -274,32 +278,19 @@ describe(
       expect(robotsTxt).toMatch(/Allow:\s*\//);
 
       const yamlText = await getSiteHtml("/openapi-commercial-v1.yaml");
-      const integrateUrl = `${canonicalOrigin}/integrate`;
-      const selfServed = `${o}/openapi-commercial-v1.yaml`;
       const doc = parse(yamlText) as Record<string, unknown>;
-
-      expect(doc.openapi).toBe("3.0.3");
-      expect("externalDocs" in doc).toBe(true);
-      const ext = doc.externalDocs as { description?: string; url?: string };
-      expect(ext.description).toBe("First-run integration guide");
-      const info = doc.info as Record<string, unknown>;
-      expect("externalDocs" in info).toBe(false);
-      expect(normalize(String(ext.url))).toBe(normalize(integrateUrl));
-      expect(normalize(String((info.contact as { url: string }).url))).toBe(canonicalOrigin);
-      expect(new RegExp("^\\s*url:\\s*" + escapeRegExp(o) + "\\s*$", "m").test(yamlText)).toBe(
-        true,
-      );
-      expect(yamlText.includes("example.invalid")).toBe(false);
-
-      const dist = info["x-agentskeptic-distribution"] as Record<string, string>;
-      expect(Object.keys(dist).sort()).toEqual(["npmPackage", "openApi", "repository"]);
-      expect(String(dist.repository)).toBe(a.gitRepositoryUrl);
-      expect(String(dist.npmPackage)).toBe(a.npmPackageUrl);
-      expect(normalize(String(dist.openApi))).toBe(normalize(selfServed));
+      assertServedOpenApiCommercialDistribution(doc, yamlText, {
+        anchors: a,
+        normalize,
+        canonicalOrigin,
+        serversOriginForUrlLine: o,
+        escapeRegExp,
+      });
     }, 180_000);
 
-    it("suite setup completed in beforeAll", () => {
-      expect(true).toBe(true);
+    afterAll(() => {
+      delete process.env.VERCEL_ENV;
+      delete process.env.NEXT_PUBLIC_APP_URL;
     });
   },
 );

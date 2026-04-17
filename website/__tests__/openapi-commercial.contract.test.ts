@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { getRepoRoot, loadAnchors } from "./helpers/distributionGraphHelpers";
+import { assertDerivedOpenApiCommercialDistribution } from "./helpers/openApiCommercialDistribution";
 
 const require = createRequire(import.meta.url);
 const { normalize } = require("../../scripts/public-product-anchors.cjs") as {
@@ -57,21 +58,7 @@ describe("openapi-commercial contract", () => {
     }
     const anchors = loadAnchors();
     const docDerived = parse(derived) as Record<string, unknown>;
-    expect(docDerived.openapi).toBe("3.0.3");
-    const ext = docDerived.externalDocs as { description?: string; url?: string };
-    expect(ext.description).toBe("First-run integration guide");
-    const info = docDerived.info as Record<string, unknown>;
-    expect("externalDocs" in info).toBe(false);
-    const canonicalOrigin = normalize(anchors.productionCanonicalOrigin);
-    const integrateUrl = `${canonicalOrigin}/integrate`;
-    expect(normalize(String(ext.url))).toBe(normalize(integrateUrl));
-    expect(normalize(String((info.contact as { url: string }).url))).toBe(canonicalOrigin);
-    const dist = info["x-agentskeptic-distribution"] as Record<string, string>;
-    const distHostOpenApi = `${canonicalOrigin}/openapi-commercial-v1.yaml`;
-    expect(Object.keys(dist).sort()).toEqual(["npmPackage", "openApi", "repository"]);
-    expect(String(dist.repository)).toBe(anchors.gitRepositoryUrl);
-    expect(String(dist.npmPackage)).toBe(anchors.npmPackageUrl);
-    expect(normalize(String(dist.openApi))).toBe(normalize(distHostOpenApi));
+    assertDerivedOpenApiCommercialDistribution(docDerived, { anchors, normalize });
   });
 
   it("lists reserve, plans, and public verification-report paths matching implemented routes", () => {

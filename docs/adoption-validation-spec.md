@@ -20,7 +20,7 @@ This document defines how the repository proves the **adoption golden path**: de
 
 ## ADOPTION_ARTIFACT_PROOF (registry TSV)
 
-Canonical registry: exactly **31** data rows (`relpath<TAB>op`), UTF-16 lexicographic order on `relpath`, no header row.
+Canonical registry: exactly **30** data rows (`relpath<TAB>op`), UTF-16 lexicographic order on `relpath`, no header row.
 
 ```adoption-registry
 README.md	modify
@@ -36,15 +36,14 @@ scripts/first-run.mjs	delete
 scripts/record-adoption-verdict.mjs	add
 scripts/regen-truth-goldens.mjs	modify
 scripts/verify-adoption-verdict.mjs	add
-src/loadEvents.eventFileAggregateCounts.test.ts	add
 src/loadEvents.ts	modify
-src/noStepsMessage.test.ts	add
 src/noStepsMessage.ts	add
 src/pipeline.ts	modify
 src/registryValidation.test.ts	modify
 src/registryValidation.ts	modify
 src/types.ts	modify
 src/workflowTruthReport.semantics.test.ts	modify
+src/wrongWorkflowIdAdoptionFixture.test.ts	add
 test/adoption-docs-boundary.test.mjs	add
 test/adoption-validation-registry.test.mjs	add
 test/adoption-validation.test.mjs	add

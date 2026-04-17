@@ -4,6 +4,9 @@ import { NextRequest } from "next/server";
 describe("isFunnelSurfaceRequestOriginAllowed loopback", () => {
   beforeEach(() => {
     vi.stubEnv("PORT", "");
+    // validate-commercial (and distribution-graph) inject VERCEL_ENV=production for website Vitest;
+    // these tests model local dev where empty NEXT_PUBLIC must not trip production URL requirements.
+    vi.stubEnv("VERCEL_ENV", "preview");
   });
 
   afterEach(() => {
