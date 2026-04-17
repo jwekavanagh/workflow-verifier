@@ -4,6 +4,7 @@ import { RegistryDraftPanel } from "@/components/RegistryDraftPanel";
 import { integrateActivation } from "@/content/productCopy";
 import { siteMetadata } from "@/content/siteMetadata";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: siteMetadata.integrate.title,
@@ -50,14 +51,34 @@ export default function IntegratePage() {
           <li key={i}>{b}</li>
         ))}
       </ol>
+      <details className="muted integrate-success-details">
+        <summary>{a.successDetailsHeading}</summary>
+        <ol>
+          {a.successDetailsBullets.map((b, i) => (
+            <li key={i}>{b}</li>
+          ))}
+        </ol>
+      </details>
 
       <h2>{a.provedHeading}</h2>
       <p className="muted">{a.proved}</p>
 
-      <RegistryDraftPanel />
-
       <h2>{a.nextHeading}</h2>
-      <p className="muted">{a.next}</p>
+      <p className="muted">{a.nextLead}</p>
+      <ul className="muted">
+        {a.nextSteps.map((step) => (
+          <li key={step.title}>
+            <strong>{step.title}</strong>
+            {" — "}
+            {step.body}{" "}
+            <Link className="integrate-inline-next-link" href={step.href}>
+              {step.linkLabel}
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      <RegistryDraftPanel />
     </main>
   );
 }

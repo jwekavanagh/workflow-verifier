@@ -28,7 +28,11 @@ export function RegistryDraftPanel() {
   }, [body]);
 
   return (
-    <section className="integrate-prose muted" data-testid="integrate-registry-draft-panel">
+    <section
+      id="registry-draft-helper"
+      className="integrate-prose muted"
+      data-testid="integrate-registry-draft-panel"
+    >
       <h2>{d.sectionHeading}</h2>
       {d.paragraphs.map((p, i) => (
         <p key={i}>{p}</p>
@@ -38,6 +42,14 @@ export function RegistryDraftPanel() {
           <li key={b}>{b}</li>
         ))}
       </ul>
+      <details className="registry-draft-technical">
+        <summary>{d.technicalSummary}</summary>
+        <ul>
+          {d.technicalBullets.map((b) => (
+            <li key={b}>{b}</li>
+          ))}
+        </ul>
+      </details>
       <p>{d.requestLabel}</p>
       <textarea
         className="registry-draft-json"

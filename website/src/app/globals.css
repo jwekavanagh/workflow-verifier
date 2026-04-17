@@ -625,6 +625,25 @@ main {
   overflow-x: auto;
   font-size: 0.85rem;
 }
+.integrate-success-details {
+  margin: 0.75rem 0 1.25rem;
+  font-size: 0.95rem;
+}
+.integrate-success-details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.integrate-inline-next-link {
+  white-space: nowrap;
+}
+.registry-draft-technical {
+  margin: 0.75rem 0 1rem;
+  font-size: 0.95rem;
+}
+.registry-draft-technical summary {
+  cursor: pointer;
+  font-weight: 600;
+}
 .integrate-prose textarea.registry-draft-json {
   width: 100%;
   box-sizing: border-box;

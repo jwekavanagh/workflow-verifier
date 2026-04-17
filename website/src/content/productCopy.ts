@@ -229,17 +229,40 @@ export const integrateActivation = {
   successIntro:
     "When it works, you will see proof from both the human report and the machine-readable result.",
   successBullets: [
-    "Stderr shows the human verification report, including the line: Matched the database.",
-    'Stdout shows one JSON object with "status":"complete" and a step marked verified.',
-    "The last line printed on stdout is exactly: first-run-verify: ok (sqlite)",
-    "If you see a Node experimental SQLite warning on stderr, you can ignore it—it does not mean the check failed.",
+    "Stderr includes the human verification report, with wording that the run matched the database.",
+    'Stdout is one JSON object with "status":"complete" and at least one step marked verified.',
+  ],
+  successDetailsHeading: "Exact output checks (optional)",
+  successDetailsBullets: [
+    "The last line on stdout should read: first-run-verify: ok (sqlite)",
+    "If stderr mentions an experimental SQLite feature in Node, you can ignore that line for pass/fail.",
   ],
   provedHeading: "What you just proved",
   proved:
-    "A bundled example wrote expectations from structured tool activity and confirmed them with read-only SQL against a fresh SQLite database—the same engine you will use with your own NDJSON and database.",
+    "You ran the bundled demo: the engine turned captured tool activity into expectations and checked them with read-only SQL against a fresh local SQLite database—the same flow works with your own events file and Postgres or SQLite.",
   nextHeading: "Next: your system",
-  next:
-    "You can now reuse the same CLI with your own NDJSON, registry, and database. Point it at your append-only tool log, your tools.json, and your SQLite or Postgres (read-only at verification time).",
+  nextLead:
+    "You reuse the same CLI against your database. Verification consumes structured tool activity (NDJSON) plus a registry file that maps each tool to read-only checks.",
+  nextSteps: [
+    {
+      title: "Emit structured tool events",
+      body: "Start from NDJSON or an exporter that produces the same fields the CLI expects—not raw trace narration alone.",
+      href: "/guides",
+      linkLabel: "Guides",
+    },
+    {
+      title: "Define your tool registry",
+      body: "Each tool id maps to row checks or related patterns; public examples show complete versus missing-row outcomes.",
+      href: "/examples",
+      linkLabel: "Examples",
+    },
+    {
+      title: "Optional: draft a registry from OpenAI-style calls",
+      body: "If you already have JSON shaped like Chat Completions tool_calls, you can ask this site for a starting registry file—still yours to review before any verify run.",
+      href: "#registry-draft-helper",
+      linkLabel: "Registry draft helper",
+    },
+  ],
 } as const;
 
 const integrateRegistryDraftExampleBody = {
@@ -260,17 +283,23 @@ const integrateRegistryDraftExampleBody = {
 
 /** Optional same-origin registry draft on `/integrate` (see docs/registry-draft-ssot.md). */
 export const integrateRegistryDraft = {
-  sectionHeading: "Optional: hosted registry draft",
+  sectionHeading: "Need a starting tools.json?",
   paragraphs: [
-    "This website can call an OpenAI JSON-object model to propose a tools.json-shaped draft from either a bootstrap-pack-shaped body or a small OpenAI tool_calls envelope.",
-    "It is not contract verification, not a substitute for your registry review, and not enabled unless the operator turns it on.",
+    "If you already have OpenAI-style function calls (tool name plus JSON arguments), you can request a draft registry JSON from this page. Treat it like autocomplete for file wiring—not a verification run and not a substitute for your own review.",
+    "The site only proposes text for you to copy out; it does not change verification semantics and it may be turned off in your environment.",
   ],
   bullets: [
-    "Same-origin only: your browser must send this site as Origin or Referer.",
-    "Optional ddlHint in the JSON must not contain :// (schema blocks URL-like injection).",
-    "When disabled, POST /api/integrator/registry-draft returns 404.",
+    "You edit and keep the final registry file; nothing is applied to your systems automatically.",
+    "Review anything model-generated before you trust it in production workflows.",
   ],
-  requestLabel: "Request JSON (edit workflowId, tool_calls, or paste bootstrap_pack_v1)",
+  technicalSummary: "How it works (technical)",
+  technicalBullets: [
+    "Browser same-origin only: the request must carry this site as Origin or Referer.",
+    "Payload is JSON: either the packaged bootstrap input shape or a minimal tool_calls array.",
+    "Optional ddlHint is plain text and cannot contain :// (guards URL-like injection in a free-text field).",
+    "When the feature is disabled, the API responds with HTTP 404.",
+  ],
+  requestLabel: "Example JSON body (edit workflow id, tool calls, or paste alternate shapes)",
   submitLabel: "Request draft",
   exampleJson: JSON.stringify(integrateRegistryDraftExampleBody, null, 2),
 } as const;

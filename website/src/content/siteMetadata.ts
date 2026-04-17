@@ -7,7 +7,7 @@ export const siteMetadata = {
   integrate: {
     title: "Verify workflow claims against the database",
     description:
-      "One command to verify whether what a workflow claimed actually matches what exists in the database.",
+      "Install Node, Git, and npm once, then paste one command block to clone this repo, build, and run a real read-only SQL check on the bundled demo.",
   },
   security: {
     title: "Security & Trust — AgentSkeptic",
