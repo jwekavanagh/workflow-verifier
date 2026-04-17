@@ -22,6 +22,8 @@ Thanks for helping improve **agentskeptic**.
 
 **Single command that loads `website/.env` and mirrors CI:** **`npm run validate-commercial`** (see [`scripts/validate-commercial-funnel.mjs`](scripts/validate-commercial-funnel.mjs)). Use this before a PR whenever you touch commercial, telemetry, funnel, or website DB-backed behavior.
 
+**One instance per checkout:** Do not run two **`validate-commercial`** processes against the same clone at once—the script acquires **`artifacts/validate-commercial.lock`** (PID-based). Overlap previously caused Next.js “Another next build process is already running.” If you see **`validate_commercial_lock_busy`**, wait for the other run or remove a stale lock only after confirming no PID is still active.
+
 **Avoid:** Running **`npx vitest`** from `website/` for those suites without having exported the URLs in your shell (Vitest does not load `website/.env` by itself the way `validate-commercial` does). There is **no** required repo-root `.env`; the project convention is **`website/.env`**.
 
 ## Pull requests

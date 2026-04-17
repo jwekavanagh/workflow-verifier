@@ -10,9 +10,12 @@
  * origin so locally built HTML matches distribution SSOT; page requests in Vitest are still only to
  * `http://127.0.0.1:34100` (see website/__tests__/helpers/siteTestServer.ts). Vitest refuses fetches
  * to that canonical host unless AGENTSKEPTIC_ALLOW_PUBLIC_ORIGIN_FETCH=1.
+ *
+ * Only one validate-commercial-funnel process may run per repo checkout at a time (PID lock file under
+ * artifacts/). Concurrent runs cause Next.js “Another next build process is already running” failures.
  */
 import { execSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +27,54 @@ const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const artifactDir = path.join(root, "artifacts");
 const verdictPath = path.join(artifactDir, "commercial-validation-verdict.json");
+const validateCommercialLockPath = path.join(artifactDir, "validate-commercial.lock");
+
+function acquireValidateCommercialLock() {
+  mkdirSync(artifactDir, { recursive: true });
+  if (existsSync(validateCommercialLockPath)) {
+    const raw = readFileSync(validateCommercialLockPath, "utf8").trim();
+    const holderPid = Number(String(raw).split(/\s+/)[0]);
+    if (Number.isFinite(holderPid) && holderPid > 0) {
+      try {
+        process.kill(holderPid, 0);
+        console.error(
+          JSON.stringify({
+            kind: "validate_commercial_lock_busy",
+            holderPid,
+            lockPath: validateCommercialLockPath,
+            message:
+              "Another validate-commercial-funnel process is running on this checkout. Wait for it to finish before starting a second npm run validate-commercial.",
+          }),
+        );
+        process.exit(1);
+      } catch {
+        /* stale lock — holder process does not exist */
+      }
+    }
+    try {
+      unlinkSync(validateCommercialLockPath);
+    } catch {
+      /* ignore */
+    }
+  }
+  writeFileSync(validateCommercialLockPath, `${process.pid}\n`, "utf8");
+}
+
+function releaseValidateCommercialLock() {
+  try {
+    if (!existsSync(validateCommercialLockPath)) return;
+    const holder = readFileSync(validateCommercialLockPath, "utf8").trim().split(/\s+/)[0];
+    if (holder === String(process.pid)) {
+      unlinkSync(validateCommercialLockPath);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+process.on("exit", releaseValidateCommercialLock);
+
+acquireValidateCommercialLock();
 
 /** Merge `website/.env` into `process.env` when keys are unset (local dev); CI keeps explicit env. */
 function mergeWebsiteDotenv() {

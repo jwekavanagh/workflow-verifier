@@ -11,6 +11,9 @@ website/public/llms.txt
 # Operator-local telemetry pack exports (see docs/telemetry-daily-pack-ssot.md)
 artifacts/telemetry-packs/
 
+# scripts/validate-commercial-funnel.mjs single-instance lock (not committed)
+artifacts/validate-commercial.lock
+
 # Local env (secrets); keep .env.example committed
 website/.env
 website/.env.local
