@@ -68,10 +68,10 @@ export default function IntegratePage() {
       <ul className="integrate-next-steps">
         {a.nextSteps.map((step) => (
           <li key={step.title} className="integrate-next-step">
+            <div className="integrate-next-step-title">{step.title}</div>
             <Link className="integrate-next-destination" href={step.href}>
               {step.linkLabel}
             </Link>
-            <div className="integrate-next-step-title">{step.title}</div>
             <p className="muted integrate-next-step-body">{step.body}</p>
           </li>
         ))}

@@ -216,7 +216,7 @@ export const integrateActivation = {
   whyHeading: "Why this matters",
   whyParagraphs: [
     "Traces can look successful while the database is wrong—missing rows, wrong values, or writes that never landed.",
-    "AgentSkeptic runs read-only SQL at verification time and compares what actually exists to what your captured tool activity claims, so you get database truth instead of narrative or trace color alone.",
+    "AgentSkeptic runs read-only SQL at verification time and compares what actually exists with what your tools reported they did, so you get database truth instead of narrative or trace color alone.",
   ],
   icp: "If you build workflows, agents, or systems that write to a database, this is the fastest way to see how verification reads that ground truth.",
   requirementsHeading: "You need",
@@ -239,10 +239,10 @@ export const integrateActivation = {
   ],
   provedHeading: "What you just proved",
   proved:
-    "You finished the built-in demo run: the verifier inferred expectations from the tool calls you just replayed, then checked them with read-only SQL on a fresh local SQLite file. The same path works with your own event capture and Postgres or SQLite.",
+    "You finished the built-in demo run: the verifier inferred expectations from the demo's recorded tool calls, then checked them with read-only SQL on a fresh local SQLite file. The same path works with your own structured events and Postgres or SQLite.",
   nextHeading: "Next: your system",
   nextLead:
-    "After the demo, point the same CLI at your own database and event stream. The verification flow you used here is the same one you will run locally—structured events (for example NDJSON) plus a registry file that maps each tool to read-only checks.",
+    "After the demo, point the same CLI at your own database and the same kind of structured events (for example NDJSON your agents emit). The path you used here is the one you will repeat locally: structured events plus a registry file that maps each tool to read-only checks.",
   nextSteps: [
     {
       title: "Capture structured tool events",
@@ -301,7 +301,7 @@ export const integrateRegistryDraft = {
   technicalConstraintsHeading: "Same-origin and payload limits",
   technicalBullets: [
     "Browser requests must send this site as Origin or Referer (same-origin only).",
-    "Body is JSON: either the packaged bootstrap input shape or a minimal tool_calls array.",
+    "Body is JSON: either the full bootstrap input JSON shape or a minimal tool_calls array.",
     "Optional ddlHint is plain text and cannot contain :// (blocks URL-like patterns in a free-text field).",
     "When the feature is disabled, the API responds with HTTP 404.",
   ],

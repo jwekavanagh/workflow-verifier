@@ -49,12 +49,14 @@ export function RegistryDraftPanel() {
             <li key={b}>{b}</li>
           ))}
         </ul>
-        <p className="registry-draft-constraints-cap">{d.technicalConstraintsHeading}</p>
-        <ul>
-          {d.technicalBullets.map((b) => (
-            <li key={b}>{b}</li>
-          ))}
-        </ul>
+        <details className="registry-draft-constraints-nested">
+          <summary>{d.technicalConstraintsHeading}</summary>
+          <ul>
+            {d.technicalBullets.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        </details>
       </details>
       <p>{d.requestLabel}</p>
       <textarea

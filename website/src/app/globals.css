@@ -652,10 +652,10 @@ main {
 }
 .integrate-next-step-title {
   font-weight: 600;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 .integrate-next-step-body {
-  margin: 0.25rem 0 0;
+  margin: 0.35rem 0 0;
   font-size: 0.95rem;
 }
 .integrate-funnel-anon-hint {
@@ -669,10 +669,18 @@ main {
 .integrate-funnel-anon-hint p {
   margin: 0.5rem 0 0;
 }
-.registry-draft-constraints-cap {
+.registry-draft-constraints-nested {
+  margin: 0.65rem 0 0;
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--border);
+  font-size: 0.9rem;
+}
+.registry-draft-constraints-nested summary {
+  cursor: pointer;
   font-weight: 600;
-  margin: 0.75rem 0 0.35rem;
-  font-size: 0.95rem;
+}
+.registry-draft-constraints-nested ul {
+  margin: 0.4rem 0 0;
 }
 .registry-draft-technical {
   margin: 0.75rem 0 1rem;
