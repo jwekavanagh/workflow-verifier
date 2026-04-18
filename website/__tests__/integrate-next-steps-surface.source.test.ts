@@ -6,6 +6,8 @@ describe("integrate next-steps surface (PR-O4)", () => {
     expect(integrateActivation.nextSteps.length).toBe(1);
     expect(JSON.stringify(integrateActivation.nextSteps).toLowerCase()).not.toContain("registry-draft");
     expect(integrateActivation.nextSteps[0].href).toContain("first-run-integration.md");
-    expect(integrateActivation.nextSteps[0].href).toMatch(/^https:\/\/github\.com\/jwekavanagh\/agentskeptic\/blob\/main\/docs\/first-run-integration\.md$/);
+    expect(integrateActivation.nextSteps[0].href).toMatch(
+      /^https:\/\/github\.com\/jwekavanagh\/agentskeptic\/blob\/main\/docs\/first-run-integration\.md(#.+)?$/,
+    );
   });
 });
