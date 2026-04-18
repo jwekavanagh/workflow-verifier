@@ -12,7 +12,7 @@ This is the **authoritative first-run path** for running AgentSkeptic against **
 
 Send this to someone who should **try it in one sitting**. The **same** ordered shell commands as **`https://agentskeptic.com/integrate`** (clone, install, build, demo, contract verify, then bootstrap + verify on the pinned fixture) live in the repo template consumed by that page. **All** extended shell commands (Postgres env var, manual `node dist/cli.js …`, LangGraph) live in **[partner-quickstart-commands.md](partner-quickstart-commands.md)** (generated; do not duplicate those blocks here). This file is **prose, semantics, and guarantees** for the spine.
 
-**Throughput note (operator):** The site’s cross-surface metric for integrate → CLI outcomes is defined in [growth-metrics-ssot.md](growth-metrics-ssot.md); activation POST semantics and failure modes are in [funnel-observability-ssot.md](funnel-observability-ssot.md). The trust boundary for Quick vs contract verification is unchanged—see [verification-product-ssot.md](verification-product-ssot.md).
+**Throughput note (operator):** The site’s cross-surface metric for integrate → CLI outcomes is defined in [growth-metrics-ssot.md](growth-metrics-ssot.md); activation POST semantics and failure modes are in [funnel-observability-ssot.md](funnel-observability-ssot.md). A **successful local verification** can still fail to appear in operator metrics when telemetry capture diverges—see [User outcome vs telemetry capture (operator)](funnel-observability-ssot.md#user-outcome-vs-telemetry-capture-operator). The trust boundary for Quick vs contract verification is unchanged—see [verification-product-ssot.md](verification-product-ssot.md).
 
 ## What this does
 

@@ -98,6 +98,8 @@ You are a **state verification engine for agent-driven systems** that have **SQL
 
 | First-run commands, integrator I/O, operator DB posture, TTFV, export vs replay coverage | [`verification-operational-notes.md`](verification-operational-notes.md) | Product SSOT links here; does not replace normative thresholds |
 
+| **Funnel epistemics** (user outcome vs telemetry capture; interpreting North Star without over-claim) | [`funnel-observability-ssot.md`](funnel-observability-ssot.md) section **User outcome vs telemetry capture (operator)** | Metric definitions and SQL only in [`growth-metrics-ssot.md`](growth-metrics-ssot.md); [`commercial-ssot.md`](commercial-ssot.md) links here—do not duplicate taxonomy |
+
 | **LangGraph reference** (emitter ordering, integrator primacy, partner commands, test chain) | [`langgraph-reference-boundaries-ssot.md`](langgraph-reference-boundaries-ssot.md) | [`examples/langgraph-reference/README.md`](../examples/langgraph-reference/README.md) is prose-only; boundaries matrix lives here |
 
 

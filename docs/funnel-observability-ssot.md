@@ -22,6 +22,37 @@ These **minimum** outcomes for **`POST /api/funnel/product-activation`** are enf
 
 **Split deployments:** If the deployment users hit for **`COMMERCIAL_LICENSE_API_BASE_URL`** does **not** serve **`POST /api/funnel/product-activation`**, activation rows will not land until **`AGENTSKEPTIC_TELEMETRY_ORIGIN`** targets an origin that does—see **CLI origin override** and **When to set `AGENTSKEPTIC_TELEMETRY_ORIGIN`** in this document.
 
+## User outcome vs telemetry capture (operator)
+
+**Definitions (do not conflate):**
+
+- **User outcome** — What happened on the machine running the CLI: terminal workflow or Quick Verify result, stdout/stderr contracts, and exit codes. This is **authoritative for product truth** (see [`verification-product-ssot.md`](verification-product-ssot.md)).
+- **Telemetry capture** — Whether **`funnel_event`** rows (e.g. **`verify_started`**, **`verify_outcome`**) were **accepted and persisted** on the telemetry-tier Postgres. This is **operator observation only** and **not authoritative** for product correctness; it is **not** proof of verification correctness and can diverge from user outcome.
+
+CLI posts use **`postProductActivationEvent`** semantics: **best-effort** `fetch` to **`/api/funnel/product-activation`**, **`AGENTSKEPTIC_TELEMETRY=0`** disables POSTs entirely, and failures do **not** change verification exit codes ([`src/telemetry/postProductActivationEvent.ts`](../src/telemetry/postProductActivationEvent.ts)). Therefore **absence of rows is ambiguous** without local/cli context.
+
+### User-side
+
+Factors where the integrator may never reach a terminal verification object, or may exit before **`verify_outcome`** would fire (non-exhaustive):
+
+- Environment or repo setup not finished (prerequisites in [`first-run-integration.md`](first-run-integration.md)).
+- Verification engine or config error before a terminal **`WorkflowResult`** / Quick report exists (see **partial activation** in [CLI lock telemetry sequencing](#cli-lock-telemetry-sequencing)).
+- Operator or integrator chose not to export **`AGENTSKEPTIC_FUNNEL_ANON_ID`**, so cross-surface KPI numerators that join on **`funnel_anon_id`** may not move even when verification ran—see **Missing join key on activation** in [`growth-metrics-ssot.md`](growth-metrics-ssot.md) (*Explicit prohibitions* / operator interpretation contract).
+
+### Telemetry capture-side
+
+Factors where **user outcome can succeed** while **no qualifying `verify_outcome` row** appears for operator metrics (non-exhaustive); details and HTTP tables live elsewhere in this document:
+
+- **`AGENTSKEPTIC_TELEMETRY=0`** — no activation POSTs (see [`website/__tests__/integrate-activation-telemetry-off.integration.test.ts`](../website/__tests__/integrate-activation-telemetry-off.integration.test.ts)).
+- **Best-effort transport failure** — network, timeout (~400ms bound), skewed **`issued_at`** (**`400`**), oversize body (**`413`**), maintenance (**`503`**), missing telemetry DB (**`503`**); see [HTTP semantics](#post-apifunnelproduct-activation-http-semantics).
+- **Split deployment** — license API origin does not serve **`POST /api/funnel/product-activation`** unless **`AGENTSKEPTIC_TELEMETRY_ORIGIN`** is set correctly (see **Split deployments** above and **When to set `AGENTSKEPTIC_TELEMETRY_ORIGIN`** under [Operator reading metrics](#operator-reading-metrics-do-not-double-count)).
+- **Idempotent replay** — duplicate **`run_id`** for the same phase returns **`204`** without a second row (expected).
+- **Rolling KPI filters** — e.g. **`telemetry_source === 'local_dev'`** excluded from non-local activation metrics per [`growth-metrics-ssot.md`](growth-metrics-ssot.md); interpret metric ids there, do not redefine SQL here.
+
+### Must not infer (read with growth SSOT)
+
+Normative metric definitions, denominators, numerators, and **explicit prohibitions** (what a low or missing rate does **not** prove) live only in [`growth-metrics-ssot.md`](growth-metrics-ssot.md)—in particular the **Three-metric reading table** and **Missing join key on activation**. Operators **must not** treat missing **`verify_outcome`** rows as proof that verification did not run, or as proof of ICP fit, without ruling out capture-side causes above.
+
 ---
 
 ## Audiences

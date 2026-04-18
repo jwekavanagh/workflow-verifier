@@ -88,3 +88,11 @@ run("npm", [
   "--",
   "__tests__/integrate-next-steps-surface.source.test.ts",
 ]);
+run("npm", [
+  "run",
+  "test:vitest",
+  "-w",
+  "agentskeptic-web",
+  "--",
+  "__tests__/funnel-observability-epistemics.source.test.ts",
+]);
