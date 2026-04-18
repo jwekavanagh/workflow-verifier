@@ -17,6 +17,7 @@ import {
   classifyBatchVerifyWorkload,
   classifyQuickVerifyWorkload,
 } from "../commercial/verifyWorkloadClassify.js";
+import { classifyWorkflowLineage } from "../funnel/workflowLineageClassify.js";
 import { LICENSE_PREFLIGHT_ENABLED } from "../generated/commercialBuildFlags.js";
 import { argValue, parseBatchVerifyCliArgs, parseQuickCliArgs, removeArgPair } from "../cliArgv.js";
 import type { ParsedBatchVerifyCli, ParsedQuickCli } from "../cliArgv.js";
@@ -125,17 +126,24 @@ async function maybePostVerifyOutcomeAndBeaconBatch(input: {
   runId: string | null;
   result: WorkflowResult;
   workloadClass: "bundled_examples" | "non_bundled";
+  workflowId: string | undefined;
   activationRunId: string;
   buildProfile: "oss" | "commercial";
   suppressOssClaim: boolean;
 }): Promise<void> {
   if (!input.shouldEmit) return;
   const ts = terminalStatusFromWorkflowResult(input.result);
+  const workflow_lineage = classifyWorkflowLineage({
+    subcommand: "batch_verify",
+    workloadClass: input.workloadClass,
+    workflowId: input.workflowId,
+  });
   await postProductActivationEvent({
     phase: "verify_outcome",
     run_id: input.activationRunId,
     issued_at: new Date().toISOString(),
     workload_class: input.workloadClass,
+    workflow_lineage,
     subcommand: "batch_verify",
     build_profile: input.buildProfile,
     terminal_status: ts,
@@ -170,11 +178,16 @@ async function maybePostVerifyOutcomeAndBeaconQuick(input: {
 }): Promise<void> {
   if (!input.shouldEmit) return;
   const ts = quickVerifyVerdictToTerminalStatus(input.verdict);
+  const workflow_lineage = classifyWorkflowLineage({
+    subcommand: "quick_verify",
+    workloadClass: input.workloadClass,
+  });
   await postProductActivationEvent({
     phase: "verify_outcome",
     run_id: input.activationRunId,
     issued_at: new Date().toISOString(),
     workload_class: input.workloadClass,
+    workflow_lineage,
     subcommand: "quick_verify",
     build_profile: input.buildProfile,
     terminal_status: ts,
@@ -243,11 +256,17 @@ export async function orchestrateVerifyBatchLockRun(restArgs: string[]): Promise
   });
   const suppressOssClaim = route.parsed.noTruthReport || route.parsed.shareReportOrigin !== undefined;
 
+  const batchLineage = classifyWorkflowLineage({
+    subcommand: "batch_verify",
+    workloadClass,
+    workflowId: route.parsed.workflowId,
+  });
   await postProductActivationEvent({
     phase: "verify_started",
     run_id: activationRunId,
     issued_at: new Date().toISOString(),
     workload_class: workloadClass,
+    workflow_lineage: batchLineage,
     subcommand: "batch_verify",
     build_profile: buildProfile,
   });
@@ -280,6 +299,7 @@ export async function orchestrateVerifyBatchLockRun(restArgs: string[]): Promise
       runId: preflight.runId,
       result: resultForTelemetry,
       workloadClass,
+      workflowId: route.parsed.workflowId,
       activationRunId,
       buildProfile,
       suppressOssClaim,
@@ -353,11 +373,17 @@ export async function orchestrateEnforceBatchLockRun(restArgs: string[]): Promis
   });
   const suppressOssClaim = route.parsed.noTruthReport || route.parsed.shareReportOrigin !== undefined;
 
+  const enforceBatchLineage = classifyWorkflowLineage({
+    subcommand: "batch_verify",
+    workloadClass,
+    workflowId: route.parsed.workflowId,
+  });
   await postProductActivationEvent({
     phase: "verify_started",
     run_id: activationRunId,
     issued_at: new Date().toISOString(),
     workload_class: workloadClass,
+    workflow_lineage: enforceBatchLineage,
     subcommand: "batch_verify",
     build_profile: "commercial",
   });
@@ -390,6 +416,7 @@ export async function orchestrateEnforceBatchLockRun(restArgs: string[]): Promis
       runId: preflight.runId,
       result: resultForTelemetry,
       workloadClass,
+      workflowId: route.parsed.workflowId,
       activationRunId,
       buildProfile: "commercial",
       suppressOssClaim,
@@ -470,11 +497,16 @@ export async function orchestrateVerifyQuickLockRun(restArgs: string[]): Promise
   });
   const suppressOssClaim = route.pq.shareReportOrigin !== undefined;
 
+  const quickLockLineage = classifyWorkflowLineage({
+    subcommand: "quick_verify",
+    workloadClass,
+  });
   await postProductActivationEvent({
     phase: "verify_started",
     run_id: activationRunId,
     issued_at: new Date().toISOString(),
     workload_class: workloadClass,
+    workflow_lineage: quickLockLineage,
     subcommand: "quick_verify",
     build_profile: buildProfile,
   });
@@ -586,11 +618,16 @@ export async function orchestrateEnforceQuickLockRun(restArgs: string[]): Promis
   });
   const suppressOssClaim = route.pq.shareReportOrigin !== undefined;
 
+  const enforceQuickLineage = classifyWorkflowLineage({
+    subcommand: "quick_verify",
+    workloadClass,
+  });
   await postProductActivationEvent({
     phase: "verify_started",
     run_id: activationRunId,
     issued_at: new Date().toISOString(),
     workload_class: workloadClass,
+    workflow_lineage: enforceQuickLineage,
     subcommand: "quick_verify",
     build_profile: "commercial",
   });

@@ -40,6 +40,15 @@ Four different notions are often conflated. They are **not interchangeable**.
 
 **Examples of what this property subsumes (not ranked facts):** a prospect lacks structured tool exports; a team cannot query the authoritative DB read-only; registry rows drift from schema; integrator stops after demo; spine succeeds but Step 4 on owned inputs never runs.
 
+## Structural vs empirical vs telemetry proxies
+
+Use these terms consistently:
+
+- **Primary structural bottleneck / first dependency:** Same property as [Structural throughput constraint](#structural-throughput-constraint)—throughput cannot exceed integrator-owned, correctly-shaped inputs on authoritative SQL. This is **provable from repository definitions**; it is **not** a claim about which funnel stage loses the most mass in production without operator data.
+- **Empirical (dominant) drop-off:** Which stage loses the most integrators **requires** time-bounded telemetry and context outside committed files—see **Dominant real-world drop-off** above and [`growth-metrics-ssot.md`](growth-metrics-ssot.md) (*Ranking dominant funnel loss*).
+- **Telemetry L1 (path heuristic):** `workload_class = non_bundled` on activation rows ([`src/commercial/verifyWorkloadClassify.ts`](../src/commercial/verifyWorkloadClassify.ts))—not proof of ProductionComplete (see [Qualification proxy (operator)](funnel-observability-ssot.md#qualification-proxy-operator)).
+- **Telemetry L2 (lineage heuristic):** `workflow_lineage = integrator_scoped` on **schema_version 3** activation rows ([`src/funnel/workflowLineageClassify.ts`](../src/funnel/workflowLineageClassify.ts))—excludes shipped catalog workflow ids and **`wf_integrate_spine`**; still **not** human **Decision-ready ProductionComplete** artifacts (A1–A5)—see [`growth-metrics-ssot.md`](growth-metrics-ssot.md) §**CrossSurface_ConversionRate_QualifiedIntegrateToIntegratorScopedVerifyOutcome_Rolling7dUtc**.
+
 ## Commercial validation verdict (`artifacts/commercial-validation-verdict.json`)
 
 Written by [`scripts/validate-commercial-funnel.mjs`](../scripts/validate-commercial-funnel.mjs).
@@ -99,4 +108,4 @@ Use this checklist when a human operator assists an integrator to reach **Produc
 - Claiming **`npm test` green** implies a specific customer reached **ProductionComplete** — **invalid** unless that customer’s Step 4 evidence exists outside this repo.
 - Inferring **no verification ran** from **missing** `verify_outcome` telemetry alone — **invalid** without ruling out opt-out, transport failure, split deployment, or missing `funnel_anon_id` per [`growth-metrics-ssot.md`](growth-metrics-ssot.md) and [`funnel-observability-ssot.md`](funnel-observability-ssot.md).
 - Treating the **lowest** rolling cross-surface rate in [`growth-metrics-ssot.md`](growth-metrics-ssot.md) as proof of **which funnel stage loses the most mass** for real users — **invalid** without time-bounded telemetry and context outside this repository; see [Structural throughput constraint](#structural-throughput-constraint).
-- Reading **`CrossSurface_ConversionRate_QualifiedIntegrateToVerifyOutcome_Rolling7dUtc`** as proof of ICP fit, dominant commercial bottleneck resolution, or a substitute for **user outcome** — **invalid**; see the three-metric table in [`growth-metrics-ssot.md`](growth-metrics-ssot.md) and [Qualification proxy (operator)](funnel-observability-ssot.md#qualification-proxy-operator).
+- Reading **`CrossSurface_ConversionRate_QualifiedIntegrateToVerifyOutcome_Rolling7dUtc`** as proof of ICP fit, dominant commercial bottleneck resolution, or a substitute for **user outcome** — **invalid**; see the operator cross-metric reading table in [`growth-metrics-ssot.md`](growth-metrics-ssot.md) and [Qualification proxy (operator)](funnel-observability-ssot.md#qualification-proxy-operator).

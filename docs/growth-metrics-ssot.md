@@ -20,6 +20,7 @@ This document is the **normative semantics SSOT** for **operator growth metrics*
 | `CrossSurface_ConversionRate_AcquisitionToIntegrate_Rolling7dUtc` | Operator | Among acquisition-landed ids in the window, what fraction also have `integrate_landed` in the window (motivation / next-step proxy) |
 | `CrossSurface_ConversionRate_IntegrateToVerifyOutcome_Rolling7dUtc` | Operator | Among integrate-landed ids in the window, what fraction also have a qualifying `verify_outcome` in the window (execution proxy) |
 | `CrossSurface_ConversionRate_QualifiedIntegrateToVerifyOutcome_Rolling7dUtc` | Operator | Same denominator as integrate→`verify_outcome`; numerator restricted to **`verify_outcome`** rows with **`metadata->>'workload_class' = 'non_bundled'`** (path heuristic—see [`funnel-observability-ssot.md`](funnel-observability-ssot.md) §**Qualification proxy (operator)**) |
+| `CrossSurface_ConversionRate_QualifiedIntegrateToIntegratorScopedVerifyOutcome_Rolling7dUtc` | Operator | Same denominator as qualified integrate→`verify_outcome`; numerator further requires **`metadata->>'workflow_lineage' = 'integrator_scoped'`** (CLI schema v3—see [`funnel-observability-ssot.md`](funnel-observability-ssot.md) **product-activation v3**) |
 | `CrossSurface_ConversionRate_QualifiedIntegrateToVerifyStarted_Rolling7dUtc` | Operator | Among integrate-landed ids in the window, what fraction also have ≥1 **qualified** **`verify_started`** in the window (failure mode **A**—missing qualified start signal after integrate impression) |
 | `Counts_QualifiedVerifyOutcomesByTerminalStatus_Rolling7dUtc` | Operator | Among qualified **`verify_outcome`** rows in the window, counts by **`terminal_status`** wire literals plus **`malformed_other`** (failure mode **B**—terminal mix + malformed) |
 
@@ -30,6 +31,7 @@ This document is the **normative semantics SSOT** for **operator growth metrics*
 - **`funnel_anon_id`:** pseudonymous correlation id on anonymous `funnel_event` rows (surface + product-activation). Semantics: [`docs/funnel-observability-ssot.md`](funnel-observability-ssot.md).
 - **`install_id`:** nullable column on `funnel_event` for CLI activation telemetry (default pseudonymous install). Semantics: [`docs/funnel-observability-ssot.md`](funnel-observability-ssot.md).
 - **`telemetry_source`:** string in `funnel_event.metadata` for activation rows (`verify_started` / `verify_outcome`). Wire v2 sends `local_dev` or `unknown`; v1 clients are stored as **`legacy_unattributed`** server-side. **`unknown` is not “external-only.”** It labels non–`local_dev` client-declared traffic that still posts. Metrics that exclude local operator noise filter with **`metadata->>'telemetry_source' IS DISTINCT FROM 'local_dev'`** (see metric sections below).
+- **`workflow_lineage`:** optional string on activation rows from **schema_version 3** bodies only (`catalog_shipped` \| `integrate_spine` \| `integrator_scoped` \| `unknown`). Semantics and classifier: [`src/funnel/workflowLineageClassify.ts`](../src/funnel/workflowLineageClassify.ts); wire: [`docs/funnel-observability-ssot.md`](funnel-observability-ssot.md). Rows without this key (v1/v2 clients) never satisfy **`= 'integrator_scoped'`** filters.
 
 ---
 
@@ -85,6 +87,10 @@ Normative rules for reading **stage-separated** cross-surface rates next to the 
 
 - **Execution / “outcome after integrate”:** Use `CrossSurface_ConversionRate_IntegrateToVerifyOutcome_Rolling7dUtc` among ids that **actually** had `integrate_landed` in the window. A drop here means integrate-landed visitors disproportionately never posted a qualifying activation `verify_outcome` in the same window.
 
+- **Integrate → path-qualified outcome (L1):** Use `CrossSurface_ConversionRate_QualifiedIntegrateToVerifyOutcome_Rolling7dUtc` for **`non_bundled`** `verify_outcome` after integrate—see that metric’s prohibitions; it remains a **path** heuristic only.
+
+- **Integrate → lineage-qualified outcome (L2 proxy):** Use `CrossSurface_ConversionRate_QualifiedIntegrateToIntegratorScopedVerifyOutcome_Rolling7dUtc` when the question is whether **`verify_outcome`** rows excluded **shipped catalog** and **`wf_integrate_spine`** terminal lineage per [`src/funnel/workflowLineageClassify.ts`](../src/funnel/workflowLineageClassify.ts). A drop versus the L1 rate suggests mass stuck on demo/catalog/spine-shaped workflow ids or legacy v2 beacons—not by itself **where** in the human funnel the loss occurred.
+
 - **End-to-end join (compressed):** Use `CrossSurface_ConversionRate_AcquisitionToVerifyOutcome_Rolling7dUtc` for acquisition-landed ids that also show a qualifying `verify_outcome` with the same join id in the window—**without** requiring an explicit integrate row in SQL.
 
 - **Integrate → qualified start (failure mode A):** Use `CrossSurface_ConversionRate_QualifiedIntegrateToVerifyStarted_Rolling7dUtc` among ids that had `integrate_landed` in the window. A drop here means integrate-landed visitors disproportionately never posted a **qualified** `verify_started` (non–`local_dev`, `workload_class = non_bundled`) in the same window—it does **not** prove Step 4 / **ProductionComplete** failure by itself.
@@ -101,13 +107,13 @@ Normative rules for reading **stage-separated** cross-surface rates next to the 
 
 - **Compressed vs decomposed equality:** Operators **must not** assume numeric identity between the compressed rate and any product of the two decomposed rates; cohorts differ (integrate-only traffic, acquisition without integrate, etc.).
 
-- **Exhaustivity:** These three metrics **do not** exhaust user intent, total traffic, or all verification runs. They **do** support bounded comparison of **where** drop-off appears **among rows that satisfy each metric’s denominator rules**.
+- **Exhaustivity:** These decomposition metrics **do not** exhaust user intent, total traffic, or all verification runs. They **do** support bounded comparison of **where** drop-off appears **among rows that satisfy each metric’s denominator rules**.
 
 - **Ranking dominant funnel loss:** Identifying **which** real-world stage loses the most integrators (evaluation vs install vs integrate vs Step 4 vs paid) **cannot be inferred from repository files alone**; that requires time-bounded telemetry and product context—see [Structural throughput constraint](adoption-epistemics-ssot.md#structural-throughput-constraint) in [`adoption-epistemics-ssot.md`](adoption-epistemics-ssot.md).
 
 ---
 
-### Three-metric reading table (operator)
+### Operator cross-metric reading table (operator)
 
 | Metric id | Question it answers | Must not be read as |
 |-----------|---------------------|---------------------|
@@ -115,6 +121,7 @@ Normative rules for reading **stage-separated** cross-surface rates next to the 
 | `CrossSurface_ConversionRate_AcquisitionToIntegrate_Rolling7dUtc` | Among acquisition-landed ids in the window, what fraction also have `integrate_landed` in the window? | Proof that the user ran the CLI; proof of a successful verify engine run |
 | `CrossSurface_ConversionRate_IntegrateToVerifyOutcome_Rolling7dUtc` | Among integrate-landed ids in the window, what fraction also have a qualifying `verify_outcome` in the window? | Proof that the user ever hit acquisition; proof that `funnel_anon_id` was propagated on every machine |
 | `CrossSurface_ConversionRate_QualifiedIntegrateToVerifyOutcome_Rolling7dUtc` | Among integrate-landed ids in the window, what fraction also posted a **`verify_outcome`** with **`workload_class` = `non_bundled`** in the window? | Proof of ICP or production traffic; proof the integrator understood the product; substitute for user outcome |
+| `CrossSurface_ConversionRate_QualifiedIntegrateToIntegratorScopedVerifyOutcome_Rolling7dUtc` | Same as qualified integrate→outcome, but the **`verify_outcome`** must also report **`workflow_lineage` = `integrator_scoped`** (schema v3). | Proof of **ProductionComplete** or **Decision-ready** artifacts (A1–A5); proof the integrate spine terminal (`wf_integrate_spine`) ran; proof of revenue; substitute for **user outcome** |
 | `CrossSurface_ConversionRate_QualifiedIntegrateToVerifyStarted_Rolling7dUtc` | Among integrate-landed ids in the window, what fraction also have ≥1 qualified **`verify_started`** in the window? | Proof that the customer failed Step 4 / **ProductionComplete**; proof of revenue; substitute for **Decision-ready ProductionComplete** (see [`adoption-epistemics-ssot.md`](adoption-epistemics-ssot.md)) |
 | `Counts_QualifiedVerifyOutcomesByTerminalStatus_Rolling7dUtc` | Among qualified **`verify_outcome`** rows in the window, how many terminal **`complete` / `inconsistent` / `incomplete`** vs malformed? | Proof of integrator-owned inputs or A1–A5 artifacts; proof that a low `complete` count means the engine failed |
 
@@ -232,6 +239,53 @@ outc AS (
     AND metadata->>'funnel_anon_id' <> ''
     AND (metadata->>'telemetry_source' IS DISTINCT FROM 'local_dev')
     AND (metadata->>'workload_class') = 'non_bundled'
+    AND created_at >= w.now_utc - interval '7 days'
+)
+SELECT
+  (SELECT COUNT(*)::int FROM intg) AS d,
+  (SELECT COUNT(*)::int FROM intg INNER JOIN outc ON intg.fid = outc.fid) AS n,
+  (SELECT COUNT(*)::float FROM intg INNER JOIN outc ON intg.fid = outc.fid) / NULLIF((SELECT COUNT(*)::float FROM intg), 0) AS rate
+```
+
+---
+
+### CrossSurface_ConversionRate_QualifiedIntegrateToIntegratorScopedVerifyOutcome_Rolling7dUtc
+
+**Window:** rolling **7** UTC days from `now() AT TIME ZONE 'UTC'`.
+
+**Denominator `D`:** same as `CrossSurface_ConversionRate_QualifiedIntegrateToVerifyOutcome_Rolling7dUtc` (distinct `funnel_anon_id` with `integrate_landed` in window).
+
+**Numerator `N`:** distinct ids from `D` with ≥1 **non–`local_dev`** `verify_outcome` in the same window where **`(metadata->>'workload_class') = 'non_bundled'`** and **`(metadata->>'workflow_lineage') = 'integrator_scoped'`** (join on `metadata->>'funnel_anon_id'`).
+
+**Value:** `N / NULLIF(D, 0)` as float.
+
+**Explicit prohibitions (must not):**
+
+- **`integrator_scoped`** is assigned only by the published CLI using [`src/funnel/workflowLineageClassify.ts`](../src/funnel/workflowLineageClassify.ts) on **schema_version 3** activation bodies. It is **not** human A4 attestation, **not** **Decision-ready ProductionComplete**, and **not** proof that events/registry were integrator-authored (for example an arbitrary workflow id or quick **non_bundled** paths can still yield **`integrator_scoped`**).
+- **`verify_outcome`** rows from **v1/v2** clients (no `workflow_lineage` key) **never** enter **`N`**.
+- **`unknown`** lineage (empty batch `--workflow-id`) is excluded from **`N`** by the equality filter.
+
+```sql
+WITH w AS (
+  SELECT (now() AT TIME ZONE 'UTC') AS now_utc
+),
+intg AS (
+  SELECT DISTINCT metadata->>'funnel_anon_id' AS fid
+  FROM funnel_event, w
+  WHERE event = 'integrate_landed'
+    AND metadata->>'funnel_anon_id' IS NOT NULL
+    AND metadata->>'funnel_anon_id' <> ''
+    AND created_at >= w.now_utc - interval '7 days'
+),
+outc AS (
+  SELECT DISTINCT metadata->>'funnel_anon_id' AS fid
+  FROM funnel_event, w
+  WHERE event = 'verify_outcome'
+    AND metadata->>'funnel_anon_id' IS NOT NULL
+    AND metadata->>'funnel_anon_id' <> ''
+    AND (metadata->>'telemetry_source' IS DISTINCT FROM 'local_dev')
+    AND (metadata->>'workload_class') = 'non_bundled'
+    AND (metadata->>'workflow_lineage') = 'integrator_scoped'
     AND created_at >= w.now_utc - interval '7 days'
 )
 SELECT

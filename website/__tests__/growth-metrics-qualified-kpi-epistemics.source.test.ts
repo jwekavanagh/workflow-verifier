@@ -13,6 +13,7 @@ describe("growth metrics qualified KPI SSOT", () => {
 
     expect(body).toContain("### CrossSurface_ConversionRate_QualifiedIntegrateToVerifyOutcome_Rolling7dUtc");
     expect(body).toContain("CrossSurface_ConversionRate_QualifiedIntegrateToVerifyOutcome_Rolling7dUtc");
+    expect(body).toContain("### CrossSurface_ConversionRate_QualifiedIntegrateToIntegratorScopedVerifyOutcome_Rolling7dUtc");
     expect(body).toContain("Explicit prohibitions");
     expect(body).toContain("workload_class");
     expect(body).toContain("non_bundled");

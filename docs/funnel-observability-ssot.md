@@ -28,7 +28,7 @@ These **minimum** outcomes for **`POST /api/funnel/product-activation`** are enf
 
 - Missing or invalid required CLI marker headers (`X-AgentSkeptic-Product`, `X-AgentSkeptic-Cli-Version` per contract) → **`403`** (no `funnel_event` insert from this handler).
 - Valid JSON body but **`issued_at`** outside the ±300s skew budget vs server time → **`400`** (no insert).
-- Minimal valid **`schema_version`: 2** `verify_started` body with valid headers and in-window **`issued_at`** → **`204`** and a persisted telemetry-tier `funnel_event` row for **`verify_started`**.
+- Minimal valid **`schema_version`: 2** or **`3`** `verify_started` body with valid headers and in-window **`issued_at`** → **`204`** and a persisted telemetry-tier `funnel_event` row for **`verify_started`** (v3 additionally requires **`workflow_lineage`** on the wire—see body union below).
 
 **Split deployments:** If the deployment users hit for **`COMMERCIAL_LICENSE_API_BASE_URL`** does **not** serve **`POST /api/funnel/product-activation`**, activation rows will not land until **`AGENTSKEPTIC_TELEMETRY_ORIGIN`** targets an origin that does—see **CLI origin override** and **When to set `AGENTSKEPTIC_TELEMETRY_ORIGIN`** in this document.
 
@@ -61,7 +61,7 @@ Factors where **user outcome can succeed** while **no qualifying `verify_outcome
 
 ### Must not infer (read with growth SSOT)
 
-Normative metric definitions, denominators, numerators, and **explicit prohibitions** (what a low or missing rate does **not** prove) live only in [`growth-metrics-ssot.md`](growth-metrics-ssot.md)—in particular the **Three-metric reading table** and **Missing join key on activation**. Operators **must not** treat missing **`verify_outcome`** rows as proof that verification did not run, or as proof of ICP fit, without ruling out capture-side causes above.
+Normative metric definitions, denominators, numerators, and **explicit prohibitions** (what a low or missing rate does **not** prove) live only in [`growth-metrics-ssot.md`](growth-metrics-ssot.md)—in particular the **operator reading table** (cross-surface metrics) and **Missing join key on activation**. Operators **must not** treat missing **`verify_outcome`** rows as proof that verification did not run, or as proof of ICP fit, without ruling out capture-side causes above.
 
 ## Qualification proxy (operator)
 
@@ -70,6 +70,8 @@ Normative metric definitions, denominators, numerators, and **explicit prohibiti
 **Definition (telemetry heuristic):** For product-activation **`verify_outcome`** rows, the CLI persists **`workload_class`** in row metadata ([`website/src/lib/funnelProductActivationMetadata.ts`](../website/src/lib/funnelProductActivationMetadata.ts)). A **`non_bundled`** value means the classifier ([`src/commercial/verifyWorkloadClassify.ts`](../src/commercial/verifyWorkloadClassify.ts)) treated the run as **outside** the shipped bundled example fixture paths (e.g. Postgres, stdin quick input, or paths not on the bundled allowlist)—see **Operational definition of `workload_class`** in the [`POST /api/funnel/product-activation`](#post-apifunnelproduct-activation-http-semantics) section below.
 
 **Qualified vs behavioral activation:** The rolling metric `CrossSurface_ConversionRate_IntegrateToVerifyOutcome_Rolling7dUtc` counts any qualifying **`verify_outcome`** (subject to **`telemetry_source`** rules in [`growth-metrics-ssot.md`](growth-metrics-ssot.md)). The metric **`CrossSurface_ConversionRate_QualifiedIntegrateToVerifyOutcome_Rolling7dUtc`** uses the **same denominator** (integrate-landed ids in window) but restricts the **numerator** to outcomes where **`metadata->>'workload_class' = 'non_bundled'`**. That is a **refinement of the numerator**, not a second funnel stage.
+
+**Layer-2 lineage (schema v3):** When the CLI sends **`schema_version`: 3**, persisted activation metadata includes **`workflow_lineage`** from [`src/funnel/workflowLineageClassify.ts`](../src/funnel/workflowLineageClassify.ts). The rolling metric **`CrossSurface_ConversionRate_QualifiedIntegrateToIntegratorScopedVerifyOutcome_Rolling7dUtc`** further restricts the qualified numerator to **`workflow_lineage` = `integrator_scoped`**, excluding shipped catalog workflow ids and the integrate-spine terminal id **`wf_integrate_spine`**—see [`growth-metrics-ssot.md`](growth-metrics-ssot.md) §**CrossSurface_ConversionRate_QualifiedIntegrateToIntegratorScopedVerifyOutcome_Rolling7dUtc** for prohibitions.
 
 **Must not (operators)**
 
@@ -105,13 +107,14 @@ The signed-in **`/account`** page lists recent **licensed verify outcomes** per 
 
 - **Not in** [`schemas/openapi-commercial-v1.yaml`](../schemas/openapi-commercial-v1.yaml) — operator-only; integrators must not depend on it.
 - **Auth:** none (anonymous). **Required headers:** `X-AgentSkeptic-Product: cli` and `X-AgentSkeptic-Cli-Version: <semver>` (semver core validated server-side; emitted from root `package.json` at anchor sync into [`src/publicDistribution.generated.ts`](../src/publicDistribution.generated.ts) as `AGENTSKEPTIC_CLI_SEMVER`).
-- **Body:** discriminated union on `event` and **`schema_version`** (**v1** requires **`schema_version`: 1**; current CLI sends **`schema_version`: 2**):
+- **Body:** discriminated union on `event` and **`schema_version`** (**v1** requires **`schema_version`: 1**; current published CLI sends **`schema_version`: 3**; **v2** remains accepted for backward compatibility):
   - **`schema_version`: 1 — `verify_started`:** `{ "event": "verify_started", "schema_version": 1, "run_id": string, "issued_at": ISO8601, "workload_class": "bundled_examples"|"non_bundled", "subcommand": "batch_verify"|"quick_verify", "build_profile": "oss"|"commercial", "funnel_anon_id"?: UUIDv4, "install_id"?: UUID }`
   - **`schema_version`: 1 — `verify_outcome`:** same fields as `verify_started` plus `"terminal_status": "complete"|"inconsistent"|"incomplete"` and optional **`funnel_anon_id`** / **`install_id`** (UUID).
   - **`schema_version`: 2 — `verify_started`:** v1 `verify_started` fields plus required **`telemetry_source`**: `"local_dev"` \| `"unknown"`. Reject **`legacy_unattributed`** on the wire for v2 (**`400`**). Optional **`verification_hypothesis`**: when present, must be non-empty after trim and satisfy the single canonical rules module [`src/telemetry/verificationHypothesisContract.ts`](../src/telemetry/verificationHypothesisContract.ts) (no duplicate charset table in this doc); invalid or empty-after-trim values → **`400`**. Omitted key remains valid for backward compatibility. Populated from integrator env **`AGENTSKEPTIC_VERIFICATION_HYPOTHESIS`** on the CLI when valid.
   - **`schema_version`: 2 — `verify_outcome`:** v1 `verify_outcome` fields plus required **`telemetry_source`**: `"local_dev"` \| `"unknown"`. Reject **`legacy_unattributed`** on the wire for v2 (**`400`**). Optional **`verification_hypothesis`**: same rules and failure behavior as v2 **`verify_started`**.
+  - **`schema_version`: 3 — `verify_started` / `verify_outcome`:** same fields as **v2** for the same `event`, plus required **`workflow_lineage`**: `"catalog_shipped"` \| `"integrate_spine"` \| `"integrator_scoped"` \| `"unknown"` (machine meaning: [`src/funnel/workflowLineageClassify.ts`](../src/funnel/workflowLineageClassify.ts); SQL and operator prohibitions: [`growth-metrics-ssot.md`](growth-metrics-ssot.md)).
   - When **`funnel_anon_id`** or **`install_id`** is present, invalid UUID → **`400`**. Optional env **`AGENTSKEPTIC_FUNNEL_ANON_ID`** on the CLI populates **`funnel_anon_id`** on commercial/OSS telemetry posts. **`install_id`** is populated by the CLI by default from a pseudonymous id persisted under **`~/.agentskeptic/config.json`** (see below); omitting **`install_id`** remains valid for older clients and stores **`funnel_event.install_id` = NULL**.
-- **Persistence (server):** On first successful insert for a phase, `funnel_event` rows include nullable column **`install_id`** (canonical; not duplicated inside `metadata` JSON). Value is taken from the request body when valid; otherwise SQL `NULL`. **`metadata.telemetry_source`:** v2 echoes the wire enum; v1 inserts are stored as **`legacy_unattributed`**. **`unknown` is not “external-only.”** It labels non–`local_dev` client-declared activation posts. When a valid v2 **`verification_hypothesis`** is present on the wire, the trimmed value is copied to **`metadata.verification_hypothesis`** for operator context only (not entitlement, billing, or verification semantics).
+- **Persistence (server):** On first successful insert for a phase, `funnel_event` rows include nullable column **`install_id`** (canonical; not duplicated inside `metadata` JSON). Value is taken from the request body when valid; otherwise SQL `NULL`. **`metadata.telemetry_source`:** v2 and v3 echo the wire enum; v1 inserts are stored as **`legacy_unattributed`**. **`unknown` is not “external-only.”** It labels non–`local_dev` client-declared activation posts. When a valid v2 or v3 **`verification_hypothesis`** is present on the wire, the trimmed value is copied to **`metadata.verification_hypothesis`** for operator context only (not entitlement, billing, or verification semantics). **v3** rows additionally persist **`metadata.workflow_lineage`** exactly as on the wire.
 - **Skew:** `issued_at` must be within **±300 seconds** of server time (same budget as `issued_at` on `POST /api/v1/usage/reserve`).
 - **Body size:** UTF-8 body must be **≤ 4096 bytes**; `Content-Length` larger than the cap yields **`413`** without reading beyond the limit when the header is present.
 - **Idempotency:** On the telemetry Postgres, `product_activation_started_beacon.run_id` and `product_activation_outcome_beacon.run_id` (each primary key `run_id`). First successful request for a phase inserts the beacon row and **one** corresponding telemetry `funnel_event` row (`verify_started` or `verify_outcome`). Duplicates return **`204`** with **no** additional funnel rows for that phase.
@@ -123,7 +126,8 @@ The signed-in **`/account`** page lists recent **licensed verify outcomes** per 
 | `AGENTSKEPTIC_TELEMETRY_CORE_WRITE_FREEZE=1` (maintenance) | **`503`** | No |
 | Server missing `TELEMETRY_DATABASE_URL` | **`503`** | No |
 | Missing/invalid JSON or body fails validation | `400` | No |
-| Invalid **`verification_hypothesis`** on v2 (empty after trim, charset, or length) | `400` | No |
+| Invalid **`verification_hypothesis`** on v2/v3 (empty after trim, charset, or length) | `400` | No |
+| Invalid **`workflow_lineage`** on v3 (wrong enum) | `400` | No |
 | Invalid **`install_id`** or **`funnel_anon_id`** (when present) | `400` | No |
 | `issued_at` skew too large | `400` | No |
 | Missing/invalid CLI marker headers | **`403`** | No |
@@ -136,7 +140,7 @@ The signed-in **`/account`** page lists recent **licensed verify outcomes** per 
 
 **CLI opt-out:** set **`AGENTSKEPTIC_TELEMETRY=0`** to disable anonymous CLI **`fetch`** for **`POST /api/funnel/product-activation`** (no `verify_started` / `verify_outcome` posts), **`POST /api/oss/claim-ticket`**, and the **stderr claim URL** helper (no stderr lines; no claim-ticket network). Licensed completion (`POST /api/v1/funnel/verify-outcome`) is unchanged so monetization metrics stay comparable.
 
-**CLI `telemetry_source`:** when telemetry is enabled, the CLI sends v2 bodies with **`telemetry_source`** from **`AGENTSKEPTIC_TELEMETRY_SOURCE`**: trim-equal **`local_dev`** → wire **`local_dev`**; otherwise **`unknown`** (resolver in `src/telemetry/resolveTelemetrySource.ts`).
+**CLI `telemetry_source`:** when telemetry is enabled, the CLI sends **v3** bodies (and always includes **`workflow_lineage`**) with **`telemetry_source`** from **`AGENTSKEPTIC_TELEMETRY_SOURCE`**: trim-equal **`local_dev`** → wire **`local_dev`**; otherwise **`unknown`** (resolver in `src/telemetry/resolveTelemetrySource.ts`).
 
 **CLI origin override:** **`AGENTSKEPTIC_TELEMETRY_ORIGIN`** (optional) overrides the POST base URL (trailing slash stripped). When unset, the CLI uses **`COMMERCIAL_LICENSE_API_BASE_URL`** on commercial builds and otherwise **`PUBLIC_CANONICAL_SITE_ORIGIN`** from anchor sync (same canonical site origin as the distribution footer). **Split deployments:** if the license API origin does **not** host the Next.js **`/api/funnel/product-activation`** route, activation rows will never land unless you set **`AGENTSKEPTIC_TELEMETRY_ORIGIN`** to the site origin that does — see [Operator reading metrics](#operator-reading-metrics-do-not-double-count).
 

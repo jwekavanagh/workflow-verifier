@@ -15,6 +15,7 @@ import {
   PRODUCT_ACTIVATION_CLI_VERSION_HEADER,
 } from "./productActivationHeaders.js";
 import { verificationHypothesisForWireFromEnv } from "./verificationHypothesisContract.js";
+import type { WorkflowLineage } from "../funnel/workflowLineageClassify.js";
 
 const TELEMETRY_FETCH_TIMEOUT_MS = 400;
 
@@ -34,6 +35,7 @@ export type PostProductActivationStartedInput = {
   run_id: string;
   issued_at: string;
   workload_class: "bundled_examples" | "non_bundled";
+  workflow_lineage: WorkflowLineage;
   subcommand: "batch_verify" | "quick_verify";
   build_profile: ProductActivationBuildProfile;
 };
@@ -43,6 +45,7 @@ export type PostProductActivationOutcomeInput = {
   run_id: string;
   issued_at: string;
   workload_class: "bundled_examples" | "non_bundled";
+  workflow_lineage: WorkflowLineage;
   subcommand: "batch_verify" | "quick_verify";
   build_profile: ProductActivationBuildProfile;
   terminal_status: "complete" | "inconsistent" | "incomplete";
@@ -75,10 +78,11 @@ export async function postProductActivationEvent(input: PostProductActivationEve
     input.phase === "verify_started"
       ? {
           event: "verify_started" as const,
-          schema_version: 2 as const,
+          schema_version: 3 as const,
           run_id: input.run_id,
           issued_at: input.issued_at,
           workload_class: input.workload_class,
+          workflow_lineage: input.workflow_lineage,
           subcommand: input.subcommand,
           build_profile: input.build_profile,
           telemetry_source,
@@ -88,10 +92,11 @@ export async function postProductActivationEvent(input: PostProductActivationEve
         }
       : {
           event: "verify_outcome" as const,
-          schema_version: 2 as const,
+          schema_version: 3 as const,
           run_id: input.run_id,
           issued_at: input.issued_at,
           workload_class: input.workload_class,
+          workflow_lineage: input.workflow_lineage,
           subcommand: input.subcommand,
           build_profile: input.build_profile,
           terminal_status: input.terminal_status,

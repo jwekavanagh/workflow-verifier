@@ -46,6 +46,7 @@ describe.skipIf(!isValidator && !hasBothDbs)("integrate activation telemetry off
       run_id: "run-telemetry-off-spy-1",
       issued_at: new Date().toISOString(),
       workload_class: "non_bundled",
+      workflow_lineage: "integrator_scoped",
       subcommand: "batch_verify",
       build_profile: "oss",
     });

@@ -45,6 +45,12 @@ const verificationHypothesisOptional = z.optional(
 const issuedAtSchema = z.string().min(1).max(64);
 
 const workloadClassSchema = z.enum(["bundled_examples", "non_bundled"]);
+const workflowLineageSchema = z.enum([
+  "catalog_shipped",
+  "integrate_spine",
+  "integrator_scoped",
+  "unknown",
+]);
 const subcommandSchema = z.enum(["batch_verify", "quick_verify"]);
 const buildProfileSchema = z.enum(["oss", "commercial"]);
 const terminalStatusSchema = z.enum(["complete", "inconsistent", "incomplete"]);
@@ -121,6 +127,37 @@ export const productActivationVerifyOutcomeSchemaV2 = z.object({
   verification_hypothesis: verificationHypothesisOptional,
 });
 
+export const productActivationVerifyStartedSchemaV3 = z.object({
+  event: z.literal("verify_started"),
+  schema_version: z.literal(3),
+  run_id: z.string().min(1).max(256),
+  issued_at: issuedAtSchema,
+  workload_class: workloadClassSchema,
+  workflow_lineage: workflowLineageSchema,
+  subcommand: subcommandSchema,
+  build_profile: buildProfileSchema,
+  telemetry_source: telemetrySourceWireSchema,
+  funnel_anon_id: optionalFunnelAnonIdSchema,
+  install_id: optionalInstallIdSchema,
+  verification_hypothesis: verificationHypothesisOptional,
+});
+
+export const productActivationVerifyOutcomeSchemaV3 = z.object({
+  event: z.literal("verify_outcome"),
+  schema_version: z.literal(3),
+  run_id: z.string().min(1).max(256),
+  issued_at: issuedAtSchema,
+  workload_class: workloadClassSchema,
+  workflow_lineage: workflowLineageSchema,
+  subcommand: subcommandSchema,
+  build_profile: buildProfileSchema,
+  terminal_status: terminalStatusSchema,
+  telemetry_source: telemetrySourceWireSchema,
+  funnel_anon_id: optionalFunnelAnonIdSchema,
+  install_id: optionalInstallIdSchema,
+  verification_hypothesis: verificationHypothesisOptional,
+});
+
 /** @deprecated use V1/V2 schemas; kept for tests that referenced old export names */
 export const productActivationVerifyStartedSchema = productActivationVerifyStartedSchemaV1;
 /** @deprecated */
@@ -129,8 +166,10 @@ export const productActivationVerifyOutcomeSchema = productActivationVerifyOutco
 export const productActivationRequestSchema = z.union([
   productActivationVerifyStartedSchemaV1,
   productActivationVerifyStartedSchemaV2,
+  productActivationVerifyStartedSchemaV3,
   productActivationVerifyOutcomeSchemaV1,
   productActivationVerifyOutcomeSchemaV2,
+  productActivationVerifyOutcomeSchemaV3,
 ]);
 
 export type ProductActivationRequest = z.infer<typeof productActivationRequestSchema>;

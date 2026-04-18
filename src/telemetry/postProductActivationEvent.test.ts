@@ -23,6 +23,7 @@ describe("postProductActivationEvent", () => {
       run_id: "r1",
       issued_at: new Date().toISOString(),
       workload_class: "non_bundled",
+      workflow_lineage: "integrator_scoped",
       subcommand: "batch_verify",
       build_profile: "oss",
     });
@@ -37,6 +38,7 @@ describe("postProductActivationEvent", () => {
       run_id: "r2",
       issued_at: new Date().toISOString(),
       workload_class: "bundled_examples",
+      workflow_lineage: "catalog_shipped",
       subcommand: "quick_verify",
       build_profile: "oss",
     });
@@ -47,7 +49,8 @@ describe("postProductActivationEvent", () => {
     expect(headers["X-AgentSkeptic-Product"]).toBe("cli");
     expect(headers["X-AgentSkeptic-Cli-Version"]).toMatch(/^\d+\.\d+\.\d+/);
     const body = JSON.parse((init as RequestInit).body as string);
-    expect(body.schema_version).toBe(2);
+    expect(body.schema_version).toBe(3);
+    expect(body.workflow_lineage).toBe("catalog_shipped");
     expect(body.telemetry_source).toBe("unknown");
   });
 
@@ -60,6 +63,7 @@ describe("postProductActivationEvent", () => {
       run_id: "r-local",
       issued_at: new Date().toISOString(),
       workload_class: "non_bundled",
+      workflow_lineage: "integrator_scoped",
       subcommand: "batch_verify",
       build_profile: "oss",
     });
@@ -77,6 +81,7 @@ describe("postProductActivationEvent", () => {
       run_id: "r-hyp",
       issued_at: new Date().toISOString(),
       workload_class: "non_bundled",
+      workflow_lineage: "integrator_scoped",
       subcommand: "batch_verify",
       build_profile: "oss",
     });
@@ -94,6 +99,7 @@ describe("postProductActivationEvent", () => {
       run_id: "r-hyp-bad",
       issued_at: new Date().toISOString(),
       workload_class: "non_bundled",
+      workflow_lineage: "integrator_scoped",
       subcommand: "batch_verify",
       build_profile: "oss",
     });

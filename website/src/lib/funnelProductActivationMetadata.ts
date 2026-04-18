@@ -7,9 +7,10 @@ type OutcomeBody = Extract<ProductActivationRequest, { event: "verify_outcome" }
 function telemetrySourceForActivation(
   body:
     | { schema_version: 1 }
-    | { schema_version: 2; telemetry_source: "local_dev" | "unknown" },
+    | { schema_version: 2; telemetry_source: "local_dev" | "unknown" }
+    | { schema_version: 3; telemetry_source: "local_dev" | "unknown" },
 ): "local_dev" | "unknown" | "legacy_unattributed" {
-  if (body.schema_version === 2) {
+  if (body.schema_version === 2 || body.schema_version === 3) {
     return body.telemetry_source;
   }
   return "legacy_unattributed";
@@ -18,7 +19,8 @@ function telemetrySourceForActivation(
 export function rowMetadataVerifyStarted(body: StartedBody) {
   const fid = body.funnel_anon_id?.trim();
   const ts = telemetrySourceForActivation(body);
-  const hRaw = body.schema_version === 2 ? body.verification_hypothesis : undefined;
+  const hRaw =
+    body.schema_version === 2 || body.schema_version === 3 ? body.verification_hypothesis : undefined;
   const h =
     hRaw !== undefined ? normalizeVerificationHypothesisInput(hRaw) : undefined;
   return {
@@ -26,6 +28,7 @@ export function rowMetadataVerifyStarted(body: StartedBody) {
     run_id: body.run_id,
     issued_at: body.issued_at,
     workload_class: body.workload_class,
+    ...(body.schema_version === 3 ? { workflow_lineage: body.workflow_lineage } : {}),
     subcommand: body.subcommand,
     build_profile: body.build_profile,
     telemetry_source: ts,
@@ -37,7 +40,8 @@ export function rowMetadataVerifyStarted(body: StartedBody) {
 export function rowMetadataVerifyOutcome(body: OutcomeBody) {
   const fid = body.funnel_anon_id?.trim();
   const ts = telemetrySourceForActivation(body);
-  const hRaw = body.schema_version === 2 ? body.verification_hypothesis : undefined;
+  const hRaw =
+    body.schema_version === 2 || body.schema_version === 3 ? body.verification_hypothesis : undefined;
   const h =
     hRaw !== undefined ? normalizeVerificationHypothesisInput(hRaw) : undefined;
   return {
@@ -45,6 +49,7 @@ export function rowMetadataVerifyOutcome(body: OutcomeBody) {
     run_id: body.run_id,
     issued_at: body.issued_at,
     workload_class: body.workload_class,
+    ...(body.schema_version === 3 ? { workflow_lineage: body.workflow_lineage } : {}),
     subcommand: body.subcommand,
     build_profile: body.build_profile,
     terminal_status: body.terminal_status,

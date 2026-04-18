@@ -52,6 +52,11 @@ describe("adoption epistemics contract", () => {
       1,
       "exactly one ## Structural throughput constraint heading",
     );
+    assert.equal(
+      body.split("## Structural vs empirical vs telemetry proxies").length - 1,
+      1,
+      "exactly one ## Structural vs empirical vs telemetry proxies heading",
+    );
     for (const s of ["integrator-owned", "correctly-shaped", "cannot be ranked from this repository"]) {
       assert.ok(body.includes(s), `docs/adoption-epistemics-ssot.md must contain ${JSON.stringify(s)}`);
     }

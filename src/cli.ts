@@ -74,6 +74,7 @@ import { formatDistributionFooter } from "./distributionFooter.js";
 import { postPublicVerificationReport } from "./shareReport/postPublicVerificationReport.js";
 import { runBootstrapSubcommand } from "./bootstrap/runBootstrapSubcommand.js";
 import { maybeEmitOssClaimTicketUrlToStderr } from "./telemetry/maybeEmitOssClaimTicketUrl.js";
+import { classifyWorkflowLineage } from "./funnel/workflowLineageClassify.js";
 import { postProductActivationEvent } from "./telemetry/postProductActivationEvent.js";
 
 function usageQuick(): string {
@@ -514,11 +515,16 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
     sqlitePath: dbPath ?? undefined,
     postgresUrl: postgresUrl ?? undefined,
   });
+  const quickLineage = classifyWorkflowLineage({
+    subcommand: "quick_verify",
+    workloadClass: quickWorkloadClass,
+  });
   await postProductActivationEvent({
     phase: "verify_started",
     run_id: activationRunId,
     issued_at: new Date().toISOString(),
     workload_class: quickWorkloadClass,
+    workflow_lineage: quickLineage,
     subcommand: "quick_verify",
     build_profile: quickBuildProfile,
   });
@@ -548,6 +554,7 @@ async function runQuickSubcommand(args: string[]): Promise<void> {
     run_id: activationRunId,
     issued_at: new Date().toISOString(),
     workload_class: quickWorkloadClass,
+    workflow_lineage: quickLineage,
     subcommand: "quick_verify",
     build_profile: quickBuildProfile,
     terminal_status: quickVerifyVerdictToTerminalStatus(report.verdict),
@@ -1143,11 +1150,17 @@ async function main(): Promise<void> {
     registryPath: parsedBatch.registryPath,
     database: parsedBatch.database,
   });
+  const batchLineage = classifyWorkflowLineage({
+    subcommand: "batch_verify",
+    workloadClass: batchWorkloadClass,
+    workflowId: parsedBatch.workflowId,
+  });
   await postProductActivationEvent({
     phase: "verify_started",
     run_id: batchActivationRunId,
     issued_at: new Date().toISOString(),
     workload_class: batchWorkloadClass,
+    workflow_lineage: batchLineage,
     subcommand: "batch_verify",
     build_profile: batchBuildProfile,
   });
@@ -1198,6 +1211,7 @@ async function main(): Promise<void> {
       run_id: batchActivationRunId,
       issued_at: new Date().toISOString(),
       workload_class: batchWorkloadClass,
+      workflow_lineage: batchLineage,
       subcommand: "batch_verify",
       build_profile: batchBuildProfile,
       terminal_status: result.status,

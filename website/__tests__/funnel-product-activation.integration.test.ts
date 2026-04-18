@@ -413,4 +413,43 @@ describe.skipIf(!hasDatabaseUrl || !hasTelemetryUrl)("funnel product-activation"
     const hit = rows.find((r) => (r.metadata as { run_id?: string }).run_id === rid);
     expect((hit!.metadata as { verification_hypothesis?: string }).verification_hypothesis).toBe(hyp);
   });
+
+  it("returns 204 for v3 verify_started and persists workflow_lineage in metadata", async () => {
+    const body = {
+      event: "verify_started" as const,
+      schema_version: 3 as const,
+      run_id: "run-v3-lineage-started",
+      issued_at: issuedNow,
+      workload_class: "non_bundled" as const,
+      workflow_lineage: "integrator_scoped" as const,
+      subcommand: "batch_verify" as const,
+      build_profile: "oss" as const,
+      telemetry_source: "unknown" as const,
+    };
+    expect((await postProductActivation(productActivationPostRequest(body, { cliVersionSemver: cliSemver }))).status).toBe(
+      204,
+    );
+    const rows = await dbTelemetry
+      .select()
+      .from(telemetryFunnelEvents)
+      .where(eq(telemetryFunnelEvents.event, "verify_started"));
+    const hit = rows.find((r) => (r.metadata as { run_id?: string }).run_id === body.run_id);
+    expect((hit!.metadata as { workflow_lineage?: string }).workflow_lineage).toBe("integrator_scoped");
+  });
+
+  it("returns 400 for v3 with invalid workflow_lineage", async () => {
+    const body = {
+      event: "verify_started",
+      schema_version: 3,
+      run_id: "run-v3-bad-lineage",
+      issued_at: issuedNow,
+      workload_class: "non_bundled",
+      workflow_lineage: "not_an_enum",
+      subcommand: "batch_verify",
+      build_profile: "oss",
+      telemetry_source: "unknown",
+    };
+    const res = await postProductActivation(productActivationPostRequest(body, { cliVersionSemver: cliSemver }));
+    expect(res.status).toBe(400);
+  });
 });

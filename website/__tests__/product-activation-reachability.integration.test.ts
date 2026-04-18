@@ -85,4 +85,31 @@ describe.skipIf(!isValidator && !hasBothDbs)("product-activation reachability (P
       .orderBy(desc(telemetryFunnelEvents.createdAt));
     expect(rows.some((r) => (r.metadata as { run_id?: string }).run_id === runId)).toBe(true);
   });
+
+  it("204 and funnel_event row for valid v3 verify_started", async () => {
+    const runId = "run-reach-204-v3";
+    const issued = new Date().toISOString();
+    const body = {
+      event: "verify_started" as const,
+      schema_version: 3 as const,
+      run_id: runId,
+      issued_at: issued,
+      workload_class: "non_bundled" as const,
+      workflow_lineage: "integrate_spine" as const,
+      subcommand: "batch_verify" as const,
+      build_profile: "oss" as const,
+      telemetry_source: "unknown" as const,
+    };
+    const res = await postProductActivation(productActivationPostRequest(body, { cliVersionSemver: cliSemver }));
+    expect(res.status).toBe(204);
+
+    const rows = await dbTelemetry
+      .select()
+      .from(telemetryFunnelEvents)
+      .where(eq(telemetryFunnelEvents.event, "verify_started"))
+      .orderBy(desc(telemetryFunnelEvents.createdAt));
+    const hit = rows.find((r) => (r.metadata as { run_id?: string }).run_id === runId);
+    expect(hit).toBeDefined();
+    expect((hit!.metadata as { workflow_lineage?: string }).workflow_lineage).toBe("integrate_spine");
+  });
 });

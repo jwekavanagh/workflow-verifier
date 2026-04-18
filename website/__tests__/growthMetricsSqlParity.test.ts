@@ -6,6 +6,7 @@ import { CrossSurface_ConversionRate_AcquisitionToIntegrate_Rolling7dUtc_SQL } f
 import { CrossSurface_ConversionRate_AcquisitionToVerifyOutcome_Rolling7dUtc_SQL } from "@/lib/growthMetricsCrossSurfaceConversionRolling7d";
 import { CrossSurface_ConversionRate_IntegrateToVerifyOutcome_Rolling7dUtc_SQL } from "@/lib/growthMetricsIntegrateToVerifyOutcomeRolling7d";
 import { CrossSurface_ConversionRate_QualifiedIntegrateToVerifyStarted_Rolling7dUtc_SQL } from "@/lib/growthMetricsQualifiedIntegrateToVerifyStartedRolling7d";
+import { CrossSurface_ConversionRate_QualifiedIntegrateToIntegratorScopedVerifyOutcome_Rolling7dUtc_SQL } from "@/lib/growthMetricsQualifiedIntegrateToIntegratorScopedVerifyOutcomeRolling7d";
 import { CrossSurface_ConversionRate_QualifiedIntegrateToVerifyOutcome_Rolling7dUtc_SQL } from "@/lib/growthMetricsQualifiedIntegrateToVerifyOutcomeRolling7d";
 import { Counts_QualifiedVerifyOutcomesByTerminalStatus_Rolling7dUtc_SQL } from "@/lib/growthMetricsQualifiedVerifyOutcomeTerminalBucketsRolling7d";
 import { Retention_ActiveReserveDays_ge2_Rolling28dUtc_SQL } from "@/lib/growthMetricsRetentionRolling28d";
@@ -32,6 +33,10 @@ const METRICS = [
   [
     "CrossSurface_ConversionRate_QualifiedIntegrateToVerifyOutcome_Rolling7dUtc",
     CrossSurface_ConversionRate_QualifiedIntegrateToVerifyOutcome_Rolling7dUtc_SQL,
+  ],
+  [
+    "CrossSurface_ConversionRate_QualifiedIntegrateToIntegratorScopedVerifyOutcome_Rolling7dUtc",
+    CrossSurface_ConversionRate_QualifiedIntegrateToIntegratorScopedVerifyOutcome_Rolling7dUtc_SQL,
   ],
   ["Counts_QualifiedVerifyOutcomesByTerminalStatus_Rolling7dUtc", Counts_QualifiedVerifyOutcomesByTerminalStatus_Rolling7dUtc_SQL],
   [
