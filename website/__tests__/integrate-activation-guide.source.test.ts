@@ -10,6 +10,9 @@ describe("/integrate activation wiring", () => {
       "utf8",
     );
     expect(pageSrc).toContain("integrateActivation");
+    expect(pageSrc).toContain("spineCheckpointHeading");
+    expect(pageSrc).toContain("productCompletionHeading");
+    expect(pageSrc).not.toContain("successHeading");
     expect(pageSrc).toContain("IntegrateActivationBlock");
     expect(pageSrc).not.toContain("FirstRunActivationGuide");
     expect(pageSrc).not.toContain("embeddedFirstRunIntegrationMd");

@@ -7,7 +7,7 @@ export const siteMetadata = {
   integrate: {
     title: "Get started",
     description:
-      "Install Node.js 22.13+, Git, and npm. Paste one command block to clone this repo, install dependencies, build, run the bundled demo (npm start), then run first-run verify (npm run first-run-verify) with read-only SQL contract checks. Expect several minutes on a cold clone; install and build can fail for ordinary environment reasons.",
+      "Install Node.js 22.13+, Git, and npm. Paste one command block to clone this repo, install dependencies, build, run the bundled demo (npm start), then run first-run verify (npm run first-run-verify) with read-only SQL contract checks. A full run ends with verify-integrator-owned on the integrate spine pack and your prepared SQLite file—that is a mechanical checkpoint on this page, not ProductionComplete on your own emitters. Expect several minutes on a cold clone; install and build can fail for ordinary environment reasons.",
   },
   security: {
     title: "Security & Trust — AgentSkeptic",

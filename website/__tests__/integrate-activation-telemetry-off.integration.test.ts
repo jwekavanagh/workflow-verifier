@@ -33,6 +33,9 @@ describe.skipIf(!isValidator && !hasBothDbs)("integrate activation telemetry off
     expect(INTEGRATE_ACTIVATION_SHELL_BODY).toContain("wf_integrate_spine");
     expect(INTEGRATE_ACTIVATION_SHELL_BODY).toContain("examples/integrate-your-db/bootstrap-input.json");
     expect(INTEGRATE_ACTIVATION_SHELL_BODY).toContain("INTEGRATE_SPINE_GIT_URL");
+    expect(INTEGRATE_ACTIVATION_SHELL_BODY).toContain(
+      'node dist/cli.js verify-integrator-owned --workflow-id wf_integrate_spine --events "$OUT2/events.ndjson" --registry "$OUT2/tools.json" --db "$AGENTSKEPTIC_VERIFY_DB"',
+    );
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 

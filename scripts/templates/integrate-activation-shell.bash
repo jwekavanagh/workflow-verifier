@@ -21,4 +21,4 @@ fi
 OUT2="$(mktemp -u "${TMPDIR:-/tmp}/agentskeptic-integrate-final-XXXXXXXX")"
 trap 'rm -rf "$OUT" "$ADOPT_DB" "$OUT2"' EXIT
 node dist/cli.js bootstrap --input examples/integrate-your-db/bootstrap-input.json --db "$AGENTSKEPTIC_VERIFY_DB" --out "$OUT2"
-node dist/cli.js --workflow-id wf_integrate_spine --events "$OUT2/events.ndjson" --registry "$OUT2/tools.json" --db "$AGENTSKEPTIC_VERIFY_DB"
+node dist/cli.js verify-integrator-owned --workflow-id wf_integrate_spine --events "$OUT2/events.ndjson" --registry "$OUT2/tools.json" --db "$AGENTSKEPTIC_VERIFY_DB"

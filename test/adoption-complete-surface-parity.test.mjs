@@ -32,6 +32,23 @@ describe("adoption complete surface parity", () => {
     assert.ok(t.includes('"$ADOPT_DB"'), "bash template must verify against ADOPT_DB");
     assert.ok(t.includes("examples/integrate-your-db/bootstrap-input.json"), "bash template must run final spine input");
     assert.ok(t.includes("wf_integrate_spine"), "bash template must verify wf_integrate_spine");
+    assert.ok(
+      t.includes(
+        'node dist/cli.js verify-integrator-owned --workflow-id wf_integrate_spine --events "$OUT2/events.ndjson" --registry "$OUT2/tools.json" --db "$AGENTSKEPTIC_VERIFY_DB"',
+      ),
+      "bash template must end spine with verify-integrator-owned O1 line",
+    );
+  });
+
+  it("integrate_activation_shell_generated_matches_template_terminal_line", () => {
+    const genPath = join(root, "website", "src", "generated", "integrateActivationShellStatic.ts");
+    const g = readFileSync(genPath, "utf8");
+    assert.ok(
+      g.includes(
+        'node dist/cli.js verify-integrator-owned --workflow-id wf_integrate_spine --events "$OUT2/events.ndjson" --registry "$OUT2/tools.json" --db "$AGENTSKEPTIC_VERIFY_DB"',
+      ),
+      "generated INTEGRATE_ACTIVATION_SHELL_BODY must include O1 terminal line",
+    );
   });
 
   it("product_copy_integrate_activation_contains_needles", () => {

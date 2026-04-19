@@ -256,15 +256,22 @@ export const integrateActivation = {
   copyActivationBlockLabel: "Copy activation commands",
   runHeading: "Run this",
   runCaption:
-    "Real integrator output is Step 4 on your database with integrator-owned events and registry—use agentskeptic verify-integrator-owned after npm run build (see first-run SSOT and agentskeptic.md Integrator-owned gate). The block below is mechanical preflight only: enter your hypothesis, then copy into a terminal. The script clones this repo, installs, runs the bundled demo and PatternComplete-shaped verify on temp paths, then runs the fixed bootstrap plus contract verify on a SQLite file you supply via AGENTSKEPTIC_VERIFY_DB. Before the final step, apply examples/integrate-your-db/required-sqlite-state.sql to that file. PatternComplete checklist hooks include AC-TRUST-01 and AC-OPS-01 under AdoptionComplete_PatternComplete in the first-run doc. Exit code 0 means IntegrateSpineComplete (pedagogy), not Decision-ready ProductionComplete. A cold clone can take several minutes.",
-  successHeading: "What success looks like",
-  successIntro:
-    "Primary success is Step 4 plus Decision-ready artifacts when you need a decision (first-run SSOT). The copied script exiting 0 only proves IntegrateSpineComplete for the preflight path.",
-  successBullets: [
-    "After npm run build, run agentskeptic verify-integrator-owned with your workflow id, events, registry, and one of --db or --postgres-url so bundled example triples fail closed (stderr INTEGRATOR_OWNED_GATE).",
-    "After the demo segment in the script you will see PatternComplete-style output (human report on stderr, WorkflowResult JSON on stdout for the temp DB path).",
-    "After the final script segment, stderr shows the human report and stdout one WorkflowResult JSON with status complete for wf_integrate_spine when your DB matches examples/integrate-your-db/bootstrap-input.json and required-sqlite-state.sql.",
+    "Real integrator output is Step 4 on your database with integrator-owned events and registry—use agentskeptic verify-integrator-owned after npm run build (see first-run SSOT and agentskeptic.md Integrator-owned gate). The block below is mechanical preflight only: enter your hypothesis, then copy into a terminal. The script clones this repo, installs, runs the bundled demo and PatternComplete-shaped verify on temp paths, then runs the fixed bootstrap pack and the final verify on a SQLite file you supply via AGENTSKEPTIC_VERIFY_DB. That final verify is agentskeptic verify-integrator-owned (integrator-owned gate), not a bare batch verify. Before the final bootstrap, apply examples/integrate-your-db/required-sqlite-state.sql to that file. PatternComplete checklist hooks include AC-TRUST-01 and AC-OPS-01 under AdoptionComplete_PatternComplete in the first-run doc. Exit code 0 on the full script means IntegrateSpineComplete (pedagogy and gate path only), not Decision-ready ProductionComplete. A cold clone can take several minutes.",
+  spineCheckpointHeading: "Mechanical spine checkpoint (not product completion)",
+  spineCheckpointIntro:
+    "When the copied script exits 0 after the guard, you have reached IntegrateSpineComplete: pedagogical demo, PatternComplete-shaped mid segment, then bootstrap plus verify-integrator-owned on your prepared AGENTSKEPTIC_VERIFY_DB using the fixed pack under examples/integrate-your-db. That is still not ProductionComplete on your own emitters.",
+  spineCheckpointBullets: [
+    "After the demo segment you see PatternComplete-style contract verify on temp paths (human report on stderr, WorkflowResult JSON on stdout for the temp DB path).",
+    "The final line in the script is verify-integrator-owned for wf_integrate_spine on the generated pack under $OUT2 and your AGENTSKEPTIC_VERIFY_DB so telemetry records the integrator-owned subcommand and bundled example triples stay rejected.",
+    "When your DB matches examples/integrate-your-db/bootstrap-input.json and required-sqlite-state.sql, stderr shows the human report and stdout one WorkflowResult JSON with status complete for wf_integrate_spine.",
     "If the script stops after the demo with a message about AGENTSKEPTIC_VERIFY_DB, set that variable to a readable SQLite file prepared per docs/first-run-integration.md (Integrate spine) and rerun from a fresh directory.",
+  ],
+  productCompletionHeading: "Product completion: Step 4 on your emitters",
+  productCompletionIntro:
+    "ProductionComplete requires contract verification on integrator-owned NDJSON and registry (or bootstrap from your tool_calls) on your authoritative database—not the curriculum pack alone. Use Decision-ready artifacts when a human decision depends on the run (first-run SSOT).",
+  productCompletionBullets: [
+    "After npm run build, run agentskeptic verify-integrator-owned with your workflow id, your events path, your registry path, and one of --db or --postgres-url so shipped example triples fail closed (stderr INTEGRATOR_OWNED_GATE).",
+    "Follow docs/first-run-integration.md Step 4 and Grounded integrator-owned output; IntegrateSpineComplete does not substitute for that path.",
   ],
   provedHeading: "What you proved",
   proved: EPISTEMIC_CONTRACT_INTEGRATOR_SNIPPET,

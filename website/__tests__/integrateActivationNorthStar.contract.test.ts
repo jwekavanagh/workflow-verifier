@@ -21,6 +21,13 @@ describe("integrateActivation north star (decision-ready ProductionComplete)", (
       "IntegrateSpineComplete alone satisfies Decision-ready ProductionComplete",
     );
     expect(JSON.stringify(integrateActivation)).toContain("Decision-ready ProductionComplete");
+    const blob = JSON.stringify(integrateActivation);
+    expect(blob).not.toContain("What success looks like");
+    expect(blob).not.toContain("successHeading");
+    expect(blob).not.toContain("successIntro");
+    expect(blob).not.toContain("successBullets");
+    expect(integrateActivation.spineCheckpointHeading).toBe("Mechanical spine checkpoint (not product completion)");
+    expect(integrateActivation.productCompletionHeading).toBe("Product completion: Step 4 on your emitters");
   });
 
   it("adoption SSOT heading uniqueness and item 5 fixture parity", () => {

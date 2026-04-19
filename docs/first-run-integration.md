@@ -70,7 +70,7 @@ The human report on stderr will state that the workflow **matched the database**
 
 Use this section to **believe the product** and to satisfy **CI-shaped** checks. It does **not** replace Step 4 on **your** inputs.
 
-Send this bundle to someone who should **see green vs ROW_ABSENT in one sitting** before they touch production data. The **same** ordered shell commands as **`https://agentskeptic.com/integrate`** (clone, install, build, demo, PatternComplete-shaped verify, guard, then final bootstrap + verify on `AGENTSKEPTIC_VERIFY_DB`) live in [`scripts/templates/integrate-activation-shell.bash`](../scripts/templates/integrate-activation-shell.bash) (L0).
+Send this bundle to someone who should **see green vs ROW_ABSENT in one sitting** before they touch production data. The **same** ordered shell commands as **`https://agentskeptic.com/integrate`** (clone, install, build, demo, PatternComplete-shaped verify, guard, then final bootstrap plus **`verify-integrator-owned`** on `AGENTSKEPTIC_VERIFY_DB`) live in [`scripts/templates/integrate-activation-shell.bash`](../scripts/templates/integrate-activation-shell.bash) (L0).
 
 ### What this does
 
@@ -146,7 +146,7 @@ Complete ProductionComplete-shaped work on **your** `tool_calls`, database, and 
 
 **IntegrateSpineComplete**
 
-- The full L0 script **exit code is 0** iff every step completes, including the **final** `node dist/cli.js bootstrap … --input examples/integrate-your-db/bootstrap-input.json` and the following **`verify`** on `"$AGENTSKEPTIC_VERIFY_DB"`.
+- The full L0 script **exit code is 0** iff every step completes, including the **final** `node dist/cli.js bootstrap … --input examples/integrate-your-db/bootstrap-input.json` and the following **`verify-integrator-owned`** on `"$AGENTSKEPTIC_VERIFY_DB"` (same event/registry/db flags as contract batch verify; integrator-owned gate per [`agentskeptic.md`](agentskeptic.md) Integrator-owned gate).
 - If `AGENTSKEPTIC_VERIFY_DB` is unset, empty, not a file, or not readable, the script **exits non-zero immediately before that final bootstrap** (after the demo / PatternComplete-shaped segment). That is **not** IntegrateSpineComplete; it is a deliberate **non-terminal-success** outcome so demo-only runs never report success for the whole spine.
 
 **PatternComplete vs IntegrateSpineComplete**

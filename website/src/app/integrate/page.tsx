@@ -47,10 +47,18 @@ export default function IntegratePage() {
         <IntegrateActivationBlock />
       </div>
 
-      <h2>{a.successHeading}</h2>
-      <p className="muted">{a.successIntro}</p>
+      <h2>{a.spineCheckpointHeading}</h2>
+      <p className="muted">{a.spineCheckpointIntro}</p>
       <ol className="muted">
-        {a.successBullets.map((b, i) => (
+        {a.spineCheckpointBullets.map((b, i) => (
+          <li key={i}>{b}</li>
+        ))}
+      </ol>
+
+      <h2>{a.productCompletionHeading}</h2>
+      <p className="muted">{a.productCompletionIntro}</p>
+      <ol className="muted">
+        {a.productCompletionBullets.map((b, i) => (
           <li key={i}>{b}</li>
         ))}
       </ol>
