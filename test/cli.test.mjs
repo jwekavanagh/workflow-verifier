@@ -179,6 +179,62 @@ describe("CLI agentskeptic", () => {
     assert.equal(r.stderr.trim(), "");
   });
 
+  it("verify-integrator-owned --help exits 0", () => {
+    const r = spawnSync(process.execPath, ["--no-warnings", cliJs, "verify-integrator-owned", "--help"], {
+      encoding: "utf8",
+      cwd: root,
+    });
+    assert.equal(r.status, 0);
+    assert.ok(r.stdout.includes("verify-integrator-owned"));
+    assert.equal(r.stderr.trim(), "");
+  });
+
+  it("verify-integrator-owned rejects bundled example triple with exit 2", () => {
+    const demoDb = join(root, "examples", "demo.db");
+    const r = spawnSync(
+      process.execPath,
+      [
+        "--no-warnings",
+        cliJs,
+        "verify-integrator-owned",
+        "--workflow-id",
+        "wf_complete",
+        "--events",
+        eventsPath,
+        "--registry",
+        registryPath,
+        "--db",
+        demoDb,
+      ],
+      { encoding: "utf8", cwd: root },
+    );
+    assert.equal(r.status, 2, r.stderr);
+    assert.ok(r.stderr.includes("INTEGRATOR_OWNED_GATE"), r.stderr);
+    assert.ok(r.stderr.includes("bundled_examples"), r.stderr);
+    assert.equal(r.stdout.trim(), "");
+  });
+
+  it("verify-integrator-owned stdout matches batch verify for non-bundled db path", () => {
+    const argsBatch = [
+      "--no-warnings",
+      cliJs,
+      "--workflow-id",
+      "wf_complete",
+      "--events",
+      eventsPath,
+      "--registry",
+      registryPath,
+      "--db",
+      dbPath,
+    ];
+    const argsIo = ["--no-warnings", cliJs, "verify-integrator-owned", ...argsBatch.slice(2)];
+    const rBatch = spawnSync(process.execPath, argsBatch, { encoding: "utf8", cwd: root });
+    const rIo = spawnSync(process.execPath, argsIo, { encoding: "utf8", cwd: root });
+    assert.equal(rBatch.status, 0, rBatch.stderr);
+    assert.equal(rIo.status, 0, rIo.stderr);
+    assert.equal(rIo.stdout.trim(), rBatch.stdout.trim());
+  });
+
   it("missing args → exit 3 and stderr JSON CLI_USAGE", () => {
     const r = spawnSync(process.execPath, ["--no-warnings", cliJs, "--workflow-id", "w"], {
       encoding: "utf8",

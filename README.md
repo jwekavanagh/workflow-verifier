@@ -92,6 +92,8 @@ This is the fastest way to see **`ROW_ABSENT`** versus **verified** on the same 
 
 **Fast first run on your own DB (bundled quickstart example):** after `npm install` and `npm run build`, run **`npm run partner-quickstart`** from the repo root (SQLite temp DB). Commands reference: **[`docs/partner-quickstart-commands.md`](docs/partner-quickstart-commands.md)**; narrative: **[`docs/first-run-integration.md`](docs/first-run-integration.md)** and **`/integrate`** on the site.
 
+**Integrator-owned output:** The demo above is pedagogy. For verification on **your** NDJSON, registry, and authoritative SQLite or Postgres, follow **[Grounded integrator-owned output](docs/first-run-integration.md#grounded-integrator-owned-output-primary-path)** in **`docs/first-run-integration.md`** and run **`agentskeptic verify-integrator-owned`** after **`npm run build`** (same flags as contract batch verify; rejects shipped example fixture triples with exit **2** and stderr **`INTEGRATOR_OWNED_GATE`**—see **`docs/agentskeptic.md`** Integrator-owned gate).
+
 ```bash
 npm install
 npm start

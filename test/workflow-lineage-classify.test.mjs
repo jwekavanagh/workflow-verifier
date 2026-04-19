@@ -29,4 +29,16 @@ describe("classifyWorkflowLineage", () => {
     assert.equal(b(undefined), "unknown");
     assert.equal(b("  "), "unknown");
   });
+
+  it("classifies verify_integrator_owned same as batch_verify for workflow ids", async () => {
+    const { classifyWorkflowLineage } = await import("../dist/funnel/workflowLineageClassify.js");
+    const io = (workflowId, workloadClass = "non_bundled") =>
+      classifyWorkflowLineage({
+        subcommand: "verify_integrator_owned",
+        workloadClass,
+        workflowId,
+      });
+    assert.equal(io("wf_complete"), "catalog_shipped");
+    assert.equal(io("wf_custom_integrator"), "integrator_scoped");
+  });
 });

@@ -4,7 +4,7 @@ import {
 } from "../generated/commercialBuildFlags.js";
 import { fetchWithTimeout } from "../telemetry/fetchWithTimeout.js";
 
-export type VerifyOutcomeSubcommand = "batch_verify" | "quick_verify";
+export type VerifyOutcomeSubcommand = "batch_verify" | "quick_verify" | "verify_integrator_owned";
 export type VerifyOutcomeTerminalStatus = "complete" | "inconsistent" | "incomplete";
 export type VerifyOutcomeWorkloadClass = "bundled_examples" | "non_bundled";
 

@@ -35,7 +35,7 @@ export const licensedVerifyOutcomeMetadataSchema = z.object({
   schema_version: z.literal(1),
   terminal_status: z.enum(["complete", "inconsistent", "incomplete"]),
   workload_class: z.enum(["bundled_examples", "non_bundled"]),
-  subcommand: z.enum(["batch_verify", "quick_verify"]),
+  subcommand: z.enum(["batch_verify", "quick_verify", "verify_integrator_owned"]),
 });
 
 export type LicensedVerifyOutcomeMetadata = z.infer<typeof licensedVerifyOutcomeMetadataSchema>;
@@ -43,7 +43,7 @@ export type LicensedVerifyOutcomeMetadata = z.infer<typeof licensedVerifyOutcome
 export function buildLicensedVerifyOutcomeMetadata(input: {
   terminal_status: "complete" | "inconsistent" | "incomplete";
   workload_class: "bundled_examples" | "non_bundled";
-  subcommand: "batch_verify" | "quick_verify";
+  subcommand: "batch_verify" | "quick_verify" | "verify_integrator_owned";
 }): LicensedVerifyOutcomeMetadata {
   return licensedVerifyOutcomeMetadataSchema.parse({
     schema_version: 1,

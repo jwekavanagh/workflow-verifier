@@ -21,7 +21,7 @@ export type ClassifyWorkflowLineageInput =
       workloadClass: "bundled_examples" | "non_bundled";
     }
   | {
-      subcommand: "batch_verify";
+      subcommand: "batch_verify" | "verify_integrator_owned";
       workloadClass: "bundled_examples" | "non_bundled";
       workflowId: string | undefined;
     };

@@ -110,7 +110,7 @@ The signed-in **`/account`** page lists recent **licensed verify outcomes** per 
 - **Not in** [`schemas/openapi-commercial-v1.yaml`](../schemas/openapi-commercial-v1.yaml) — operator-only; integrators must not depend on it.
 - **Auth:** none (anonymous). **Required headers:** `X-AgentSkeptic-Product: cli` and `X-AgentSkeptic-Cli-Version: <semver>` (semver core validated server-side; emitted from root `package.json` at anchor sync into [`src/publicDistribution.generated.ts`](../src/publicDistribution.generated.ts) as `AGENTSKEPTIC_CLI_SEMVER`).
 - **Body:** discriminated union on `event` and **`schema_version`** (**v1** requires **`schema_version`: 1**; current published CLI sends **`schema_version`: 3**; **v2** remains accepted for backward compatibility):
-  - **`schema_version`: 1 — `verify_started`:** `{ "event": "verify_started", "schema_version": 1, "run_id": string, "issued_at": ISO8601, "workload_class": "bundled_examples"|"non_bundled", "subcommand": "batch_verify"|"quick_verify", "build_profile": "oss"|"commercial", "funnel_anon_id"?: UUIDv4, "install_id"?: UUID }`
+  - **`schema_version`: 1 — `verify_started`:** `{ "event": "verify_started", "schema_version": 1, "run_id": string, "issued_at": ISO8601, "workload_class": "bundled_examples"|"non_bundled", "subcommand": "batch_verify"|"quick_verify"|"verify_integrator_owned", "build_profile": "oss"|"commercial", "funnel_anon_id"?: UUIDv4, "install_id"?: UUID }`
   - **`schema_version`: 1 — `verify_outcome`:** same fields as `verify_started` plus `"terminal_status": "complete"|"inconsistent"|"incomplete"` and optional **`funnel_anon_id`** / **`install_id`** (UUID).
   - **`schema_version`: 2 — `verify_started`:** v1 `verify_started` fields plus required **`telemetry_source`**: `"local_dev"` \| `"unknown"`. Reject **`legacy_unattributed`** on the wire for v2 (**`400`**). Optional **`verification_hypothesis`**: when present, must be non-empty after trim and satisfy the single canonical rules module [`src/telemetry/verificationHypothesisContract.ts`](../src/telemetry/verificationHypothesisContract.ts) (no duplicate charset table in this doc); invalid or empty-after-trim values → **`400`**. Omitted key remains valid for backward compatibility. Populated from integrator env **`AGENTSKEPTIC_VERIFICATION_HYPOTHESIS`** on the CLI when valid.
   - **`schema_version`: 2 — `verify_outcome`:** v1 `verify_outcome` fields plus required **`telemetry_source`**: `"local_dev"` \| `"unknown"`. Reject **`legacy_unattributed`** on the wire for v2 (**`400`**). Optional **`verification_hypothesis`**: same rules and failure behavior as v2 **`verify_started`**.
@@ -152,7 +152,7 @@ The signed-in **`/account`** page lists recent **licensed verify outcomes** per 
 
 - **Not in** [`schemas/openapi-commercial-v1.yaml`](../schemas/openapi-commercial-v1.yaml) — operator-only; integrators should not depend on it.
 - **Auth:** `Authorization: Bearer <api_key>` (same key material as license preflight).
-- **Body:** `{ "run_id": string, "terminal_status": "complete"|"inconsistent"|"incomplete", "workload_class": "bundled_examples"|"non_bundled", "subcommand": "batch_verify"|"quick_verify" }`.
+- **Body:** `{ "run_id": string, "terminal_status": "complete"|"inconsistent"|"incomplete", "workload_class": "bundled_examples"|"non_bundled", "subcommand": "batch_verify"|"quick_verify"|"verify_integrator_owned" }`.
 - **Gates:** `run_id` must exist in `usage_reservation` for the resolved API key; reservation `created_at` must be **no older than 6 hours** (wall clock, server time).
 - **Idempotency:** table `verify_outcome_beacon` primary key `(api_key_id, run_id)`. First successful request inserts the beacon row and **one** `licensed_verify_outcome` funnel row. Duplicates return **`204`** with **no** additional funnel rows.
 
@@ -170,6 +170,8 @@ The signed-in **`/account`** page lists recent **licensed verify outcomes** per 
 **Constant:** `VERIFY_OUTCOME_BEACON_MAX_RESERVATION_AGE_MS = 6 * 60 * 60 * 1000` in [`website/src/lib/funnelVerifyOutcomeConstants.ts`](../website/src/lib/funnelVerifyOutcomeConstants.ts).
 
 **Funnel metadata** for `licensed_verify_outcome`: `{ "schema_version": 1, "terminal_status", "workload_class", "subcommand" }` (validated in [`website/src/lib/funnelCommercialMetadata.ts`](../website/src/lib/funnelCommercialMetadata.ts)).
+
+**`subcommand` value `verify_integrator_owned`:** Labels runs started via **`agentskeptic verify-integrator-owned`** (same verification engine as batch verify after the integrator-owned path gate). This is a **structural** CLI routing discriminator for operators filtering raw rows—it is **not** a substitute for rolling funnel KPIs and must not be read as proof of ProductionComplete (see [`adoption-epistemics-ssot.md`](adoption-epistemics-ssot.md)).
 
 ### Integrator
 

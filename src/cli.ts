@@ -106,6 +106,9 @@ function usageVerify(): string {
   agentskeptic bootstrap --input <path> (--db <sqlitePath> | --postgres-url <url>) --out <path>
     (BootstrapPackInput v1 JSON → contract pack + in-process verify; see docs/bootstrap-pack-normative.md)
 
+  agentskeptic verify-integrator-owned --workflow-id <id> --events <path> --registry <path> (--db <sqlitePath> | --postgres-url <url>)
+    (same flags as batch verify below; rejects bundled example fixture paths with exit 2 — see docs/agentskeptic.md Integrator-owned gate)
+
   agentskeptic --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
   agentskeptic --workflow-id <id> --events <path> --registry <path> --postgres-url <url>
 
@@ -164,6 +167,18 @@ Advanced / optional (persisted runs, signing, local UI, plan/git checks):
 
   agentskeptic plan-transition --repo <dir> --before <ref> --after <ref> --plan <path>
   Validate git Before..After against machine plan rules (planValidation, body YAML section, or derived path citations as required diff surfaces; Git >= 2.30.0; see docs).
+
+  --help, -h  print this message and exit 0`;
+}
+
+function usageVerifyIntegratorOwned(): string {
+  return `Usage:
+  agentskeptic verify-integrator-owned --workflow-id <id> --events <path> --registry <path> --db <sqlitePath>
+  agentskeptic verify-integrator-owned --workflow-id <id> --events <path> --registry <path> --postgres-url <url>
+
+  Same flags and verification semantics as contract batch verify, except paths classified as bundled_examples are rejected (exit 2; stderr: INTEGRATOR_OWNED_GATE). CI lock flags (--output-lock / --expect-lock) are not supported here—use standard batch verify for lock flows.
+
+  See docs/agentskeptic.md (Integrator-owned gate).
 
   --help, -h  print this message and exit 0`;
 }
@@ -1049,77 +1064,16 @@ function runPlanTransitionSubcommand(args: string[]): void {
   process.exit(2);
 }
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  if (args[0] === "assurance") {
-    runAssuranceSubcommand(args.slice(1));
-    return;
-  }
-  if (args[0] === "quick") {
-    await runQuickSubcommand(args.slice(1));
-    return;
-  }
-  if (args[0] === "bootstrap") {
-    await runBootstrapSubcommand(args.slice(1));
-    return;
-  }
-  if (args[0] === "verify-bundle-signature") {
-    runVerifyBundleSignatureSubcommand(args.slice(1));
-    return;
-  }
-  if (args[0] === "plan-transition") {
-    runPlanTransitionSubcommand(args.slice(1));
-    return;
-  }
-  if (args[0] === "debug") {
-    await runDebugSubcommand(args.slice(1));
-    return;
-  }
-
-  if (args[0] === "compare") {
-    runCompareSubcommand(args.slice(1));
-    return;
-  }
-
-  if (args[0] === "execution-trace") {
-    runExecutionTraceSubcommand(args.slice(1));
-    return;
-  }
-
-  if (args[0] === "validate-registry") {
-    runValidateRegistrySubcommand(args.slice(1));
-    return;
-  }
-
-  if (args[0] === "enforce") {
-    await runEnforce(args.slice(1));
-    return;
-  }
-
-  if (args.includes("--help") || args.includes("-h")) {
-    console.log(usageVerify());
-    process.exit(0);
-  }
-
-  const expectLockB = argValue(args, "--expect-lock");
-  const outputLockB = argValue(args, "--output-lock");
-  const hasExpectB = expectLockB !== undefined;
-  const hasOutputB = outputLockB !== undefined;
-  if (hasExpectB && hasOutputB) {
-    writeCliError(
-      CLI_OPERATIONAL_CODES.ENFORCE_USAGE,
-      "batch verify requires exactly one of --expect-lock <path> or --output-lock <path>.",
-    );
-    process.exit(3);
-  }
-  if (hasExpectB !== hasOutputB) {
-    await orchestrateVerifyBatchLockRun(args);
-    return;
-  }
-
+async function runBatchVerifyWithTelemetrySubcommand(
+  batchArgs: string[],
+  opts: {
+    telemetrySubcommand: "batch_verify" | "verify_integrator_owned";
+    rejectBundled: boolean;
+  },
+): Promise<void> {
   let parsedBatch;
   try {
-    parsedBatch = parseBatchVerifyCliArgs(args);
+    parsedBatch = parseBatchVerifyCliArgs(batchArgs);
   } catch (e) {
     if (e instanceof TruthLayerError) {
       writeCliError(e.code, e.message);
@@ -1150,8 +1104,16 @@ async function main(): Promise<void> {
     registryPath: parsedBatch.registryPath,
     database: parsedBatch.database,
   });
+  if (opts.rejectBundled && batchWorkloadClass === "bundled_examples") {
+    process.stderr.write(
+      "INTEGRATOR_OWNED_GATE: integrator-owned contract verify rejects workload_class=bundled_examples (shipped example paths).\n" +
+        "bundled_examples: use standard batch verify for demos, or pass integrator-owned --events, --registry, and --db paths. See docs/first-run-integration.md.\n",
+    );
+    process.exit(2);
+  }
+
   const batchLineage = classifyWorkflowLineage({
-    subcommand: "batch_verify",
+    subcommand: opts.telemetrySubcommand,
     workloadClass: batchWorkloadClass,
     workflowId: parsedBatch.workflowId,
   });
@@ -1161,7 +1123,7 @@ async function main(): Promise<void> {
     issued_at: new Date().toISOString(),
     workload_class: batchWorkloadClass,
     workflow_lineage: batchLineage,
-    subcommand: "batch_verify",
+    subcommand: opts.telemetrySubcommand,
     build_profile: batchBuildProfile,
   });
   const batchIo = {
@@ -1212,7 +1174,7 @@ async function main(): Promise<void> {
       issued_at: new Date().toISOString(),
       workload_class: batchWorkloadClass,
       workflow_lineage: batchLineage,
-      subcommand: "batch_verify",
+      subcommand: opts.telemetrySubcommand,
       build_profile: batchBuildProfile,
       terminal_status: result.status,
     });
@@ -1221,7 +1183,7 @@ async function main(): Promise<void> {
         run_id: batchActivationRunId,
         terminal_status: result.status,
         workload_class: batchWorkloadClass,
-        subcommand: "batch_verify",
+        subcommand: opts.telemetrySubcommand,
         build_profile: batchBuildProfile,
       });
     }
@@ -1229,13 +1191,101 @@ async function main(): Promise<void> {
       runId: batchPreflight.runId,
       terminal_status: result.status,
       workload_class: batchWorkloadClass,
-      subcommand: "batch_verify",
+      subcommand: opts.telemetrySubcommand,
     });
     emitVerifyWorkflowCliJsonAndExitByStatus(result, batchIo);
   } catch (e) {
     if (e instanceof Error && e.message === CLI_EXITED_AFTER_ERROR) return;
     throw e;
   }
+}
+
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  if (args[0] === "assurance") {
+    runAssuranceSubcommand(args.slice(1));
+    return;
+  }
+  if (args[0] === "quick") {
+    await runQuickSubcommand(args.slice(1));
+    return;
+  }
+  if (args[0] === "bootstrap") {
+    await runBootstrapSubcommand(args.slice(1));
+    return;
+  }
+  if (args[0] === "verify-bundle-signature") {
+    runVerifyBundleSignatureSubcommand(args.slice(1));
+    return;
+  }
+  if (args[0] === "plan-transition") {
+    runPlanTransitionSubcommand(args.slice(1));
+    return;
+  }
+  if (args[0] === "debug") {
+    await runDebugSubcommand(args.slice(1));
+    return;
+  }
+
+  if (args[0] === "compare") {
+    runCompareSubcommand(args.slice(1));
+    return;
+  }
+
+  if (args[0] === "execution-trace") {
+    runExecutionTraceSubcommand(args.slice(1));
+    return;
+  }
+
+  if (args[0] === "validate-registry") {
+    runValidateRegistrySubcommand(args.slice(1));
+    return;
+  }
+
+  if (args[0] === "enforce") {
+    await runEnforce(args.slice(1));
+    return;
+  }
+
+  const leadIsIntegratorOwned = args[0] === "verify-integrator-owned";
+  const verifyCliArgs = leadIsIntegratorOwned ? args.slice(1) : args;
+
+  if (args.includes("--help") || args.includes("-h")) {
+    if (leadIsIntegratorOwned) {
+      console.log(usageVerifyIntegratorOwned());
+    } else {
+      console.log(usageVerify());
+    }
+    process.exit(0);
+  }
+
+  const expectLockB = argValue(verifyCliArgs, "--expect-lock");
+  const outputLockB = argValue(verifyCliArgs, "--output-lock");
+  const hasExpectB = expectLockB !== undefined;
+  const hasOutputB = outputLockB !== undefined;
+  if (hasExpectB && hasOutputB) {
+    writeCliError(
+      CLI_OPERATIONAL_CODES.ENFORCE_USAGE,
+      "batch verify requires exactly one of --expect-lock <path> or --output-lock <path>.",
+    );
+    process.exit(3);
+  }
+  if (hasExpectB !== hasOutputB) {
+    if (leadIsIntegratorOwned) {
+      writeCliError(
+        CLI_OPERATIONAL_CODES.CLI_USAGE,
+        "verify-integrator-owned does not support --output-lock or --expect-lock; use standard contract verify for CI lock flows.",
+      );
+      process.exit(3);
+    }
+    await orchestrateVerifyBatchLockRun(verifyCliArgs);
+    return;
+  }
+
+  await runBatchVerifyWithTelemetrySubcommand(verifyCliArgs, {
+    telemetrySubcommand: leadIsIntegratorOwned ? "verify_integrator_owned" : "batch_verify",
+    rejectBundled: leadIsIntegratorOwned,
+  });
 }
 
 void main().catch((e) => {

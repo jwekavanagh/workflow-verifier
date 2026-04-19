@@ -86,6 +86,8 @@ You are a **state verification engine for agent-driven systems** that have **SQL
 
 | `verifyWorkflow`, batch CLI, registry resolution, Postgres read-only session, `WorkflowResult` (embedded **`workflowTruthReport.schemaVersion` 9**, required **`observedStateSummary`**) | [`agentskeptic.md`](agentskeptic.md) | Batch semantics; reconciliation table: [`reconciliation-vocabulary-ssot.md`](reconciliation-vocabulary-ssot.md) |
 
+| **Integrator-owned batch gate** (`agentskeptic verify-integrator-owned`, `BUNDLED_PATH_SUFFIXES` gate, telemetry wire `verify_integrator_owned`) | [`agentskeptic.md`](agentskeptic.md) subsection **Integrator-owned gate**; [`src/commercial/verifyWorkloadClassify.ts`](../src/commercial/verifyWorkloadClassify.ts) | [`first-run-integration.md`](first-run-integration.md) grounded path; [`funnel-observability-ssot.md`](funnel-observability-ssot.md) product-activation `subcommand` union |
+
 | **CI enforcement** (`enforce`, `ci-lock-v1`, bootstrap vs expect-lock recipe) | [`ci-enforcement.md`](ci-enforcement.md), [`schemas/ci-lock-v1.schema.json`](../schemas/ci-lock-v1.schema.json), [Enforce stream contract](agentskeptic.md#enforce-stream-contract-normative) in [`agentskeptic.md`](agentskeptic.md) | Lock field list only in schema; streams only in agentskeptic |
 
 | **Commercial free vs paid** (OSS vs published npm, reserve, Starter account) | [`commercial-ssot.md`](commercial-ssot.md) — subsection *Free vs paid boundary (normative v1)* | [`commercial-entitlement-policy.md`](commercial-entitlement-policy.md), [`ci-enforcement.md`](ci-enforcement.md) — recipes and “why” only; do not duplicate the matrix |

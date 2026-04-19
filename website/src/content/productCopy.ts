@@ -256,13 +256,14 @@ export const integrateActivation = {
   copyActivationBlockLabel: "Copy activation commands",
   runHeading: "Run this",
   runCaption:
-    "Enter your hypothesis, then copy the block into a terminal. The script clones this repo, installs, runs the bundled demo and PatternComplete-shaped verify on temp paths (AdoptionComplete_PatternComplete per first-run SSOT; checkpoints AC-TRUST-01 and AC-OPS-01), then runs the same bootstrap plus contract verify shape on a SQLite file you supply via AGENTSKEPTIC_VERIFY_DB. Before the final step, apply examples/integrate-your-db/required-sqlite-state.sql to that file (see first-run SSOT). Exit code 0 means IntegrateSpineComplete: the full script finished, including the final verify on your file. A cold clone can take several minutes.",
+    "Real integrator output is Step 4 on your database with integrator-owned events and registry—use agentskeptic verify-integrator-owned after npm run build (see first-run SSOT and agentskeptic.md Integrator-owned gate). The block below is mechanical preflight only: enter your hypothesis, then copy into a terminal. The script clones this repo, installs, runs the bundled demo and PatternComplete-shaped verify on temp paths, then runs the fixed bootstrap plus contract verify on a SQLite file you supply via AGENTSKEPTIC_VERIFY_DB. Before the final step, apply examples/integrate-your-db/required-sqlite-state.sql to that file. PatternComplete checklist hooks include AC-TRUST-01 and AC-OPS-01 under AdoptionComplete_PatternComplete in the first-run doc. Exit code 0 means IntegrateSpineComplete (pedagogy), not Decision-ready ProductionComplete. A cold clone can take several minutes.",
   successHeading: "What success looks like",
   successIntro:
-    "Terminal success is only when the entire copied script exits 0, including the final verification on AGENTSKEPTIC_VERIFY_DB.",
+    "Primary success is Step 4 plus Decision-ready artifacts when you need a decision (first-run SSOT). The copied script exiting 0 only proves IntegrateSpineComplete for the preflight path.",
   successBullets: [
-    "After the demo segment you will see PatternComplete-style output (human report on stderr, WorkflowResult JSON on stdout for the temp DB path).",
-    "After the final segment, stderr again shows the human report and stdout one WorkflowResult JSON with status complete for wf_integrate_spine when your DB matches examples/integrate-your-db/bootstrap-input.json and required-sqlite-state.sql.",
+    "After npm run build, run agentskeptic verify-integrator-owned with your workflow id, events, registry, and one of --db or --postgres-url so bundled example triples fail closed (stderr INTEGRATOR_OWNED_GATE).",
+    "After the demo segment in the script you will see PatternComplete-style output (human report on stderr, WorkflowResult JSON on stdout for the temp DB path).",
+    "After the final script segment, stderr shows the human report and stdout one WorkflowResult JSON with status complete for wf_integrate_spine when your DB matches examples/integrate-your-db/bootstrap-input.json and required-sqlite-state.sql.",
     "If the script stops after the demo with a message about AGENTSKEPTIC_VERIFY_DB, set that variable to a readable SQLite file prepared per docs/first-run-integration.md (Integrate spine) and rerun from a fresh directory.",
   ],
   provedHeading: "What you proved",
@@ -273,8 +274,8 @@ export const integrateActivation = {
   nextSteps: [
     {
       title: "First-run integration (SSOT)",
-      body: "Integrate spine (normative), PatternComplete vs ProductionComplete, and how to apply required-sqlite-state.sql.",
-      href: "https://github.com/jwekavanagh/agentskeptic/blob/main/docs/first-run-integration.md#integrate-spine-normative",
+      body: "Grounded integrator-owned path (Step 4, verify-integrator-owned), then mechanical preflight, Integrate spine, and PatternComplete vs ProductionComplete.",
+      href: "https://github.com/jwekavanagh/agentskeptic/blob/main/docs/first-run-integration.md#grounded-integrator-owned-output-primary-path",
       linkLabel: "Open first-run-integration.md",
     },
   ],

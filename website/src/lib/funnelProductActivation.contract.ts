@@ -51,7 +51,7 @@ const workflowLineageSchema = z.enum([
   "integrator_scoped",
   "unknown",
 ]);
-const subcommandSchema = z.enum(["batch_verify", "quick_verify"]);
+const subcommandSchema = z.enum(["batch_verify", "quick_verify", "verify_integrator_owned"]);
 const buildProfileSchema = z.enum(["oss", "commercial"]);
 const terminalStatusSchema = z.enum(["complete", "inconsistent", "incomplete"]);
 

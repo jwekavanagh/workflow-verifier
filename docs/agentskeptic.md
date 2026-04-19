@@ -385,13 +385,23 @@ node dist/cli.js --workflow-id <id> --events <path> --registry <path> --postgres
 
 **Why:** Same event contract for CI and external logs without requiring in-process wrapper.
 
+### Integrator-owned gate (`verify-integrator-owned`)
+
+**Command:** `agentskeptic verify-integrator-owned` with the **same** contract flags as batch replay (`--workflow-id`, `--events`, `--registry`, exactly one of `--db` / `--postgres-url`, optional **`--no-truth-report`**, **`--share-report-origin`**, **`--write-run-bundle`**, verification policy flags, etc.).
+
+**Gate (SQLite only):** After the same license preflight as batch verify, the CLI classifies paths with **`classifyBatchVerifyWorkload`** (`src/commercial/verifyWorkloadClassify.ts`). If the result is **`bundled_examples`**, the CLI writes a short **stderr** message containing **`INTEGRATOR_OWNED_GATE`** and **`bundled_examples`**, then exits **2** **without** running **`verifyWorkflow`** and **without** posting **`verify_started`** / **`verify_outcome`** product-activation beacons. Use standard batch verify for demos on shipped `examples/*` triples; use **`verify-integrator-owned`** when asserting integrator-owned paths (see [`docs/first-run-integration.md`](first-run-integration.md)). Postgres invocations are always **`non_bundled`** for this classifier and are never blocked by the gate.
+
+**Telemetry:** When the gate passes, product-activation bodies use wire **`subcommand`:** **`verify_integrator_owned`** (same **`workflow_lineage`** rules as **`batch_verify`** — [`src/funnel/workflowLineageClassify.ts`](../src/funnel/workflowLineageClassify.ts)). Semantics: [`docs/funnel-observability-ssot.md`](funnel-observability-ssot.md).
+
+**CI lock flags:** **`--output-lock`** and **`--expect-lock`** are **not** supported on this subcommand (exit **3** with **`CLI_USAGE`**); use standard batch verify for lock orchestration.
+
 **Exit codes**
 
 | Code | Meaning |
 |------|---------|
 | 0 | `workflow.status` is `complete` |
 | 1 | `workflow.status` is `inconsistent` |
-| 2 | `workflow.status` is `incomplete` |
+| 2 | `workflow.status` is `incomplete`, **or** ( **`verify-integrator-owned` only** ) integrator-owned gate blocked **`bundled_examples`** — distinguish by stderr markers **`INTEGRATOR_OWNED_GATE`** / **`bundled_examples`** |
 | 3 | Operational failure (registry read/parse, events read, DB open/connect, invalid args, internal CLI error); see [CLI operational errors](#cli-operational-errors) |
 | 4 | **`agentskeptic enforce` only:** CI lock mismatch (**`VERIFICATION_OUTPUT_LOCK_MISMATCH`**); see [Enforce stream contract (normative)](#enforce-stream-contract-normative) |
 

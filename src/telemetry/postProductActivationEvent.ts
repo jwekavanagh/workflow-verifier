@@ -36,7 +36,7 @@ export type PostProductActivationStartedInput = {
   issued_at: string;
   workload_class: "bundled_examples" | "non_bundled";
   workflow_lineage: WorkflowLineage;
-  subcommand: "batch_verify" | "quick_verify";
+  subcommand: "batch_verify" | "quick_verify" | "verify_integrator_owned";
   build_profile: ProductActivationBuildProfile;
 };
 
@@ -46,7 +46,7 @@ export type PostProductActivationOutcomeInput = {
   issued_at: string;
   workload_class: "bundled_examples" | "non_bundled";
   workflow_lineage: WorkflowLineage;
-  subcommand: "batch_verify" | "quick_verify";
+  subcommand: "batch_verify" | "quick_verify" | "verify_integrator_owned";
   build_profile: ProductActivationBuildProfile;
   terminal_status: "complete" | "inconsistent" | "incomplete";
 };

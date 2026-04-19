@@ -78,6 +78,22 @@ EVENTS="$(mktemp)"
 node examples/langgraph-reference/run.mjs "$EVENTS"
 node dist/cli.js --workflow-id wf_partner --events "$EVENTS" --registry examples/partner-quickstart/partner.tools.json --postgres-url "$PARTNER_POSTGRES_URL"
 \`\`\`
+
+## Integrator-owned gate
+
+After \`npm run build\`, \`verify-integrator-owned\` uses the same flags as manual batch verify but **rejects** the canonical bundled example SQLite triple (stderr: \`INTEGRATOR_OWNED_GATE\`, \`bundled_examples\`; exit **2**). Example that **passes** the gate by copying partner fixtures to temp paths (paths must not end with the bundled suffixes in \`verifyWorkloadClassify.ts\`):
+
+\`\`\`bash
+npm run build
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+cp examples/partner-quickstart/partner.events.ndjson "$TMP/events.ndjson"
+cp examples/partner-quickstart/partner.tools.json "$TMP/tools.json"
+sqlite3 "$TMP/db.sqlite" < examples/partner-quickstart/partner.seed.sql
+node dist/cli.js verify-integrator-owned --workflow-id wf_partner --events "$TMP/events.ndjson" --registry "$TMP/tools.json" --db "$TMP/db.sqlite"
+\`\`\`
+
+Normative semantics: [first-run-integration.md](first-run-integration.md) and [agentskeptic.md](agentskeptic.md) (Integrator-owned gate).
 `;
 
 const mode = process.argv.includes("--check") ? "check" : "write";

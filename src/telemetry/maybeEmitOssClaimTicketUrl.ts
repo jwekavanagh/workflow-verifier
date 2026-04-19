@@ -7,7 +7,7 @@ export async function maybeEmitOssClaimTicketUrlToStderr(input: {
   run_id: string;
   terminal_status: "complete" | "inconsistent" | "incomplete";
   workload_class: "bundled_examples" | "non_bundled";
-  subcommand: "batch_verify" | "quick_verify";
+  subcommand: "batch_verify" | "quick_verify" | "verify_integrator_owned";
   build_profile: "oss" | "commercial";
 }): Promise<void> {
   if (LICENSE_PREFLIGHT_ENABLED) return;
